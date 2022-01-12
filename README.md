@@ -53,7 +53,7 @@ See `test/test-app.c` example for a more complete example.
 ### OS X
 
 ```
-$ brew install llvm clib
+$ brew install llvm clib fswatch
 ```
 
 ### Linux
@@ -102,12 +102,28 @@ The Makefile constructs `CFLAGS` from the `clang-tidy` compatible [compile_flags
 
 There are additional platform dependent `CFLAGS` for Linux and Darwin (OS X).
 
+### Watch
+
+To recompile and restart a server app in the `demo/` directory when a file changes:
+
+```
+$ make app-watch
+```
+
 ## Testing
 
 Uses a very simple testing harness to launch a test app and run integration tests using system calls to `curl`. There are no unit tests which encourages refactoring.
 
 ```
-make test
+$ make test
+```
+
+### Watch
+
+To recompile and rerun the tests when a file changes:
+
+```
+$ make test-watch
 ```
 
 ## Dependencies

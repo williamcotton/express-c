@@ -27,3 +27,11 @@ test:
 clean:
 	rm -rf $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)
+
+$(TARGETS)-watch: $(TARGETS)
+	build/$(TARGETS) &
+	fswatch -o deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
+
+test-watch:
+	make test
+	fswatch -o test/*.c test/*.h src/ | xargs -n1 -I{} make test
