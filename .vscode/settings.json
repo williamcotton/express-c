@@ -48,5 +48,6 @@
     "ctime": "c",
     "cmath": "c"
   },
-  "C_Cpp.errorSquiggles": "Disabled"
+  "C_Cpp.errorSquiggles": "Disabled",
+  "C_Cpp.codeAnalysis.clangTidy.enabled": true,
 }

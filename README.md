@@ -46,9 +46,23 @@ int main()
 }
 ```
 
+See `test/test-app.c` example for a more complete example.
+
 ## Installation
 
-See the Dockerfile in .devcontainer for system requirements.
+### OS X
+
+```
+$ brew install llvm clib
+```
+
+### Linux
+
+The primary requirements are `clang`, `libbsd`, `libblocksruntime` and `libdispatch`.
+
+The easiest way is to open this in a GitHub Codespace.
+
+Otherwise see the Dockerfile in .devcontainer for full system requirements.
 
 ## Demo App
 
@@ -61,8 +75,48 @@ $ open http://localhost:3000
 Closing server...
 ```
 
+## VS Code Development
+
+Please install the recommended extensions for VS Code:
+
+- [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
+- [C/C++ Themes](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-themes)
+- [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack)
+- [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
+
+### Run and Debug
+
+The VS Code `launch.json` and `tasks.json` are set up to run and debug any `.c` file in the `demo/` directory using `make` and the `CodeLLDB` extension.
+
+### Clang Tidy
+
+It is recommended that you set `"C_Cpp.updateChannel": "Insiders",` in your local `settings.json` file. This will give you access to the latest features including support for `clang-tidy`.
+
+Otherwise you can install the [Clang-Tidy](https://marketplace.visualstudio.com/items?itemName=notskm.clang-tidy) extension.
+
+### Make
+
+The build process is configured to add everything in the `deps/` directory following the [clib best practices](https://github.com/clibs/clib/blob/master/BEST_PRACTICE.md).
+
+The Makefile constructs `CFLAGS` from the `clang-tidy` compatible [compile_flags.txt](https://clang.llvm.org/docs/JSONCompilationDatabase.html#alternatives) file.
+
+There are additional platform dependent `CFLAGS` for Linux and Darwin (OS X).
+
 ## Testing
+
+Uses a very simple testing harness to launch a test app and run integration tests using system calls to `curl`. There are no unit tests which encourages refactoring.
 
 ```
 make test
 ```
+
+## Dependencies
+
+Uses [clib](https://github.com/clibs/clib) for dependency management:
+
+- [clibs/hash](https://github.com/clibs/hash)
+- [Isty001/dotenv-c](https://github.com/Isty001/dotenv-c)
+
+And:
+
+- [h2o/picohttpparser](https://github.com/h2o/picohttpparser)

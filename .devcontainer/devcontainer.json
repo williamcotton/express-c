@@ -12,17 +12,16 @@
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
 		"C_Cpp.updateChannel": "Insiders",
+		"C_Cpp.errorSquiggles": "Disabled",
 		"C_Cpp.codeAnalysis.clangTidy.enabled": true
 	},
 
-
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
+    "ms-vscode.cpptools",
+		"ms-vscode.cpptools-themes",
 		"ms-vscode.cpptools-extension-pack",
-		"vadimcn.vscode-lldb",
-		"jeff-hykin.better-cpp-syntax",
-		"ms-vscode.cpptools",
-		"ms-vscode.cpptools-themes"
+		"vadimcn.vscode-lldb"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -35,7 +34,6 @@
 	"remoteUser": "vscode",
 	"features": {
 		"git": "latest",
-		"github-cli": "latest",
-		"ruby": "3.0"
+		"github-cli": "latest"
 	}
 }

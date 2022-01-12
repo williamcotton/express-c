@@ -1,9 +1,8 @@
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-SRC = src/express.c test/test-harnass.c
+SRC = src/express.c
 SRC += $(wildcard deps/*/*.c)
 BUILD_DIR = build
-TEST_DIR = test
 PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
 ifeq ($(PLATFORM),LINUX)
@@ -22,5 +21,9 @@ $(TARGETS):
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c $(SRC) $(CFLAGS)
+	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
+
+clean:
+	rm -rf $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)

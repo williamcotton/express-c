@@ -1,6 +1,8 @@
 {
   "recommendations": [
-    "ms-vscode.cpptools-extension-pack",
-    "vadimcn.vscode-lldb"
+    "ms-vscode.cpptools",
+		"ms-vscode.cpptools-themes",
+		"ms-vscode.cpptools-extension-pack",
+		"vadimcn.vscode-lldb"
   ]
 }
