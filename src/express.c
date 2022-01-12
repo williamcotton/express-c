@@ -353,6 +353,35 @@ static getHashBlock reqParamFactory(request_t *req)
   });
 }
 
+static session_t *reqSessionFactory(UNUSED request_t *req)
+{
+  session_t *session = malloc(sizeof(session_t));
+  return session;
+}
+
+static cookie_t *reqCookieFactory(UNUSED request_t *req)
+{
+  cookie_t *cookie = malloc(sizeof(cookie_t));
+  return cookie;
+}
+
+typedef void * (^getMiddlewareBlock)(char *key);
+static getMiddlewareBlock reqMiddlewareFactory(request_t *req)
+{
+  req->middlewareHash = hash_new();
+  return Block_copy(^(char *key) {
+    return hash_get(req->middlewareHash, key);
+  });
+}
+
+typedef void (^getMiddlewareSetBlock)(char *key, void *middleware);
+static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
+{
+  return Block_copy(^(char *key, void *middleware) {
+    return hash_set(req->middlewareHash, key, middleware);
+  });
+}
+
 static getHashBlock reqBodyFactory(request_t *req)
 {
   req->bodyHash = hash_new();
@@ -605,6 +634,16 @@ static void initServerSocket()
   }
 }
 
+static void closeServer()
+{
+  printf("\nClosing server...\n");
+  free(routeHandlers);
+  free(middlewares);
+  close(servSock);
+  dispatch_release(serverQueue);
+  exit(EXIT_SUCCESS);
+}
+
 static void initServerListen(int port)
 {
   struct sockaddr_in servAddr;
@@ -615,7 +654,8 @@ static void initServerListen(int port)
 
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
-    printf("bind() failed");
+    printf("bind() failed\n");
+    closeServer();
   }
 
   // Make the socket non-blocking
@@ -624,12 +664,13 @@ static void initServerListen(int port)
     shutdown(servSock, SHUT_RDWR);
     close(servSock);
     perror("fcntl() failed");
-    exit(3);
+    closeServer();
   }
 
   if (listen(servSock, 10000) < 0)
   {
     printf("listen() failed");
+    closeServer();
   }
 };
 
@@ -712,6 +753,10 @@ static request_t parseRequest(client_t client)
   req.get = reqGetHeaderFactory(&req);
   req.query = reqQueryFactory(&req);
   req.body = reqBodyFactory(&req);
+  req.session = reqSessionFactory(&req);
+  req.cookie = reqCookieFactory(&req);
+  req.m = reqMiddlewareFactory(&req);
+  req.mSet = reqMiddlewareSetFactory(&req);
 
   free(copy);
 
@@ -826,14 +871,20 @@ static void initClientAcceptEventHandler()
   dispatch_resume(acceptSource);
 }
 
-static void closeServer()
+middlewareHandler expressStatic(char *path)
 {
-  printf("\nClosing server...\n");
-  free(routeHandlers);
-  free(middlewares);
-  close(servSock);
-  dispatch_release(serverQueue);
-  exit(EXIT_SUCCESS);
+  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
+    char *filePath = matchFilepath(req, path);
+    if (filePath != NULL)
+    {
+      res->sendFile(filePath);
+      free(filePath);
+    }
+    else
+    {
+      next();
+    }
+  });
 }
 
 app_t express()
@@ -869,19 +920,3 @@ app_t express()
 
   return app;
 };
-
-middlewareHandler expressStatic(char *path)
-{
-  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
-    char *filePath = matchFilepath(req, path);
-    if (filePath != NULL)
-    {
-      res->sendFile(filePath);
-      free(filePath);
-    }
-    else
-    {
-      next();
-    }
-  });
-}

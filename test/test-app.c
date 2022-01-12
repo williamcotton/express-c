@@ -1,7 +1,29 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <uuid/uuid.h>
+#include <Block.h>
 #include "../src/express.h"
 #include "test-harnass.h"
+
+static char *generateUuid()
+{
+  char *guid = malloc(37);
+  if (guid == NULL)
+  {
+    return NULL;
+  }
+  uuid_t uuid;
+  uuid_generate(uuid);
+  uuid_unparse(uuid, guid);
+  return guid;
+}
+
+typedef struct super_t
+{
+  char *uuid;
+  char * (^get)(char *key);
+  void (^set)(char *key, char *value);
+} super_t;
 
 void runTests()
 {
@@ -13,7 +35,29 @@ void runTests()
   testEq("send file", curlGet("/file"), "hello, world!\n");
   testEq("static file middleware", curlGet("/test/test2.txt"), "this is a test!!!");
   testEq("form data", curlPost("/post/form123", "param1=12%2B3&param2=3+4%205"), "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
+  testEq("session set", curlPost("/session", "param1=session-data"), "ok");
+  testEq("session get", curlGet("/session"), "session-data");
+  testEq("custom request middleware", curlGet("/m"), "super test");
   exit(EXIT_SUCCESS);
+}
+
+middlewareHandler sessionMiddlewareFactory()
+{
+  __block hash_t *sessionStore = hash_new();
+  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)()) {
+    // TODO: get session from cookie
+    req->session->uuid = generateUuid();
+
+    req->session->get = ^(char *key) {
+      return (char *)hash_get(sessionStore, key);
+    };
+
+    req->session->set = ^(char *key, char *value) {
+      hash_set(sessionStore, key, value);
+    };
+
+    next();
+  });
 }
 
 int main()
@@ -23,9 +67,14 @@ int main()
 
   app.use(expressStatic("test"));
 
-  app.use(^(UNUSED request_t *req, UNUSED response_t *res, void (^next)()) {
+  app.use(^(request_t *req, UNUSED response_t *res, void (^next)()) {
+    super_t *super = malloc(sizeof(super_t));
+    super->uuid = "super test";
+    req->mSet("super", super);
     next();
   });
+
+  app.use(sessionMiddlewareFactory());
 
   app.get("/", ^(UNUSED request_t *req, response_t *res) {
     res->send("Hello World!");
@@ -63,6 +112,20 @@ int main()
   app.post("/post/:form", ^(request_t *req, response_t *res) {
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+  });
+
+  app.post("/session", ^(request_t *req, response_t *res) {
+    req->session->set("param1", req->body("param1"));
+    res->send("ok");
+  });
+
+  app.get("/session", ^(request_t *req, response_t *res) {
+    res->send(req->session->get("param1"));
+  });
+
+  app.get("/m", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super");
+    res->send(super->uuid);
   });
 
   app.listen(port, ^{

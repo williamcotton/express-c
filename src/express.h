@@ -2,6 +2,19 @@
 
 #define UNUSED __attribute__((unused))
 
+typedef struct session_t
+{
+  char *uuid;
+  char * (^get)(char *key);
+  void (^set)(char *key, char *value);
+} session_t;
+
+typedef struct cookie_t
+{
+  char * (^get)(char *key);
+  void (^set)(char *key, char *value);
+} cookie_t;
+
 typedef struct request_t
 {
   char *path;
@@ -17,7 +30,12 @@ typedef struct request_t
   char *bodyString;
   hash_t *bodyHash;
   char * (^body)(char *bodyKey);
+  hash_t *middlewareHash;
+  void * (^m)(char *middlewareKey);
+  void (^mSet)(char *middlewareKey, void *middleware);
   char *rawRequest;
+  session_t *session;
+  cookie_t *cookie;
 } request_t;
 
 typedef struct response_t
@@ -25,6 +43,7 @@ typedef struct response_t
   void (^send)(char *);
   void (^sendf)(char *, ...);
   void (^sendFile)(char *);
+  void (^render)(char *, ...);
   int status;
 } response_t;
 
