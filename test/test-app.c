@@ -7,7 +7,7 @@ void runTests()
 {
   testEq("root", curlGet("/"), "Hello World!");
   testEq("basic route", curlGet("/test"), "Testing, testing!");
-  testEq("query string", curlGet("/qs\?value1=123\\&value2=345"), "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 345</p>");
+  testEq("query string", curlGet("/qs\?value1=123\\&value2=34%205"), "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
   testEq("headers", curlGet("/headers"), "<h1>Headers</h1><p>Host: 127.0.0.1:3032</p><p>Accept: */*</p>");
   testEq("route params", curlGet("/one/123/two/345/567.jpg"), "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
   testEq("send file", curlGet("/file"), "hello, world!\n");

@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <hash/hash.h>
 #include <signal.h>
+#include <curl/curl.h>
 #include "express.h"
 
 static char *errorHTML = "<!DOCTYPE html>\n"
@@ -169,17 +170,28 @@ size_t fileSize(char *filePath)
 
 static void parseQueryString(hash_t *hash, char *string)
 {
-  char *query = strdup(string);
-  char *tokens = query;
-  char *p;
-  while ((p = strsep(&tokens, "&\n")))
+  CURL *curl = curl_easy_init();
+  if (curl)
   {
-    char *key = strtok(p, "=");
-    char *value = NULL;
-    if (key && (value = strtok(NULL, "=")))
-      hash_set(hash, key, value);
-    else
-      hash_set(hash, key, "");
+    char *query = strdup(string);
+    char *tokens = query;
+    char *p;
+    while ((p = strsep(&tokens, "&\n")))
+    {
+      char *key = strtok(p, "=");
+      char *value = NULL;
+      if (key && (value = strtok(NULL, "=")))
+      {
+        char *decodedKey = curl_easy_unescape(curl, key, strlen(key), NULL);
+        char *decodedValue = curl_easy_unescape(curl, value, strlen(value), NULL);
+        hash_set(hash, decodedKey, decodedValue);
+      }
+      else
+      {
+        hash_set(hash, key, "");
+      }
+    }
+    curl_easy_cleanup(curl);
   }
 }
 
