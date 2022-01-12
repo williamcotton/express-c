@@ -364,6 +364,13 @@ static getHashBlock reqBodyFactory(request_t *req)
     if (req->bodyString && strlen(req->bodyString) > 4)
     {
       req->bodyString += 4;
+      int i = 0;
+      while (req->bodyString[i] != '\0')
+      {
+        if (req->bodyString[i] == '+')
+          req->bodyString[i] = ' ';
+        i++;
+      }
       if (strncmp(req->get("Content-Type"), "application/x-www-form-urlencoded", 33) == 0)
       {
         parseQueryString(req->bodyHash, req->bodyString);

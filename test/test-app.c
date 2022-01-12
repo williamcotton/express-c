@@ -12,7 +12,7 @@ void runTests()
   testEq("route params", curlGet("/one/123/two/345/567.jpg"), "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
   testEq("send file", curlGet("/file"), "hello, world!\n");
   testEq("static file middleware", curlGet("/test/test2.txt"), "this is a test!!!");
-  testEq("form data", curlPost("/post/form123", "param1=123&param2=345"), "<h1>Form</h1><p>Param 1: 123</p><p>Param 2: 345</p>");
+  testEq("form data", curlPost("/post/form123", "param1=12%2B3&param2=3+4%205"), "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
   exit(EXIT_SUCCESS);
 }
 
