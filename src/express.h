@@ -26,6 +26,7 @@ typedef struct request_t
   hash_t *headersHash;
   char * (^get)(char *headerKey);
   hash_t *paramsHash;
+  char **paramValues;
   char * (^param)(char *paramKey);
   char *bodyString;
   hash_t *bodyHash;

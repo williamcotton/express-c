@@ -228,6 +228,7 @@ param_match_t *paramMatch(char *route)
   if (regcomp(&regexCompiled, regexString, REG_EXTENDED))
   {
     printf("Could not compile regular expression.\n");
+    free(pm);
     return NULL;
   };
 
@@ -773,14 +774,19 @@ static route_handler_t matchRouteHandler(request_t *req)
     if (pm != NULL)
     {
       char *values[pm->count];
+      req->paramValues = values;
+      for (int j = 0; j < pm->count; j++)
+      {
+        values[j] = NULL;
+      }
       int match = 0;
-      routeMatch(req->path, pm, values, &match);
+      routeMatch(req->path, pm, req->paramValues, &match);
       if (match)
       {
         req->paramsHash = hash_new();
         for (int i = 0; i < pm->count; i++)
         {
-          hash_set(req->paramsHash, pm->keys[i], values[i]);
+          hash_set(req->paramsHash, pm->keys[i], req->paramValues[i]);
         }
         req->param = reqParamFactory(req);
         match = 0;
