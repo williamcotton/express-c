@@ -21,5 +21,6 @@ $(TARGETS):
 
 .PHONY: test
 test:
+	mkdir -p $(BUILD_DIR)
 	clang -o $(BUILD_DIR)/$@ test/test-app.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
