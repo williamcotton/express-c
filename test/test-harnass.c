@@ -16,7 +16,7 @@ char *curl(char *cmd)
 
 char *curlGet(char *url)
 {
-  char *curlCmd = "curl -s -o ./test/test-response.html http://127.0.0.1:3032";
+  char *curlCmd = "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html http://127.0.0.1:3032";
   char *cmd = malloc(strlen(curlCmd) + strlen(url) + 1);
   sprintf(cmd, "%s%s", curlCmd, url);
   return curl(cmd);
@@ -24,10 +24,16 @@ char *curlGet(char *url)
 
 char *curlPost(char *url, char *data)
 {
-  char *curlCmd = "curl -X POST -s -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"\" http://127.0.0.1:3032";
+  char *curlCmd = "curl -X POST -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"\" http://127.0.0.1:3032";
   char *cmd = malloc(strlen(curlCmd) + strlen(url) + strlen(data) + 1);
-  sprintf(cmd, "curl -X POST -s -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
+  sprintf(cmd, "curl -X POST -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
   return curl(cmd);
+}
+
+void clearState()
+{
+  system("rm ./test/test-cookies.txt");
+  system("rm ./test/test-response.html");
 }
 
 int testEq(char *testName, char *response, char *expected)

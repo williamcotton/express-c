@@ -36,7 +36,8 @@ typedef struct request_t
   void (^mSet)(char *middlewareKey, void *middleware);
   char *rawRequest;
   session_t *session;
-  cookie_t *cookie;
+  hash_t *cookiesHash;
+  char * (^cookie)(char *key);
 } request_t;
 
 typedef struct response_t
@@ -45,6 +46,10 @@ typedef struct response_t
   void (^sendf)(char *, ...);
   void (^sendFile)(char *);
   void (^render)(char *, ...);
+  hash_t *headersHash;
+  void (^set)(char *, char *);
+  hash_t *cookiesHash;
+  void (^cookie)(char *, char *);
   int status;
 } response_t;
 

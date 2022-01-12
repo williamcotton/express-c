@@ -27,6 +27,7 @@ typedef struct super_t
 
 void runTests()
 {
+  clearState();
   testEq("root", curlGet("/"), "Hello World!");
   testEq("basic route", curlGet("/test"), "Testing, testing!");
   testEq("query string", curlGet("/qs\?value1=123\\&value2=34%205"), "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
@@ -38,6 +39,9 @@ void runTests()
   testEq("session set", curlPost("/session", "param1=session-data"), "ok");
   testEq("session get", curlGet("/session"), "session-data");
   testEq("custom request middleware", curlGet("/m"), "super test");
+  testEq("set header", curlGet("/set_header"), "ok");
+  testEq("set cookie", curlGet("/set_cookie\?session=123\\&user=test"), "ok");
+  testEq("get cookie", curlGet("/get_cookie"), "session: 123 - user: test");
   exit(EXIT_SUCCESS);
 }
 
@@ -126,6 +130,22 @@ int main()
   app.get("/m", ^(request_t *req, response_t *res) {
     super_t *super = req->m("super");
     res->send(super->uuid);
+  });
+
+  app.get("/set_header", ^(UNUSED request_t *req, response_t *res) {
+    res->set("X-Test-1", "test1");
+    res->set("X-Test-2", "test2");
+    res->send("ok");
+  });
+
+  app.get("/set_cookie", ^(UNUSED request_t *req, response_t *res) {
+    res->cookie("session", req->query("session"));
+    res->cookie("user", req->query("user"));
+    res->send("ok");
+  });
+
+  app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
+    res->sendf("session: %s - user: %s", req->cookie("session"), req->cookie("user"));
   });
 
   app.listen(port, ^{

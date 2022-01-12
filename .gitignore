@@ -1,3 +1,4 @@
 build/
 *.dSYM/
 .env
+test/test-cookies.txt

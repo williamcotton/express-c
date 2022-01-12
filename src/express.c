@@ -360,10 +360,36 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
   return session;
 }
 
-static cookie_t *reqCookieFactory(UNUSED request_t *req)
+static getHashBlock reqCookieFactory(UNUSED request_t *req)
 {
-  cookie_t *cookie = malloc(sizeof(cookie_t));
-  return cookie;
+  req->cookiesHash = hash_new();
+  char *cookiesString = hash_get(req->headersHash, "Cookie");
+  if (cookiesString != NULL)
+  {
+    char *cookies[100];
+    char *cookie = strtok(cookiesString, ";");
+    int i = 0;
+    while (cookie != NULL)
+    {
+      cookies[i] = cookie;
+      cookie = strtok(NULL, ";");
+      i++;
+    }
+    for (i = 0; i < 100; i++)
+    {
+      if (cookies[i] == NULL)
+        break;
+      char *key = strtok(cookies[i], "=");
+      char *value = strtok(NULL, "=");
+      if (key[0] == ' ')
+        key++;
+      hash_set(req->cookiesHash, key, value);
+    }
+  }
+
+  return Block_copy(^(UNUSED char *key) {
+    return (char *)hash_get(req->cookiesHash, key);
+  });
 }
 
 typedef void * (^getMiddlewareBlock)(char *key);
@@ -433,8 +459,39 @@ static char *buildResponseString(char *body, response_t *res)
   char *statusMessage = getStatusMessage(res->status);
   char *status = malloc(sizeof(char) * (strlen(statusMessage) + 5));
   sprintf(status, "%d %s", res->status, statusMessage);
-  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\nContent-Type: \r\nContent-Length: \r\n\r\n") + strlen(status) + strlen(contentType) + strlen(contentLength) + 1));
-  sprintf(headers, "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\n\r\n", status, contentType, contentLength);
+
+  size_t customHeadersLen = 0;
+  char customHeaders[4096];
+  memset(customHeaders, 0, 4096);
+
+  hash_each(res->headersHash, {
+    size_t headersLen = strlen(key) + strlen(val) + 4;
+    strncpy(customHeaders + customHeadersLen, key, strlen(key));
+    customHeaders[customHeadersLen + strlen(key)] = ':';
+    customHeaders[customHeadersLen + strlen(key) + 1] = ' ';
+    strncpy(customHeaders + customHeadersLen + strlen(key) + 2, val, strlen(val));
+    customHeaders[customHeadersLen + strlen(key) + strlen(val) + 2] = '\r';
+    customHeaders[customHeadersLen + strlen(key) + strlen(val) + 3] = '\n';
+    customHeadersLen += headersLen;
+  });
+
+  hash_each(res->cookiesHash, {
+    size_t headersLen = strlen(key) + strlen(val) + 16;
+    strncpy(customHeaders + customHeadersLen, "Set-Cookie", 10);
+    customHeaders[customHeadersLen + 10] = ':';
+    customHeaders[customHeadersLen + 11] = ' ';
+    strncpy(customHeaders + customHeadersLen + 12, key, strlen(key));
+    customHeaders[customHeadersLen + 12 + strlen(key)] = '=';
+    strncpy(customHeaders + customHeadersLen + 13 + strlen(key), val, strlen(val));
+    customHeaders[customHeadersLen + 13 + strlen(key) + strlen(val)] = ';';
+    customHeaders[customHeadersLen + 14 + strlen(key) + strlen(val)] = '\r';
+    customHeaders[customHeadersLen + 15 + strlen(key) + strlen(val)] = '\n';
+    customHeadersLen += headersLen;
+  });
+
+  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\nContent-Type: \r\nContent-Length: \r\n\r\n") + strlen(status) + strlen(contentType) + strlen(contentLength) + customHeadersLen + 1));
+  sprintf(headers, "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\n%s\r\n", status, contentType, contentLength, customHeaders);
+
   char *responseString = malloc(sizeof(char) * (strlen(headers) + strlen(body) + 1));
   strcpy(responseString, headers);
   strcat(responseString, body);
@@ -492,6 +549,23 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
     free(bufferfer);
     free(response);
     fclose(file);
+  });
+}
+
+typedef void (^setBlock)(char *headerKey, char *headerValue);
+static setBlock setFactory(response_t *res)
+{
+  res->headersHash = hash_new();
+  return Block_copy(^(char *headerKey, char *headerValue) {
+    return hash_set(res->headersHash, headerKey, headerValue);
+  });
+}
+
+static setBlock cookieFactory(response_t *res)
+{
+  res->cookiesHash = hash_new();
+  return Block_copy(^(char *key, char *value) {
+    return hash_set(res->cookiesHash, key, value);
   });
 }
 
@@ -804,6 +878,7 @@ static route_handler_t matchRouteHandler(request_t *req)
 
 static void freeRequest(request_t req)
 {
+  // TODO: check if this is necessary
   free(req.method);
   free(req.path);
   free(req.url);
@@ -832,6 +907,8 @@ static response_t buildResponse(client_t client, request_t *req)
   res.send = sendFactory(client, &res);
   res.sendf = sendfFactory(&res);
   res.sendFile = sendFileFactory(client, req, &res);
+  res.set = setFactory(&res);
+  res.cookie = cookieFactory(&res);
   return res;
 }
 
