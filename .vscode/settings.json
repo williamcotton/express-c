@@ -47,7 +47,9 @@
     "cstdlib": "c",
     "ctime": "c",
     "cmath": "c",
-    "sstream": "c"
+    "sstream": "c",
+    "ostream": "c",
+    "__string": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
