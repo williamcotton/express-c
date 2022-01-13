@@ -1,3 +1,52 @@
 body {
   background-color: #f5f5f5;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+h1 {
+  font-size: 1.5em;
+  font-weight: 300;
+}
+
+form input[type="text"] {
+  width: 100%;
+}
+
+section {
+  margin: 0 auto;
+  max-width: 300px;
+  padding: 1em;
+}
+
+li {
+  list-style: none;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+li form {
+  display: inline-block;
+}
+
+li form input[type="submit"] {
+  font-size: 2em;
+  border: none;
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+li h4 {
+  display: inline-block;
+  font-weight: 300;
+  font-size: 1em;
+  line-height: 1em;
+  margin: 0;
+  padding: 0;
+}
+
+li.completed h4 {
+  text-decoration: line-through;
 }
