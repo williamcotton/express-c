@@ -4,8 +4,8 @@ typedef struct session_t
 {
   char *uuid;
   void *store;
-  char * (^get)(char *key);
-  void (^set)(char *key, char *value);
+  void * (^get)(char *key);
+  void (^set)(char *key, void *value);
 } session_t;
 
 typedef struct request_t
@@ -43,6 +43,7 @@ typedef struct response_t
   void (^set)(char *, char *);
   void *cookiesHash;
   void (^cookie)(char *, char *);
+  void (^json)(char *, ...);
   int status;
 } response_t;
 
@@ -60,3 +61,4 @@ typedef struct app_t
 app_t express();
 
 middlewareHandler expressStatic(char *path);
+middlewareHandler memSessionMiddlewareFactory();

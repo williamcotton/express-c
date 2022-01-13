@@ -1,30 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <uuid/uuid.h>
 #include <Block.h>
 #include <hash/hash.h>
 #include "../src/express.h"
 #include "test-harnass.h"
-
-static char *generateUuid()
-{
-  char *guid = malloc(37);
-  if (guid == NULL)
-  {
-    return NULL;
-  }
-  uuid_t uuid;
-  uuid_generate(uuid);
-  uuid_unparse(uuid, guid);
-  return guid;
-}
-
-typedef struct super_t
-{
-  char *uuid;
-  char * (^get)(char *key);
-  void (^set)(char *key, char *value);
-} super_t;
 
 void runTests()
 {
@@ -46,47 +25,18 @@ void runTests()
   exit(EXIT_SUCCESS);
 }
 
-middlewareHandler sessionMiddlewareFactory()
-{
-  __block hash_t *memSessionStore = hash_new();
-
-  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
-    char *sessionUuid = req->cookie("sessionUuid");
-    if (sessionUuid == NULL)
-    {
-      sessionUuid = generateUuid();
-      res->cookie("sessionUuid", sessionUuid);
-    }
-    req->session->uuid = sessionUuid;
-
-    if (hash_has(memSessionStore, sessionUuid))
-    {
-      req->session->store = hash_get(memSessionStore, sessionUuid);
-    }
-    else
-    {
-      req->session->store = hash_new();
-      hash_set(memSessionStore, sessionUuid, req->session->store);
-    }
-
-    req->session->get = ^(char *key) {
-      return (char *)hash_get(req->session->store, key);
-    };
-
-    req->session->set = ^(char *key, char *value) {
-      hash_set(req->session->store, key, value);
-    };
-
-    next();
-  });
-}
-
 int main()
 {
   app_t app = express();
   int port = 3032;
 
   app.use(expressStatic("test"));
+  app.use(memSessionMiddlewareFactory());
+
+  typedef struct super_t
+  {
+    char *uuid;
+  } super_t;
 
   app.use(^(request_t *req, UNUSED response_t *res, void (^next)()) {
     super_t *super = malloc(sizeof(super_t));
@@ -94,8 +44,6 @@ int main()
     req->mSet("super", super);
     next();
   });
-
-  app.use(sessionMiddlewareFactory());
 
   app.get("/", ^(UNUSED request_t *req, response_t *res) {
     res->send("Hello World!");

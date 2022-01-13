@@ -13,6 +13,7 @@
 #include <hash/hash.h>
 #include <signal.h>
 #include <curl/curl.h>
+#include <uuid/uuid.h>
 #include "express.h"
 
 static char *errorHTML = "<!DOCTYPE html>\n"
@@ -463,6 +464,7 @@ static char *buildResponseString(char *body, response_t *res)
   char customHeaders[4096];
   memset(customHeaders, 0, 4096);
 
+  // TODO: make hashing function pointers passed in to app during init
   hash_each((hash_t *)res->headersHash, {
     size_t headersLen = strlen(key) + strlen(val) + 4;
     strncpy(customHeaders + customHeadersLen, key, strlen(key));
@@ -488,6 +490,7 @@ static char *buildResponseString(char *body, response_t *res)
     customHeadersLen += headersLen;
   });
 
+  // TODO: add support for other content types
   char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\nContent-Type: \r\nContent-Length: \r\n\r\n") + strlen(status) + strlen(contentType) + strlen(contentLength) + customHeadersLen + 1));
   sprintf(headers, "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\n%s\r\n", status, contentType, contentLength, customHeaders);
 
@@ -942,6 +945,54 @@ middlewareHandler expressStatic(char *path)
     {
       next();
     }
+  });
+}
+
+static char *generateUuid()
+{
+  char *guid = malloc(37);
+  if (guid == NULL)
+  {
+    return NULL;
+  }
+  uuid_t uuid;
+  uuid_generate(uuid);
+  uuid_unparse(uuid, guid);
+  return guid;
+}
+
+middlewareHandler memSessionMiddlewareFactory()
+{
+  __block hash_t *memSessionStore = hash_new();
+
+  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
+    char *sessionUuid = req->cookie("sessionUuid");
+    if (sessionUuid == NULL)
+    {
+      sessionUuid = generateUuid();
+      res->cookie("sessionUuid", sessionUuid);
+    }
+    req->session->uuid = sessionUuid;
+
+    if (hash_has(memSessionStore, sessionUuid))
+    {
+      req->session->store = hash_get(memSessionStore, sessionUuid);
+    }
+    else
+    {
+      req->session->store = hash_new();
+      hash_set(memSessionStore, sessionUuid, req->session->store);
+    }
+
+    req->session->get = ^(char *key) {
+      return hash_get(req->session->store, key);
+    };
+
+    req->session->set = ^(char *key, void *value) {
+      hash_set(req->session->store, key, value);
+    };
+
+    next();
   });
 }
 
