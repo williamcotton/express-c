@@ -18,12 +18,12 @@ int main()
   app.use(expressStatic("demo/public"));
 
   app.get("/", ^(UNUSED request_t *req, response_t *res) {
-    res->sendf("%s<h1>Todo App</h1><p>%s</p>", styles, createTodoForm);
+    res->send("%s<h1>Todo App</h1><p>%s</p>", styles, createTodoForm);
   });
 
   app.post("/todo/create", ^(request_t *req, response_t *res) {
     res->status = 201;
-    res->sendf("%s<h1>%s</h1><p>%s</p>", styles, req->body("title"), req->body("body"));
+    res->send("%s<h1>%s</h1><p>%s</p>", styles, req->body("title"), req->body("body"));
   });
 
   app.listen(port, ^{

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <uuid/uuid.h>
 #include <Block.h>
+#include <hash/hash.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 
@@ -47,17 +48,33 @@ void runTests()
 
 middlewareHandler sessionMiddlewareFactory()
 {
-  __block hash_t *sessionStore = hash_new();
-  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)()) {
-    // TODO: get session from cookie
-    req->session->uuid = generateUuid();
+  __block hash_t *memSessionStore = hash_new();
+
+  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
+    char *sessionUuid = req->cookie("sessionUuid");
+    if (sessionUuid == NULL)
+    {
+      sessionUuid = generateUuid();
+      res->cookie("sessionUuid", sessionUuid);
+    }
+    req->session->uuid = sessionUuid;
+
+    if (hash_has(memSessionStore, sessionUuid))
+    {
+      req->session->store = hash_get(memSessionStore, sessionUuid);
+    }
+    else
+    {
+      req->session->store = hash_new();
+      hash_set(memSessionStore, sessionUuid, req->session->store);
+    }
 
     req->session->get = ^(char *key) {
-      return (char *)hash_get(sessionStore, key);
+      return (char *)hash_get(req->session->store, key);
     };
 
     req->session->set = ^(char *key, char *value) {
-      hash_set(sessionStore, key, value);
+      hash_set(req->session->store, key, value);
     };
 
     next();
@@ -90,11 +107,11 @@ int main()
   });
 
   app.get("/qs", ^(request_t *req, response_t *res) {
-    res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", req->query("value1"), req->query("value2"));
+    res->send("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", req->query("value1"), req->query("value2"));
   });
 
   app.get("/headers", ^(request_t *req, response_t *res) {
-    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", req->get("Host"), req->get("Accept"));
+    res->send("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", req->get("Host"), req->get("Accept"));
   });
 
   app.get("/file", ^(UNUSED request_t *req, response_t *res) {
@@ -102,7 +119,7 @@ int main()
   });
 
   app.get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
-    res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->param("one"), req->param("two"), req->param("three"));
+    res->send("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->param("one"), req->param("two"), req->param("three"));
   });
 
   app.get("/form", ^(UNUSED request_t *req, response_t *res) {
@@ -115,7 +132,7 @@ int main()
 
   app.post("/post/:form", ^(request_t *req, response_t *res) {
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->send("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
   });
 
   app.post("/session", ^(request_t *req, response_t *res) {
@@ -145,7 +162,7 @@ int main()
   });
 
   app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
-    res->sendf("session: %s - user: %s", req->cookie("session"), req->cookie("user"));
+    res->send("session: %s - user: %s", req->cookie("session"), req->cookie("user"));
   });
 
   app.listen(port, ^{

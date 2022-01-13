@@ -1,19 +1,12 @@
-#include <hash/hash.h>
-
 #define UNUSED __attribute__((unused))
 
 typedef struct session_t
 {
   char *uuid;
+  void *store;
   char * (^get)(char *key);
   void (^set)(char *key, char *value);
 } session_t;
-
-typedef struct cookie_t
-{
-  char * (^get)(char *key);
-  void (^set)(char *key, char *value);
-} cookie_t;
 
 typedef struct request_t
 {
@@ -21,34 +14,34 @@ typedef struct request_t
   char *method;
   char *url;
   char *queryString;
-  hash_t *queryHash;
+  void *queryHash;
   char * (^query)(char *queryKey);
-  hash_t *headersHash;
+  void *headersHash;
   char * (^get)(char *headerKey);
-  hash_t *paramsHash;
+  void *paramsHash;
   char **paramValues;
   char * (^param)(char *paramKey);
   char *bodyString;
-  hash_t *bodyHash;
+  void *bodyHash;
   char * (^body)(char *bodyKey);
-  hash_t *middlewareHash;
+  void *middlewareHash;
   void * (^m)(char *middlewareKey);
   void (^mSet)(char *middlewareKey, void *middleware);
   char *rawRequest;
   session_t *session;
-  hash_t *cookiesHash;
+  char *cookies[4096];
+  void *cookiesHash;
   char * (^cookie)(char *key);
 } request_t;
 
 typedef struct response_t
 {
-  void (^send)(char *);
-  void (^sendf)(char *, ...);
+  void (^send)(char *, ...);
   void (^sendFile)(char *);
   void (^render)(char *, ...);
-  hash_t *headersHash;
+  void *headersHash;
   void (^set)(char *, char *);
-  hash_t *cookiesHash;
+  void *cookiesHash;
   void (^cookie)(char *, char *);
   int status;
 } response_t;

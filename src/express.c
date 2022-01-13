@@ -366,20 +366,19 @@ static getHashBlock reqCookieFactory(UNUSED request_t *req)
   char *cookiesString = hash_get(req->headersHash, "Cookie");
   if (cookiesString != NULL)
   {
-    char *cookies[100];
     char *cookie = strtok(cookiesString, ";");
     int i = 0;
     while (cookie != NULL)
     {
-      cookies[i] = cookie;
+      req->cookies[i] = cookie;
       cookie = strtok(NULL, ";");
       i++;
     }
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < 4096; i++)
     {
-      if (cookies[i] == NULL)
+      if (req->cookies[i] == NULL)
         break;
-      char *key = strtok(cookies[i], "=");
+      char *key = strtok(req->cookies[i], "=");
       char *value = strtok(NULL, "=");
       if (key[0] == ' ')
         key++;
@@ -464,7 +463,7 @@ static char *buildResponseString(char *body, response_t *res)
   char customHeaders[4096];
   memset(customHeaders, 0, 4096);
 
-  hash_each(res->headersHash, {
+  hash_each((hash_t *)res->headersHash, {
     size_t headersLen = strlen(key) + strlen(val) + 4;
     strncpy(customHeaders + customHeadersLen, key, strlen(key));
     customHeaders[customHeadersLen + strlen(key)] = ':';
@@ -475,7 +474,7 @@ static char *buildResponseString(char *body, response_t *res)
     customHeadersLen += headersLen;
   });
 
-  hash_each(res->cookiesHash, {
+  hash_each((hash_t *)res->cookiesHash, {
     size_t headersLen = strlen(key) + strlen(val) + 16;
     strncpy(customHeaders + customHeadersLen, "Set-Cookie", 10);
     customHeaders[customHeadersLen + 10] = ':';
@@ -501,25 +500,17 @@ static char *buildResponseString(char *body, response_t *res)
   return responseString;
 }
 
-typedef void (^sendBlock)(char *body);
+typedef void (^sendBlock)(char *format, ...);
 static sendBlock sendFactory(client_t client, response_t *res)
 {
-  return Block_copy(^(char *body) {
+  return Block_copy(^(char *format, ...) {
+    char body[65536];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(body, 65536, format, args);
     char *response = buildResponseString(body, res);
     write(client.socket, response, strlen(response));
     free(response);
-  });
-}
-
-typedef void (^sendfBlock)(char *format, ...);
-static sendfBlock sendfFactory(response_t *res)
-{
-  return Block_copy(^(char *format, ...) {
-    char body[4096];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(body, 4096, format, args);
-    res->send(body);
     va_end(args);
   });
 }
@@ -532,7 +523,7 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
     if (file == NULL)
     {
       res->status = 404;
-      res->sendf(errorHTML, req->path);
+      res->send(errorHTML, req->path);
       return;
     }
     char *response = malloc(sizeof(char) * (strlen("HTTP/1.1 200 OK\r\nContent-Length: \r\n\r\n") + 20));
@@ -879,28 +870,10 @@ static route_handler_t matchRouteHandler(request_t *req)
   return (route_handler_t){.method = NULL, .path = NULL, .handler = NULL};
 }
 
-static void freeRequest(request_t req)
-{
-  // TODO: check if this is necessary
-  free(req.method);
-  free(req.path);
-  free(req.url);
-  hash_free(req.queryHash);
-  hash_free(req.headersHash);
-  hash_free(req.paramsHash);
-  hash_free(req.bodyHash);
-  Block_release(req.get);
-  Block_release(req.query);
-  Block_release(req.param);
-  if (strlen(req.queryString) > 0)
-    free(req.queryString);
-}
-
-static void closeClientConnection(client_t client, request_t req)
+static void closeClientConnection(client_t client)
 {
   shutdown(client.socket, SHUT_RDWR);
   close(client.socket);
-  freeRequest(req);
 }
 
 static response_t buildResponse(client_t client, request_t *req)
@@ -908,7 +881,6 @@ static response_t buildResponse(client_t client, request_t *req)
   response_t res;
   res.status = 200;
   res.send = sendFactory(client, &res);
-  res.sendf = sendfFactory(&res);
   res.sendFile = sendFileFactory(client, req, &res);
   res.set = setFactory(&res);
   res.cookie = cookieFactory(&res);
@@ -931,7 +903,7 @@ static void initClientAcceptEventHandler()
 
       if (req.method == NULL)
       {
-        closeClientConnection(client, req);
+        closeClientConnection(client);
         return;
       }
 
@@ -942,7 +914,7 @@ static void initClientAcceptEventHandler()
         if (routeHandler.handler == NULL)
         {
           res.status = 404;
-          res.sendf(errorHTML, req.path);
+          res.send(errorHTML, req.path);
         }
         else
         {
@@ -950,7 +922,7 @@ static void initClientAcceptEventHandler()
         }
       });
 
-      closeClientConnection(client, req);
+      closeClientConnection(client);
     }
   });
 
