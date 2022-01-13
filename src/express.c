@@ -169,6 +169,18 @@ size_t fileSize(char *filePath)
   return st.st_size;
 }
 
+static void toUpper(char *givenStr)
+{
+  int i;
+  for (i = 0; givenStr[i] != '\0'; i++)
+  {
+    if (givenStr[i] >= 'a' && givenStr[i] <= 'z')
+    {
+      givenStr[i] = givenStr[i] - 32;
+    }
+  }
+}
+
 static void parseQueryString(hash_t *hash, char *string)
 {
   CURL *curl = curl_easy_init();
@@ -563,6 +575,32 @@ static setBlock cookieFactory(response_t *res)
   });
 }
 
+typedef void (^urlBlock)(char *url);
+static urlBlock locationFactory(request_t *req, response_t *res)
+{
+  return Block_copy(^(char *url) {
+    if (strcmp(url, "back") == 0)
+    {
+      res->set("Location", req->get("Referer"));
+      return;
+    }
+    char *location = malloc(sizeof(char) * (strlen(req->path) + strlen(url) + 2));
+    sprintf(location, "%s%s", req->path, url);
+    res->set("Location", location);
+    free(location);
+  });
+}
+
+static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
+{
+  return Block_copy(^(char *url) {
+    res->status = 302;
+    res->location(url);
+    res->send("Redirecting to %s", url);
+    return;
+  });
+}
+
 typedef struct route_handler_t
 {
   char *method;
@@ -726,8 +764,8 @@ static void initServerListen(int port)
 
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
-    // printf("bind() failed\n");
-    // TODO: handle error
+    printf("bind() failed\n");
+    closeServer();
   }
 
   // Make the socket non-blocking
@@ -830,6 +868,14 @@ static request_t parseRequest(client_t client)
   req.m = reqMiddlewareFactory(&req);
   req.mSet = reqMiddlewareSetFactory(&req);
 
+  char *_method = req.body("_method");
+  if (_method)
+  {
+    toUpper(_method);
+    if (strcmp(_method, "PUT") == 0 || strcmp(_method, "DELETE") == 0)
+      req.method = _method;
+  }
+
   free(copy);
 
   return req;
@@ -859,7 +905,7 @@ static route_handler_t matchRouteHandler(request_t *req)
         {
           hash_set(req->paramsHash, pm->keys[i], req->paramValues[i]);
         }
-        req->param = reqParamFactory(req);
+        req->params = reqParamFactory(req);
         match = 0;
         return routeHandlers[i];
       }
@@ -887,6 +933,8 @@ static response_t buildResponse(client_t client, request_t *req)
   res.sendFile = sendFileFactory(client, req, &res);
   res.set = setFactory(&res);
   res.cookie = cookieFactory(&res);
+  res.location = locationFactory(req, &res);
+  res.redirect = redirectFactory(req, &res);
   return res;
 }
 
@@ -1021,6 +1069,14 @@ app_t express()
 
   app.post = ^(char *path, requestHandler handler) {
     addRouteHandler("POST", path, handler);
+  };
+
+  app.put = ^(char *path, requestHandler handler) {
+    addRouteHandler("PUT", path, handler);
+  };
+
+  app.delete = ^(char *path, requestHandler handler) {
+    addRouteHandler("DELETE", path, handler);
   };
 
   app.use = ^(middlewareHandler handler) {

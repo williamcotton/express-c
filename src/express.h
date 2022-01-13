@@ -20,7 +20,7 @@ typedef struct request_t
   char * (^get)(char *headerKey);
   void *paramsHash;
   char **paramValues;
-  char * (^param)(char *paramKey);
+  char * (^params)(char *paramKey);
   char *bodyString;
   void *bodyHash;
   char * (^body)(char *bodyKey);
@@ -44,6 +44,8 @@ typedef struct response_t
   void *cookiesHash;
   void (^cookie)(char *, char *);
   void (^json)(char *, ...);
+  void (^location)(char *);
+  void (^redirect)(char *);
   int status;
 } response_t;
 
@@ -54,6 +56,8 @@ typedef struct app_t
 {
   void (^get)(char *path, requestHandler);
   void (^post)(char *path, requestHandler);
+  void (^put)(char *path, requestHandler);
+  void (^delete)(char *path, requestHandler);
   void (^listen)(int port, void (^handler)());
   void (^use)(middlewareHandler);
 } app_t;

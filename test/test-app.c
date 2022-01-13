@@ -67,7 +67,7 @@ int main()
   });
 
   app.get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
-    res->send("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->param("one"), req->param("two"), req->param("three"));
+    res->send("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->params("one"), req->params("two"), req->params("three"));
   });
 
   app.get("/form", ^(UNUSED request_t *req, response_t *res) {
