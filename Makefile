@@ -28,9 +28,15 @@ clean:
 	rm -rf $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)
 
-$(TARGETS)-watch: $(TARGETS)
+$(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
+	fswatch --event Updated deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
+	# fswatch --event Updated -o deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
+
+$(TARGETS)-run-background: $(TARGETS)-kill
 	build/$(TARGETS) &
-	fswatch -o deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
+
+$(TARGETS)-kill:
+	./kill.sh $(TARGETS)
 
 test-watch:
 	make test

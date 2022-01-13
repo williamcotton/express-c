@@ -727,10 +727,13 @@ static void initServerListen(int port)
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
   servAddr.sin_port = htons(port);
 
+  // TODO: run in background
+  // TODO: save pid
+
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
-    printf("bind() failed\n");
-    closeServer();
+    // printf("bind() failed\n");
+    // TODO: handle error
   }
 
   // Make the socket non-blocking
