@@ -515,10 +515,10 @@ static char *buildResponseString(char *body, response_t *res)
   return responseString;
 }
 
-typedef void (^sendBlock)(char *format, ...);
+typedef void (^sendBlock)(const char *format, ...);
 static sendBlock sendFactory(client_t client, response_t *res)
 {
-  return Block_copy(^(char *format, ...) {
+  return Block_copy(^(const char *format, ...) {
     char body[65536];
     va_list args;
     va_start(args, format);
@@ -703,7 +703,7 @@ static void initServerQueue()
   serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
 }
 
-static client_t acceptClientConnection(int servSock)
+static client_t acceptClientConnection()
 {
   int clntSock = -1;
   struct sockaddr_in echoClntAddr;
@@ -901,9 +901,9 @@ static route_handler_t matchRouteHandler(request_t *req)
       if (match)
       {
         req->paramsHash = hash_new();
-        for (int i = 0; i < pm->count; i++)
+        for (int k = 0; k < pm->count; k++)
         {
-          hash_set(req->paramsHash, pm->keys[i], req->paramValues[i]);
+          hash_set(req->paramsHash, pm->keys[k], req->paramValues[k]);
         }
         req->params = reqParamFactory(req);
         match = 0;
@@ -946,7 +946,7 @@ static void initClientAcceptEventHandler()
     const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++)
     {
-      client_t client = acceptClientConnection(servSock);
+      client_t client = acceptClientConnection();
       if (client.socket < 0)
         continue;
 

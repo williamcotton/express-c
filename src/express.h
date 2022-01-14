@@ -1,3 +1,6 @@
+#ifndef EXPRESS_H
+#define EXPRESS_H
+
 #define UNUSED __attribute__((unused))
 
 typedef struct session_t
@@ -36,7 +39,7 @@ typedef struct request_t
 
 typedef struct response_t
 {
-  void (^send)(char *, ...);
+  void (^send)(const char *, ...);
   void (^sendFile)(char *);
   void (^render)(char *, ...);
   void *headersHash;
@@ -66,3 +69,5 @@ app_t express();
 
 middlewareHandler expressStatic(char *path);
 middlewareHandler memSessionMiddlewareFactory();
+
+#endif // EXPRESS_H

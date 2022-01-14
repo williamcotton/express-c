@@ -6,9 +6,9 @@ BUILD_DIR = build
 PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
 ifeq ($(PLATFORM),LINUX)
-	CFLAGS += -lBlocksRuntime -ldispatch -lbsd -luuid
+	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid
 else ifeq ($(PLATFORM),DARWIN)
-	CFLAGS += -fsanitize=address
+	CFLAGS += -fsanitize=address,undefined
 endif
 
 all: $(TARGETS)
