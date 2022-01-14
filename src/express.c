@@ -761,6 +761,7 @@ static void initServerListen(int port)
 
   // TODO: run in background
   // TODO: save pid
+  // TODO: TLS/SSL support
 
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
