@@ -424,7 +424,7 @@ static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
 static getHashBlock reqBodyFactory(request_t *req)
 {
   req->bodyHash = hash_new();
-  if (strncmp(req->method, "POST", 4) == 0)
+  if (strncmp(req->method, "POST", 4) == 0 || strncmp(req->method, "PATCH", 5) == 0 || strncmp(req->method, "PUT", 3) == 0)
   {
     char *copy = strdup(req->rawRequest);
     req->bodyString = strstr(copy, "\r\n\r\n");
@@ -581,13 +581,20 @@ static urlBlock locationFactory(request_t *req, response_t *res)
   return Block_copy(^(char *url) {
     if (strcmp(url, "back") == 0)
     {
-      res->set("Location", req->get("Referer"));
+      char *referer = req->get("Referer");
+      if (referer != NULL)
+      {
+        res->set("Location", referer);
+      }
+      else
+      {
+        res->set("Location", "/");
+      }
       return;
     }
     char *location = malloc(sizeof(char) * (strlen(req->path) + strlen(url) + 2));
     sprintf(location, "%s%s", req->path, url);
     res->set("Location", location);
-    free(location);
   });
 }
 
@@ -873,7 +880,7 @@ static request_t parseRequest(client_t client)
   if (_method)
   {
     toUpper(_method);
-    if (strcmp(_method, "PUT") == 0 || strcmp(_method, "DELETE") == 0)
+    if (strcmp(_method, "PUT") == 0 || strcmp(_method, "DELETE") == 0 || strcmp(_method, "PATCH") == 0)
       req.method = _method;
   }
 
@@ -1074,6 +1081,10 @@ app_t express()
 
   app.put = ^(char *path, requestHandler handler) {
     addRouteHandler("PUT", path, handler);
+  };
+
+  app.patch = ^(char *path, requestHandler handler) {
+    addRouteHandler("PATCH", path, handler);
   };
 
   app.delete = ^(char *path, requestHandler handler) {

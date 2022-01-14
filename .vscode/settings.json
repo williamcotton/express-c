@@ -49,7 +49,9 @@
     "cmath": "c",
     "sstream": "c",
     "ostream": "c",
-    "__string": "c"
+    "__string": "c",
+    "typeinfo": "c",
+    "stdlib.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

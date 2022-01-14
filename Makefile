@@ -21,7 +21,7 @@ $(TARGETS):
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c $(SRC) $(CFLAGS)
+	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
 
 clean:
@@ -39,5 +39,11 @@ $(TARGETS)-kill:
 	./kill.sh $(TARGETS)
 
 test-watch:
-	make test
-	fswatch -o test/*.c test/*.h src/ | xargs -n1 -I{} make test
+	make test || :
+	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make test
+
+.PHONY: test-tape
+test-tape:
+	mkdir -p $(BUILD_DIR)
+	clang -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
+	$(BUILD_DIR)/$@

@@ -14,6 +14,7 @@ char *curl(char *cmd)
   return html;
 }
 
+// TODO: refactor curlGet and curlDelete
 char *curlGet(char *url)
 {
   char *curlCmd = "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html http://127.0.0.1:3032";
@@ -22,6 +23,15 @@ char *curlGet(char *url)
   return curl(cmd);
 }
 
+char *curlDelete(char *url)
+{
+  char *curlCmd = "curl -X DELETE -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html http://127.0.0.1:3032";
+  char *cmd = malloc(strlen(curlCmd) + strlen(url) + 1);
+  sprintf(cmd, "%s%s", curlCmd, url);
+  return curl(cmd);
+}
+
+// TODO: refactor curlPost, curlPut and curlPatch
 char *curlPost(char *url, char *data)
 {
   char *curlCmd = "curl -X POST -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"\" http://127.0.0.1:3032";
@@ -30,26 +40,24 @@ char *curlPost(char *url, char *data)
   return curl(cmd);
 }
 
-void clearState()
+char *curlPatch(char *url, char *data)
 {
-  system("rm ./test/test-cookies.txt");
-  system("rm ./test/test-response.html");
+  char *curlCmd = "curl -X PATCH -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"\" http://127.0.0.1:3032";
+  char *cmd = malloc(strlen(curlCmd) + strlen(url) + strlen(data) + 1);
+  sprintf(cmd, "curl -X PATCH -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
+  return curl(cmd);
 }
 
-int testEq(char *testName, char *response, char *expected)
+char *curlPut(char *url, char *data)
 {
-  int status = 0;
-  if (strcmp(response, expected) != 0)
-  {
-    printf("%s: FAIL\n", testName);
-    printf("\tExpected: %s\n", expected);
-    printf("\tReceived: %s\n", response);
-    status = 1;
-  }
-  else
-  {
-    printf("%s: PASS\n", testName);
-  }
-  free(response);
-  return status;
+  char *curlCmd = "curl -X PUT -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"\" http://127.0.0.1:3032";
+  char *cmd = malloc(strlen(curlCmd) + strlen(url) + strlen(data) + 1);
+  sprintf(cmd, "curl -X PUT -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
+  return curl(cmd);
+}
+
+void clearState()
+{
+  system("rm -f ./test/test-cookies.txt");
+  system("rm -f ./test/test-response.html");
 }

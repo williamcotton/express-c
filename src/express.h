@@ -76,9 +76,15 @@ typedef struct response_t
   int status;
 } response_t;
 
+typedef struct error_t
+{
+  int status;
+  char *message;
+} error_t;
+
 typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)());
-typedef void (^errorHandler)(request_t *req, response_t *res, int err);                          // TODO: add errorHandler
+typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());      // TODO: add errorHandler
 typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), char *paramValue); // TODO: add paramHandler
 
 typedef struct router_t // TODO: implement router_t
@@ -86,6 +92,7 @@ typedef struct router_t // TODO: implement router_t
   void (^get)(char *path, requestHandler);
   void (^post)(char *path, requestHandler);
   void (^put)(char *path, requestHandler);
+  void (^patch)(char *path, requestHandler);
   void (^delete)(char *path, requestHandler);
   void (^all)(char *path, requestHandler);
   void (^use)(middlewareHandler);
@@ -98,12 +105,14 @@ typedef struct app_t
   void (^get)(char *path, requestHandler);
   void (^post)(char *path, requestHandler);
   void (^put)(char *path, requestHandler);
+  void (^patch)(char *path, requestHandler);
   void (^delete)(char *path, requestHandler);
   void (^all)(char *path, requestHandler); // TODO: add app.all
   void (^listen)(int port, void (^handler)());
   void (^use)(middlewareHandler);
   void (^useRouter)(char *path, router_t *router); // TODO: add app.useRouter
   void (^engine)(char *ext, void *engine);
+  void (^error)(errorHandler); // TODO: add app.error
 } app_t;
 
 app_t express();
