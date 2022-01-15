@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <Block.h>
 #include <hash/hash.h>
+#include <cJSON/cJSON.h>
+#include <mustach/mustach-cjson.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 #include "tape.h"

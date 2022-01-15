@@ -3,6 +3,8 @@
 #include <hash/hash.h>
 #include <Block.h>
 #include <string.h>
+#include <cJSON/cJSON.h>
+#include <mustach/mustach-cjson.h>
 #include "../src/express.h"
 
 char *styles = "<link rel='stylesheet' href='/demo/public/app.css'>";
