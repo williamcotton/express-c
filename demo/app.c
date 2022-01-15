@@ -5,34 +5,15 @@
 #include <string.h>
 #include <cJSON/cJSON.h>
 #include <mustach/mustach-cjson.h>
+#include <dirent.h>
 #include "../src/express.h"
-
-char *styles = "<link rel='stylesheet' href='/demo/public/app.css'>";
-
-char *createTodoForm = "<form method='POST' action='/todo'>"
-                       "  <p><input type='text' name='title' autofocus></p>"
-                       "</form>";
-
-char *completedFalse = "☐";
-char *completedTrue = "☑";
-
-char *todoHtml = "<li class='%s'>"
-                 "  <form method='POST' action='/todo/%d'>"
-                 "    <input type='hidden' name='_method' value='put' />"
-                 "    <input type='submit' value='%s'>"
-                 "  </form>"
-                 "  <h4>%s</h4>"
-                 "  <form method='POST' action='/todo/%d'>"
-                 "    <input type='hidden' name='_method' value='delete' />"
-                 "    <input type='submit' value='☒'>"
-                 "  </form>"
-                 "</li>";
 
 typedef struct todo_t
 {
   int id;
   char *title;
   int completed;
+  cJSON * (^toJSON)(struct todo_t *);
 } todo_t;
 
 typedef struct todo_store_t
@@ -46,28 +27,65 @@ typedef struct todo_store_t
   void (^delete)(int id);
 } todo_store_t;
 
-void printTodo(todo_t *todo)
+middlewareHandler cJSONMustache(char *viewsPath)
 {
-  printf("id: %d title: %s complete: %d\n", todo->id, todo->title, todo->completed);
-}
+  char * (^loadTemplate)(char *) = ^(char *templateFile) {
+    char *template = NULL;
+    size_t length;
+    char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);
+    sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
+    printf("templatePath: %s\n", templatePath);
+    FILE *templateFd = fopen(templatePath, "r");
+    if (templateFd)
+    {
+      fseek(templateFd, 0, SEEK_END);
+      length = ftell(templateFd);
+      fseek(templateFd, 0, SEEK_SET);
+      template = malloc(length + 1);
+      fread(template, 1, length, templateFd);
+      fclose(templateFd);
+      template[length] = '\0';
+    }
+    return template;
+  };
 
-char *buildTodos(request_t *req)
-{
-  todo_store_t *todoStore = req->session->get("todoStore");
+  void (^loadPartials)(cJSON *data, char *templateFile) = ^(UNUSED cJSON *data, char *templateFile) {
+    UNUSED struct dirent *de;
+    DIR *dr = opendir(viewsPath);
+    while ((de = readdir(dr)) != NULL)
+    {
+      if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile))
+      {
+        char *partial = loadTemplate(de->d_name);
+        char *partialName = strdup(de->d_name);
+        char *partialNameSplit = strtok(partialName, ".");
+        cJSON_AddStringToObject(data, partialNameSplit, partial);
+        free(partial);
+      }
+    }
+    closedir(dr);
+  };
 
-  char todos[4096];
-  memset(todos, 0, sizeof(todos));
-
-  hash_each(todoStore->store, {
-    todo_t *todo = val;
-    char *completed = todo->completed ? completedTrue : completedFalse;
-    char *liClass = todo->completed ? "completed" : "";
-    char *todoHtmlFormatted = malloc(strlen(todoHtml) + strlen(liClass) + strlen(todo->title) + 1);
-    sprintf(todoHtmlFormatted, todoHtml, liClass, todo->id, completed, todo->title, todo->id);
-    strcat(todos, todoHtmlFormatted);
-    free(todoHtmlFormatted);
+  return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)()) {
+    res->render = ^(void *templateFile, void *data) {
+      cJSON *json = data;
+      char *template = loadTemplate(templateFile);
+      if (template)
+      {
+        size_t length;
+        char *renderedTemplate;
+        loadPartials(json, (char *)templateFile);
+        mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
+        res->send(renderedTemplate);
+      }
+      else
+      {
+        res->status = 500;
+        res->send("Template file not found");
+      }
+    };
+    next();
   });
-  return strdup(todos);
 }
 
 middlewareHandler todoStoreMiddleware()
@@ -131,10 +149,27 @@ int main()
   app.use(expressStatic("demo/public"));
   app.use(memSessionMiddlewareFactory());
   app.use(todoStoreMiddleware());
+  app.use(cJSONMustache("demo/views"));
 
-  app.get("/", ^(request_t *req, response_t *res) {
-    char *todos = buildTodos(req);
-    res->send("%s<section><h1>Todo App</h1><p>%s</p><p>%s</p></section>", styles, createTodoForm, todos);
+  app.get("/", ^(UNUSED request_t *req, response_t *res) {
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "completedCount", 1);
+
+    cJSON *todos = cJSON_AddArrayToObject(json, "todos");
+
+    cJSON *todo1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(todo1, "title", "Taste Javascript");
+    cJSON_AddStringToObject(todo1, "id", "0");
+    cJSON_AddTrueToObject(todo1, "completed");
+    cJSON_AddItemToArray(todos, todo1);
+
+    cJSON *todo2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(todo2, "title", "Buy a unicorn");
+    cJSON_AddStringToObject(todo2, "id", "1");
+    cJSON_AddFalseToObject(todo2, "completed");
+    cJSON_AddItemToArray(todos, todo2);
+
+    res->render("index.mustache", json);
   });
 
   app.post("/todo", ^(request_t *req, response_t *res) {

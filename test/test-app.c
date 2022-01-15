@@ -1,9 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <Block.h>
-#include <hash/hash.h>
-#include <cJSON/cJSON.h>
-#include <mustach/mustach-cjson.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 #include "tape.h"
@@ -26,7 +22,7 @@ void runTests()
 {
   tape_t t = tape();
 
-  int testStatus = t.test("express", ^(UNUSED tape_t *t) {
+  int testStatus = t.test("express", ^(tape_t *t) {
     clearState();
 
     t->test("GET", ^(tape_t *t) {

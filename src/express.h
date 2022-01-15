@@ -61,7 +61,7 @@ typedef struct response_t
 {
   void (^send)(const char *, ...);
   void (^sendFile)(char *);
-  void (^render)(char *, ...); // TODO: add res.render
+  void (^render)(void *, void *);
   void *headersHash;
   void (^set)(char *, char *);
   void *cookiesHash;

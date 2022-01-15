@@ -545,14 +545,14 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
     // TODO: mimetype
     sprintf(response, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\n\r\n", fileSize(path));
     write(client.socket, response, strlen(response));
-    char *bufferfer = malloc(4096);
-    size_t bytesRead = fread(bufferfer, 1, 4096, file);
+    char *buffer = malloc(4096);
+    size_t bytesRead = fread(buffer, 1, 4096, file);
     while (bytesRead > 0)
     {
-      write(client.socket, bufferfer, bytesRead);
-      bytesRead = fread(bufferfer, 1, 4096, file);
+      write(client.socket, buffer, bytesRead);
+      bytesRead = fread(buffer, 1, 4096, file);
     }
-    free(bufferfer);
+    free(buffer);
     free(response);
     fclose(file);
   });
