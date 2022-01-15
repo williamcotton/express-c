@@ -503,8 +503,8 @@ static char *buildResponseString(char *body, response_t *res)
   });
 
   // TODO: add support for other content types
-  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\nContent-Type: \r\nContent-Length: \r\n\r\n") + strlen(status) + strlen(contentType) + strlen(contentLength) + customHeadersLen + 1));
-  sprintf(headers, "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\n%s\r\n", status, contentType, contentLength, customHeaders);
+  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\nConnection: close\r\nContent-Type: \r\nContent-Length: \r\n\r\n") + strlen(status) + strlen(contentType) + strlen(contentLength) + customHeadersLen + 1));
+  sprintf(headers, "HTTP/1.1 %s\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %s\r\n%s\r\n", status, contentType, contentLength, customHeaders);
 
   char *responseString = malloc(sizeof(char) * (strlen(headers) + strlen(body) + 1));
   strcpy(responseString, headers);
@@ -551,9 +551,9 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
       res->sendf(errorHTML, req->path);
       return;
     }
-    char *response = malloc(sizeof(char) * (strlen("HTTP/1.1 200 OK\r\nContent-Length: \r\n\r\n") + 20));
+    char *response = malloc(sizeof(char) * (strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: \r\n\r\n") + 20));
     // TODO: mimetype
-    sprintf(response, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\n\r\n", fileSize(path));
+    sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: %zu\r\n\r\n", fileSize(path));
     write(client.socket, response, strlen(response));
     char *buffer = malloc(4096);
     size_t bytesRead = fread(buffer, 1, 4096, file);
@@ -891,7 +891,6 @@ static request_t parseRequest(client_t client)
                                    &minorVersion, headers, &numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
-
       req.headersHash = hash_new();
       for (size_t i = 0; i != numHeaders; ++i)
       {
@@ -928,6 +927,7 @@ static request_t parseRequest(client_t client)
   char *copy = strdup(req.url);
   char *queryStringStart = strchr(copy, '?');
 
+  req.queryHash = hash_new();
   if (queryStringStart)
   {
     int queryStringLen = strlen(queryStringStart + 1);
@@ -935,7 +935,6 @@ static request_t parseRequest(client_t client)
     memcpy(req.queryString, queryStringStart + 1, queryStringLen);
     req.queryString[queryStringLen] = '\0';
     *queryStringStart = '\0';
-    req.queryHash = hash_new();
     parseQueryString(req.queryHash, req.queryString);
   }
 
