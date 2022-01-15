@@ -1,8 +1,16 @@
 <li class="{{#completed}}completed{{/completed}}">
   <div class="view">
-    <input class="toggle" type="checkbox" {{#completed}}checked{{/completed}}>
-    <label>{{title}}</label>
-    <button class="destroy"></button>
+    <form method='POST' action='/todo/{{id}}'>
+      <input type='hidden' name='_method' value='put' />
+      <button>
+        <input name="completed" class="toggle" type="checkbox" {{#completed}}checked{{/completed}}>
+        <label for="completed">{{title}}</label>
+      </button>
+    </form>
+    <form method='POST' action='/todo/{{id}}'>
+      <input type='hidden' name='_method' value='delete' />
+      <button class="destroy"></button>
+    </form>
   </div>
   <input class="edit" value="Create a TodoMVC template">
 </li>

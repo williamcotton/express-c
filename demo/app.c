@@ -13,7 +13,7 @@ typedef struct todo_t
   int id;
   char *title;
   int completed;
-  cJSON * (^toJSON)(struct todo_t *);
+  cJSON * (^toJSON)();
 } todo_t;
 
 typedef struct todo_store_t
@@ -29,12 +29,41 @@ typedef struct todo_store_t
 
 middlewareHandler cJSONMustache(char *viewsPath)
 {
+  char * (^mustacheErrorMessage)(int) = ^(int result) {
+    switch (result)
+    {
+    case MUSTACH_ERROR_SYSTEM:
+      return "System error";
+    case MUSTACH_ERROR_UNEXPECTED_END:
+      return "Unexpected end of template";
+    case MUSTACH_ERROR_EMPTY_TAG:
+      return "Empty tag";
+    case MUSTACH_ERROR_TAG_TOO_LONG:
+      return "Tag too long";
+    case MUSTACH_ERROR_BAD_SEPARATORS:
+      return "Bad separators";
+    case MUSTACH_ERROR_TOO_DEEP:
+      return "Too deep";
+    case MUSTACH_ERROR_CLOSING:
+      return "Closing tag without opening tag";
+    case MUSTACH_ERROR_BAD_UNESCAPE_TAG:
+      return "Bad unescape tag";
+    case MUSTACH_ERROR_INVALID_ITF:
+      return "Invalid item or partial";
+    case MUSTACH_ERROR_ITEM_NOT_FOUND:
+      return "Item not found";
+    case MUSTACH_ERROR_PARTIAL_NOT_FOUND:
+      return "Partial not found";
+    default:
+      return "Unknown error";
+    }
+  };
+
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;
     size_t length;
     char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);
     sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
-    printf("templatePath: %s\n", templatePath);
     FILE *templateFd = fopen(templatePath, "r");
     if (templateFd)
     {
@@ -75,8 +104,17 @@ middlewareHandler cJSONMustache(char *viewsPath)
         size_t length;
         char *renderedTemplate;
         loadPartials(json, (char *)templateFile);
-        mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
-        res->send(renderedTemplate);
+        int result = mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
+        printf("result: %d\n", result);
+        if (result == 0)
+        {
+          res->send(renderedTemplate);
+        }
+        else
+        {
+          res->status = 500;
+          res->sendf("Error rendering mustache template: %s", mustacheErrorMessage(result));
+        }
       }
       else
       {
@@ -100,9 +138,16 @@ middlewareHandler todoStoreMiddleware()
       todoStore->count = 0;
 
       todoStore->new = Block_copy(^(char *title) {
-        todo_t *newTodo = malloc(sizeof(todo_t));
+        __block todo_t *newTodo = malloc(sizeof(todo_t));
         newTodo->title = title;
         newTodo->completed = 0;
+        newTodo->toJSON = Block_copy(^() {
+          cJSON *json = cJSON_CreateObject();
+          cJSON_AddNumberToObject(json, "id", newTodo->id);
+          cJSON_AddStringToObject(json, "title", newTodo->title);
+          newTodo->completed ? cJSON_AddTrueToObject(json, "completed") : cJSON_AddFalseToObject(json, "completed");
+          return json;
+        });
         return newTodo;
       });
 
@@ -151,23 +196,43 @@ int main()
   app.use(todoStoreMiddleware());
   app.use(cJSONMustache("demo/views"));
 
-  app.get("/", ^(UNUSED request_t *req, response_t *res) {
+  app.get("/", ^(request_t *req, response_t *res) {
     cJSON *json = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json, "completedCount", 1);
+
+    char *filter = req->query("filter") ? req->query("filter") : "all";
+    cJSON_AddStringToObject(json, "filterAll", strcmp(filter, "all") == 0 ? "selected" : "");
+    cJSON_AddStringToObject(json, "filterActive", strcmp(filter, "active") == 0 ? "selected" : "");
+    cJSON_AddStringToObject(json, "filterCompleted", strcmp(filter, "completed") == 0 ? "selected" : "");
+
+    int completedCount = 0;
+    int total = 0;
 
     cJSON *todos = cJSON_AddArrayToObject(json, "todos");
 
-    cJSON *todo1 = cJSON_CreateObject();
-    cJSON_AddStringToObject(todo1, "title", "Taste Javascript");
-    cJSON_AddStringToObject(todo1, "id", "0");
-    cJSON_AddTrueToObject(todo1, "completed");
-    cJSON_AddItemToArray(todos, todo1);
+    todo_store_t *todoStore = req->m("todoStore");
+    hash_each(todoStore->store, {
+      todo_t *todo = (todo_t *)val;
+      total++;
+      if (todo->completed)
+      {
+        completedCount++;
+      }
+      if (strcmp(filter, "all") == 0 || (strcmp(filter, "active") == 0 && !todo->completed) || (strcmp(filter, "completed") == 0 && todo->completed))
+      {
+        cJSON *todoJson = todo->toJSON();
+        cJSON_AddItemToArray(todos, todoJson);
+      }
+    });
 
-    cJSON *todo2 = cJSON_CreateObject();
-    cJSON_AddStringToObject(todo2, "title", "Buy a unicorn");
-    cJSON_AddStringToObject(todo2, "id", "1");
-    cJSON_AddFalseToObject(todo2, "completed");
-    cJSON_AddItemToArray(todos, todo2);
+    int uncompletedCount = total - completedCount;
+
+    cJSON_AddNumberToObject(json, "uncompletedCount", uncompletedCount);
+    cJSON_AddNumberToObject(json, "completedCount", completedCount);
+    cJSON_AddNumberToObject(json, "totalCount", total);
+
+    total == completedCount ? cJSON_AddTrueToObject(json, "allCompleted") : cJSON_AddFalseToObject(json, "allCompleted");
+    completedCount > 0 ? cJSON_AddTrueToObject(json, "hasCompleted") : cJSON_AddFalseToObject(json, "hasCompleted");
+    total == 0 ? cJSON_AddTrueToObject(json, "noTodos") : cJSON_AddFalseToObject(json, "noTodos");
 
     res->render("index.mustache", json);
   });
@@ -195,6 +260,18 @@ int main()
     todo_store_t *todoStore = req->m("todoStore");
     int id = atoi(req->params("id"));
     todoStore->delete (id);
+    res->redirect("back");
+  });
+
+  app.post("/todo_clear_all_completed", ^(UNUSED request_t *req, response_t *res) {
+    todo_store_t *todoStore = req->m("todoStore");
+    hash_each(todoStore->store, {
+      todo_t *todo = (todo_t *)val;
+      if (todo->completed)
+      {
+        todoStore->delete (todo->id);
+      }
+    });
     res->redirect("back");
   });
 
