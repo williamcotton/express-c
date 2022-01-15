@@ -567,11 +567,74 @@ static setBlock setFactory(response_t *res)
   });
 }
 
-static setBlock cookieFactory(response_t *res)
+char *cookieStringFromOpts(UNUSED cookie_opts_t opts)
+{
+  char cookieOptsString[1024];
+  memset(cookieOptsString, 0, 1024);
+  int i = 0;
+  if (opts.httpOnly)
+  {
+    strcpy(cookieOptsString + i, "; HttpOnly");
+    i += strlen("; HttpOnly");
+  }
+  if (opts.secure)
+  {
+    strcpy(cookieOptsString + i, "; Secure");
+    i += strlen("; HttpOnly; Secure");
+  }
+  if (opts.maxAge != 0)
+  {
+    char *maxAgeValue = malloc(sizeof(char) * (strlen("; Max-Age=") + 20));
+    sprintf(maxAgeValue, "; Max-Age=%d", opts.maxAge);
+    strcpy(cookieOptsString + i, maxAgeValue);
+    i += strlen(maxAgeValue);
+    free(maxAgeValue);
+  }
+  if (opts.expires != NULL)
+  {
+    char *expiresValue = malloc(sizeof(char) * (strlen("; Expires=") + 20));
+    sprintf(expiresValue, "; Expires=%s", opts.expires);
+    strcpy(cookieOptsString + i, expiresValue);
+    i += strlen(expiresValue);
+    free(expiresValue);
+  }
+  if (opts.domain != NULL)
+  {
+    char *domainValue = malloc(sizeof(char) * (strlen("; Domain=") + strlen(opts.domain) + 1));
+    sprintf(domainValue, "; Domain=%s", opts.domain);
+    strcpy(cookieOptsString + i, domainValue);
+    i += strlen(domainValue);
+    free(domainValue);
+  }
+  if (opts.path != NULL)
+  {
+    char *pathValue = malloc(sizeof(char) * (strlen("; Path=") + strlen(opts.path) + 1));
+    sprintf(pathValue, "; Path=%s", opts.path);
+    strcpy(cookieOptsString + i, pathValue);
+    i += strlen(pathValue);
+    free(pathValue);
+  }
+  return strdup(cookieOptsString);
+}
+
+typedef void (^setCookie)(char *cookieKey, char *cookieValue, cookie_opts_t opts);
+static setCookie cookieFactory(response_t *res)
 {
   res->cookiesHash = hash_new();
-  return Block_copy(^(char *key, char *value) {
-    return hash_set(res->cookiesHash, key, value);
+  return Block_copy(^(char *key, char *value, cookie_opts_t opts) {
+    char *cookieString = cookieStringFromOpts(opts);
+    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieString) + 1));
+    strcpy(valueWithOptions, value);
+    strcat(valueWithOptions, cookieString);
+    return hash_set(res->cookiesHash, key, valueWithOptions);
+  });
+}
+
+typedef void (^clearBlock)(char *key, cookie_opts_t opts);
+static clearBlock clearCookieFactory(response_t *res)
+{
+  return Block_copy(^(char *key, UNUSED cookie_opts_t opts) {
+    return hash_set(res->cookiesHash, key, "; expires=Thu, 01 Jan 1970 00:00:00 GMT");
   });
 }
 
@@ -941,6 +1004,7 @@ static response_t buildResponse(client_t client, request_t *req)
   res.sendFile = sendFileFactory(client, req, &res);
   res.set = setFactory(&res);
   res.cookie = cookieFactory(&res);
+  res.clearCookie = clearCookieFactory(&res);
   res.location = locationFactory(req, &res);
   res.redirect = redirectFactory(req, &res);
   return res;
@@ -1026,7 +1090,8 @@ middlewareHandler memSessionMiddlewareFactory()
     if (sessionUuid == NULL)
     {
       sessionUuid = generateUuid();
-      res->cookie("sessionUuid", sessionUuid);
+      cookie_opts_t opts = {.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = true};
+      res->cookie("sessionUuid", sessionUuid, opts);
     }
     req->session->uuid = sessionUuid;
 

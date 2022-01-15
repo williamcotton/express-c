@@ -188,8 +188,8 @@ int main()
   });
 
   app.get("/set_cookie", ^(UNUSED request_t *req, response_t *res) {
-    res->cookie("session", req->query("session"));
-    res->cookie("user", req->query("user"));
+    res->cookie("session", req->query("session"), (cookie_opts_t){});
+    res->cookie("user", req->query("user"), (cookie_opts_t){});
     res->send("ok");
   });
 

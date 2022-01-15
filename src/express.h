@@ -13,10 +13,9 @@ typedef struct session_t
 
 typedef struct cookie_opts_t
 {
-  char *name;
-  char *value;
   char *domain;
   char *path;
+  char *expires;
   int maxAge;
   int secure;
   int httpOnly;
@@ -66,9 +65,9 @@ typedef struct response_t
   void *headersHash;
   void (^set)(char *, char *);
   void *cookiesHash;
-  void (^cookie)(char *, char *);               // TODO: add cookie_opts_t to res.cookie
-  void (^clearCookie)(char *, cookie_opts_t *); // TODO: add res.clearCookie
-  void (^json)(char *, ...);                    // TODO: add res.json
+  void (^cookie)(char *, char *, cookie_opts_t);
+  void (^clearCookie)(char *, cookie_opts_t);
+  void (^json)(char *, ...); // TODO: add res.json
   void (^location)(char *);
   void (^redirect)(char *);
   void (^sendStatus)(int);          // TODO: add res.sendStatus
