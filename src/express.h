@@ -59,7 +59,8 @@ typedef struct request_t
 
 typedef struct response_t
 {
-  void (^send)(const char *, ...);
+  void (^send)(char *);
+  void (^sendf)(char *, ...);
   void (^sendFile)(char *);
   void (^render)(void *, void *);
   void *headersHash;

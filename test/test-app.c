@@ -123,11 +123,11 @@ int main()
   });
 
   app.get("/qs", ^(request_t *req, response_t *res) {
-    res->send("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", req->query("value1"), req->query("value2"));
+    res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", req->query("value1"), req->query("value2"));
   });
 
   app.get("/headers", ^(request_t *req, response_t *res) {
-    res->send("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", req->get("Host"), req->get("Accept"));
+    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", req->get("Host"), req->get("Accept"));
   });
 
   app.get("/file", ^(UNUSED request_t *req, response_t *res) {
@@ -135,7 +135,7 @@ int main()
   });
 
   app.get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
-    res->send("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->params("one"), req->params("two"), req->params("three"));
+    res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->params("one"), req->params("two"), req->params("three"));
   });
 
   app.get("/form", ^(UNUSED request_t *req, response_t *res) {
@@ -148,7 +148,7 @@ int main()
 
   app.post("/post/:form", ^(request_t *req, response_t *res) {
     res->status = 201;
-    res->send("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
   });
 
   app.post("/session", ^(request_t *req, response_t *res) {
@@ -158,16 +158,16 @@ int main()
 
   app.put("/put/:form", ^(UNUSED request_t *req, response_t *res) {
     res->status = 201;
-    res->send("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
   });
 
   app.patch("/patch/:form", ^(UNUSED request_t *req, response_t *res) {
     res->status = 201;
-    res->send("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
   });
 
   app.delete("/delete/:id", ^(UNUSED request_t *req, response_t *res) {
-    res->send("<h1>Delete</h1><p>ID: %s</p>", req->params("id"));
+    res->sendf("<h1>Delete</h1><p>ID: %s</p>", req->params("id"));
   });
 
   app.get("/session", ^(request_t *req, response_t *res) {
@@ -192,7 +192,7 @@ int main()
   });
 
   app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
-    res->send("session: %s - user: %s", req->cookie("session"), req->cookie("user"));
+    res->sendf("session: %s - user: %s", req->cookie("session"), req->cookie("user"));
   });
 
   app.get("/redirect", ^(UNUSED request_t *req, response_t *res) {

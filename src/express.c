@@ -515,16 +515,26 @@ static char *buildResponseString(char *body, response_t *res)
   return responseString;
 }
 
-typedef void (^sendBlock)(const char *format, ...);
+typedef void (^sendBlock)(char *body);
 static sendBlock sendFactory(client_t client, response_t *res)
 {
-  return Block_copy(^(const char *format, ...) {
+  return Block_copy(^(char *body) {
+    char *response = buildResponseString(body, res);
+    write(client.socket, response, strlen(response));
+    free(response);
+  });
+}
+
+typedef void (^sendfBlock)(char *format, ...);
+static sendfBlock sendfFactory(response_t *res)
+{
+  return Block_copy(^(char *format, ...) {
     char body[65536];
     va_list args;
     va_start(args, format);
     vsnprintf(body, 65536, format, args);
     char *response = buildResponseString(body, res);
-    write(client.socket, response, strlen(response));
+    res->send(body);
     free(response);
     va_end(args);
   });
@@ -538,7 +548,7 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
     if (file == NULL)
     {
       res->status = 404;
-      res->send(errorHTML, req->path);
+      res->sendf(errorHTML, req->path);
       return;
     }
     char *response = malloc(sizeof(char) * (strlen("HTTP/1.1 200 OK\r\nContent-Length: \r\n\r\n") + 20));
@@ -666,7 +676,7 @@ static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
   return Block_copy(^(char *url) {
     res->status = 302;
     res->location(url);
-    res->send("Redirecting to %s", url);
+    res->sendf("Redirecting to %s", url);
     return;
   });
 }
@@ -881,7 +891,23 @@ static request_t parseRequest(client_t client)
                                    &minorVersion, headers, &numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
-      if (method[0] == 'P' && parseBytes == readBytes)
+
+      req.headersHash = hash_new();
+      for (size_t i = 0; i != numHeaders; ++i)
+      {
+        char *key = malloc(headers[i].name_len + 1);
+        sprintf(key, "%.*s", (int)headers[i].name_len, headers[i].name);
+        char *value = malloc(headers[i].value_len + 1);
+        sprintf(value, "%.*s", (int)headers[i].value_len, headers[i].value);
+        hash_set(req.headersHash, key, value);
+      }
+
+      req.method = malloc(methodLen + 1);
+      memcpy(req.method, method, methodLen);
+      req.method[methodLen] = '\0';
+
+      char *contentLength = hash_get(req.headersHash, "Content-Length");
+      if (method[0] == 'P' && parseBytes == readBytes && contentLength[0] != '0')
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
       break;
@@ -894,20 +920,6 @@ static request_t parseRequest(client_t client)
   }
 
   req.rawRequest = buffer;
-
-  req.headersHash = hash_new();
-  for (size_t i = 0; i != numHeaders; ++i)
-  {
-    char *key = malloc(headers[i].name_len + 1);
-    sprintf(key, "%.*s", (int)headers[i].name_len, headers[i].name);
-    char *value = malloc(headers[i].value_len + 1);
-    sprintf(value, "%.*s", (int)headers[i].value_len, headers[i].value);
-    hash_set(req.headersHash, key, value);
-  }
-
-  req.method = malloc(methodLen + 1);
-  memcpy(req.method, method, methodLen);
-  req.method[methodLen] = '\0';
 
   req.url = malloc(urlLen + 1);
   memcpy(req.url, url, urlLen);
@@ -1001,6 +1013,7 @@ static response_t buildResponse(client_t client, request_t *req)
   response_t res;
   res.status = 200;
   res.send = sendFactory(client, &res);
+  res.sendf = sendfFactory(&res);
   res.sendFile = sendFileFactory(client, req, &res);
   res.set = setFactory(&res);
   res.cookie = cookieFactory(&res);
@@ -1037,7 +1050,7 @@ static void initClientAcceptEventHandler()
         if (routeHandler.handler == NULL)
         {
           res.status = 404;
-          res.send(errorHTML, req.path);
+          res.sendf(errorHTML, req.path);
         }
         else
         {
