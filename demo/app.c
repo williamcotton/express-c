@@ -105,7 +105,6 @@ middlewareHandler cJSONMustache(char *viewsPath)
         char *renderedTemplate;
         loadPartials(json, (char *)templateFile);
         int result = mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
-        printf("result: %d\n", result);
         if (result == 0)
         {
           res->send(renderedTemplate);

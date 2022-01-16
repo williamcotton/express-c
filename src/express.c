@@ -14,7 +14,10 @@
 #include <signal.h>
 #include <curl/curl.h>
 #include <uuid/uuid.h>
+#include <sys/errno.h>
 #include "express.h"
+
+// #define CLIENT_NET_DEBUG 1
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -621,7 +624,6 @@ char *cookieStringFromOpts(UNUSED cookie_opts_t opts)
     char *pathValue = malloc(sizeof(char) * (strlen("; Path=") + strlen(opts.path) + 1));
     sprintf(pathValue, "; Path=%s", opts.path);
     strcpy(cookieOptsString + i, pathValue);
-    i += strlen(pathValue);
     free(pathValue);
   }
   return strdup(cookieOptsString);
@@ -788,11 +790,17 @@ static client_t acceptClientConnection()
   int clntSock = -1;
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
+#ifdef CLIENT_NET_DEBUG
+  printf("\nAccepting client...\n");
+#endif // CLIENT_NET_DEBUG
   if ((clntSock = accept(servSock, (struct sockaddr *)&echoClntAddr, &clntLen)) < 0)
   {
     // perror("accept() failed");
     return (client_t){.socket = -1, .ip = NULL};
   }
+#ifdef CLIENT_NET_DEBUG
+  printf("Client accepted\n");
+#endif // CLIENT_NET_DEBUG
 
   // Make the socket non-blocking
   if (fcntl(clntSock, F_SETFL, O_NONBLOCK) < 0)
@@ -803,6 +811,10 @@ static client_t acceptClientConnection()
   }
 
   char *client_ip = inet_ntoa(echoClntAddr.sin_addr);
+
+#ifdef CLIENT_NET_DEBUG
+  printf("Client connected from %s\n", client_ip);
+#endif // CLIENT_NET_DEBUG
 
   return (client_t){.socket = clntSock, .ip = client_ip};
 }
@@ -880,8 +892,14 @@ static request_t parseRequest(client_t client)
   // TODO: timeout support
   while (1)
   {
+#ifdef CLIENT_NET_DEBUG
+    printf("\nWaiting for request...\n");
+#endif // CLIENT_NET_DEBUG
     while ((readBytes = read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
       ;
+#ifdef CLIENT_NET_DEBUG
+    printf("\nRequest received\n");
+#endif // CLIENT_NET_DEBUG
     if (readBytes <= 0)
       return req;
     prevBufferLen = bufferLen;
@@ -907,8 +925,18 @@ static request_t parseRequest(client_t client)
 
       char *contentLength = hash_get(req.headersHash, "Content-Length");
       if (method[0] == 'P' && parseBytes == readBytes && contentLength[0] != '0')
+      {
+#ifdef CLIENT_NET_DEBUG
+        printf("\nWaiting for second request...\n");
+#endif // CLIENT_NET_DEBUG
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
+
+#ifdef CLIENT_NET_DEBUG
+        printf("\nSecond request received\n");
+#endif // CLIENT_NET_DEBUG
+      }
+
       break;
     }
     else if (parseBytes == -1)
@@ -1003,6 +1031,9 @@ static route_handler_t matchRouteHandler(request_t *req)
 
 static void closeClientConnection(client_t client)
 {
+#ifdef CLIENT_NET_DEBUG
+  printf("\nClosing client connection...\n");
+#endif // CLIENT_NET_DEBUG
   shutdown(client.socket, SHUT_RDWR);
   close(client.socket);
 }
@@ -1027,6 +1058,9 @@ static void initClientAcceptEventHandler()
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
 
   dispatch_source_set_event_handler(acceptSource, ^{
+#ifdef CLIENT_NET_DEBUG
+    printf("\nRead event on servSock\n");
+#endif // CLIENT_NET_DEBUG
     const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++)
     {
