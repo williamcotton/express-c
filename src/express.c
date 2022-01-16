@@ -1307,6 +1307,8 @@ middlewareHandler memSessionMiddlewareFactory()
 {
   __block hash_t *memSessionStore = hash_new();
 
+  dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
+
   return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
     char *sessionUuid = req->cookie("sessionUuid");
     if (sessionUuid == NULL)
@@ -1324,7 +1326,9 @@ middlewareHandler memSessionMiddlewareFactory()
     else
     {
       req->session->store = hash_new();
-      hash_set(memSessionStore, sessionUuid, req->session->store);
+      dispatch_sync(memSessionQueue, ^{
+        hash_set(memSessionStore, sessionUuid, req->session->store);
+      });
     }
 
     req->session->get = ^(char *key) {
