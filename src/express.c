@@ -468,9 +468,15 @@ static getHashBlock reqBodyFactory(request_t *req)
 
 static char *buildResponseString(char *body, response_t *res)
 {
-  char *contentType = "text/html; charset=utf-8";
+  if (res->get("Content-Type") == NULL)
+    res->set("Content-Type", "text/html; charset=utf-8");
+
   char *contentLength = malloc(sizeof(char) * 20);
   sprintf(contentLength, "%zu", strlen(body));
+  res->set("Content-Length", contentLength);
+
+  res->set("Connection", "close");
+
   char *statusMessage = getStatusMessage(res->status);
   char *status = malloc(sizeof(char) * (strlen(statusMessage) + 5));
   sprintf(status, "%d %s", res->status, statusMessage);
@@ -505,9 +511,8 @@ static char *buildResponseString(char *body, response_t *res)
     customHeadersLen += headersLen;
   });
 
-  // TODO: add support for other content types
-  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\nConnection: close\r\nContent-Type: \r\nContent-Length: \r\n\r\n") + strlen(status) + strlen(contentType) + strlen(contentLength) + customHeadersLen + 1));
-  sprintf(headers, "HTTP/1.1 %s\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %s\r\n%s\r\n", status, contentType, contentLength, customHeaders);
+  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + customHeadersLen + 1));
+  sprintf(headers, "HTTP/1.1 %s\r\n%s\r\n", status, customHeaders);
 
   char *responseString = malloc(sizeof(char) * (strlen(headers) + strlen(body) + 1));
   strcpy(responseString, headers);
@@ -577,6 +582,15 @@ static setBlock setFactory(response_t *res)
   res->headersHash = hash_new();
   return Block_copy(^(char *headerKey, char *headerValue) {
     return hash_set(res->headersHash, headerKey, headerValue);
+  });
+}
+
+typedef char * (^getBlock)(char *headerKey);
+static getBlock getFactory(response_t *res)
+{
+  res->headersHash = hash_new();
+  return Block_copy(^(char *headerKey) {
+    return (char *)hash_get(res->headersHash, headerKey);
   });
 }
 
@@ -1036,6 +1050,7 @@ static response_t buildResponse(client_t client, request_t *req)
   res.sendf = sendfFactory(&res);
   res.sendFile = sendFileFactory(client, req, &res);
   res.set = setFactory(&res);
+  res.get = getFactory(&res);
   res.cookie = cookieFactory(&res);
   res.clearCookie = clearCookieFactory(&res);
   res.location = locationFactory(req, &res);

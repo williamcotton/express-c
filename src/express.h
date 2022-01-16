@@ -65,6 +65,7 @@ typedef struct response_t
   void (^render)(void *, void *);
   void *headersHash;
   void (^set)(char *, char *);
+  char * (^get)(char *);
   void *cookiesHash;
   void (^cookie)(char *, char *, cookie_opts_t);
   void (^clearCookie)(char *, cookie_opts_t);
