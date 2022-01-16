@@ -3,10 +3,15 @@
 #include <hash/hash.h>
 #include <Block.h>
 #include <string.h>
+#include <dirent.h>
 #include <cJSON/cJSON.h>
 #include <mustach/mustach-cjson.h>
-#include <dirent.h>
+#include <dotenv-c/dotenv.h>
 #include "../src/express.h"
+
+#ifndef PORT
+#define PORT 3000
+#endif // !PORT
 
 typedef struct todo_t
 {
@@ -187,8 +192,10 @@ middlewareHandler todoStoreMiddleware()
 
 int main()
 {
+  env_load(".", false);
+
   app_t app = express();
-  int port = 3000;
+  int port = getenv("PORT") ? atoi(getenv("PORT")) : PORT;
 
   app.use(expressStatic("demo/public"));
   app.use(memSessionMiddlewareFactory());
