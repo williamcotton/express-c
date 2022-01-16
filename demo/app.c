@@ -213,13 +213,12 @@ int main()
       todo_t *todo = (todo_t *)val;
       total++;
       if (todo->completed)
-      {
         completedCount++;
-      }
-      if (strcmp(filter, "all") == 0 || (strcmp(filter, "active") == 0 && !todo->completed) || (strcmp(filter, "completed") == 0 && todo->completed))
+      if (strcmp(filter, "all") == 0 ||
+          (strcmp(filter, "active") == 0 && !todo->completed) ||
+          (strcmp(filter, "completed") == 0 && todo->completed))
       {
-        cJSON *todoJson = todo->toJSON();
-        cJSON_AddItemToArray(todos, todoJson);
+        cJSON_AddItemToArray(todos, todo->toJSON());
       }
     });
 
