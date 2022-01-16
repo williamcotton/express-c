@@ -1116,7 +1116,9 @@ static response_t buildResponse(client_t client, request_t *req)
 #ifdef __linux__
 /*
 
-An implementation of the client handler that uses select().
+An synchronous, single-threaded implementation of the client handler that uses select().
+
+TODO: implement a multi-threaded version that uses epoll()
 
 */
 static void initClientAcceptEventHandler()
@@ -1209,67 +1211,14 @@ static void initClientAcceptEventHandler()
     }
   }
 }
+#elif __MACH__
 /*
 
-The below code is cross-platform but it causes a simular bug with some browsers.
-Eg, in Safari certain requests are not handled properly and hang. This does not happen in Chrome.
+A concurrent, multi-threaded implementation of the client handler that uses dispatch_sources.
 
-The darwin version of initClientAcceptEventHandler() works as expected but contains
-an additional call to dispatch_source on the client socket. However it will hang on all requests
-on linux, hence the above implementation based on select().
-
-Keeping this code here for reference.
+For an unknown reason this implementation is not working on linux.
 
 */
-#if false
-UNUSED static void initClientAcceptEventHandlerBuggyDispatch()
-{
-  dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
-
-  dispatch_source_set_event_handler(acceptSource, ^{
-#ifdef CLIENT_NET_DEBUG
-    printf("\nRead event on servSock\n");
-#endif // CLIENT_NET_DEBUG
-    const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
-    for (unsigned long i = 0; i < numPendingConnections; i++)
-    {
-      client_t client = acceptClientConnection();
-      if (client.socket < 0)
-        continue;
-
-      request_t req = parseRequest(client);
-
-      if (req.method == NULL)
-      {
-        closeClientConnection(client);
-        return;
-      }
-
-      __block response_t res = buildResponse(client, &req);
-
-      runMiddleware(0, &req, &res, ^{
-        route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
-        if (routeHandler.handler == NULL)
-        {
-          res.status = 404;
-          res.sendf(errorHTML, req.path);
-        }
-        else
-        {
-          routeHandler.handler((request_t *)&req, (response_t *)&res);
-        }
-      });
-
-      closeClientConnection(client);
-    }
-  });
-#ifdef CLIENT_NET_DEBUG
-  printf("\nWaiting for client connections...\n");
-#endif // CLIENT_NET_DEBUG
-  dispatch_resume(acceptSource);
-}
-#endif
-#elif __MACH__
 static void initClientAcceptEventHandler()
 {
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
