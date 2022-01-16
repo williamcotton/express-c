@@ -511,7 +511,7 @@ static char *buildResponseString(char *body, response_t *res)
     customHeadersLen += headersLen;
   });
 
-  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + customHeadersLen + 1));
+  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + customHeadersLen + 1));
   sprintf(headers, "HTTP/1.1 %s\r\n%s\r\n", status, customHeaders);
 
   char *responseString = malloc(sizeof(char) * (strlen(headers) + strlen(body) + 1));
