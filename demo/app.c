@@ -140,7 +140,7 @@ int main()
     completedCount > 0 ? cJSON_AddTrueToObject(json, "hasCompleted") : cJSON_AddFalseToObject(json, "hasCompleted");
     total == 0 ? cJSON_AddTrueToObject(json, "noTodos") : cJSON_AddFalseToObject(json, "noTodos");
 
-    res->render("index.mustache", json);
+    res->render("index", json);
   });
 
   app.post("/todo", ^(request_t *req, response_t *res) {

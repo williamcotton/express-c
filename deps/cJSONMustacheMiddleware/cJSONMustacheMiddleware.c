@@ -77,8 +77,18 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
   };
 
   return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)()) {
-    res->render = ^(void *templateFile, void *data) {
+    res->render = ^(void *templateName, void *data) {
       cJSON *json = data;
+      char *templateFile;
+      if (strstr(templateName, ".mustache"))
+      {
+        templateFile = templateName;
+      }
+      else
+      {
+        templateFile = malloc(strlen(templateName) + strlen(".mustache") + 1);
+        sprintf(templateFile, "%s.mustache", (char *)templateName);
+      }
       char *template = loadTemplate(templateFile);
       if (template)
       {
