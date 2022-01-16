@@ -3,9 +3,9 @@ ifneq (,$(wildcard ./.env))
 	export
 endif
 
-DEMO_TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
+TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-DEV_CFLAGS = -g -O0 -fdiagnostics-color=always -fno-omit-frame-pointer -fno-optimize-sibling-calls
+DEV_CFLAGS = -g -O0 -fdiagnostics-color=always -fno-omit-frame-pointer -fno-optimize-sibling-calls -DDEPLOY_ENV=$(DEPLOY_ENV)
 SRC = src/express.c
 SRC += $(wildcard deps/*/*.c)
 BUILD_DIR = build
@@ -38,7 +38,6 @@ clean:
 
 $(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
 	fswatch --event Updated deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
-	# fswatch --event Updated -o deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
 
 $(TARGETS)-run-background: $(TARGETS)-kill
 	$(BUILD_DIR)/$(TARGETS) &
@@ -47,8 +46,8 @@ $(TARGETS)-kill:
 	./kill.sh $(TARGETS)
 
 test-watch:
-	make test || :
-	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make test
+	make --no-print-directory test || :
+	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make --no-print-directory test
 
 .PHONY: test-tape
 test-tape:
