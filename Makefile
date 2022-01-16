@@ -1,5 +1,11 @@
-TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
+ifneq (,$(wildcard ./.env))
+	include .env
+	export
+endif
+
+DEMO_TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
+DEV_CFLAGS = -g -O0 -fdiagnostics-color=always -fno-omit-frame-pointer -fno-optimize-sibling-calls
 SRC = src/express.c
 SRC += $(wildcard deps/*/*.c)
 BUILD_DIR = build
@@ -8,8 +14,10 @@ PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 ifeq ($(PLATFORM),LINUX)
 	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid
 else ifeq ($(PLATFORM),DARWIN)
-	CFLAGS += -fsanitize=address,undefined
+	DEV_CFLAGS += -fsanitize=address,undefined
 endif
+
+CFLAGS += $(DEV_CFLAGS)
 
 all: $(TARGETS)
 
@@ -33,7 +41,7 @@ $(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
 	# fswatch --event Updated -o deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
 
 $(TARGETS)-run-background: $(TARGETS)-kill
-	build/$(TARGETS) &
+	$(BUILD_DIR)/$(TARGETS) &
 
 $(TARGETS)-kill:
 	./kill.sh $(TARGETS)
