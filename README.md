@@ -2,6 +2,8 @@
 
 Fast, unopinionated, minimalist web framework for C
 
+[![CircleCI](https://circleci.com/gh/williamcotton/express-c/tree/master.svg?style=svg)](https://circleci.com/gh/williamcotton/express-c/tree/master)
+
 ## Features
 
 - User-friendly API using blocks

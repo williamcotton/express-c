@@ -1,26 +1,22 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: cimg/base:stable
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+  test:
+    machine:
+      image: ubuntu-2004:202111-02
     steps:
       - checkout
       - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+          name: "Install dependencies"
+          command: "sudo apt-get update && export DEBIAN_FRONTEND=noninteractive && sudo apt-get -y install --no-install-recommends clang-format clang-tidy clang-tools clang clangd libc++-dev libc++1 libc++abi-dev libc++abi1 libclang-dev libclang1 liblldb-dev libomp-dev libomp5 lld lldb llvm-dev llvm-runtime llvm python-clang libcurl4-openssl-dev libblocksruntime-dev libkqueue-dev libpthread-workqueue-dev git build-essential python cmake ninja-build systemtap-sdt-dev libbsd-dev linux-libc-dev apache2-utils fswatch uuid-dev"
+      - run:
+          name: "Build libdispatch"
+          command: "git clone https://github.com/apple/swift-corelibs-libdispatch.git && cd swift-corelibs-libdispatch && cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ . && sudo ninja install && cd .. && rm -rf swift-corelibs-libdispatch"    
+      - run:
+          name: "Testing"
+          command: "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH PATH=/usr/local/lib:$PATH make test"
 
-# Invoke jobs via workflows
-# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  say-hello-workflow:
+  test-workflow:
     jobs:
-      - say-hello
+      - test
