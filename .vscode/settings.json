@@ -51,7 +51,9 @@
     "ostream": "c",
     "__string": "c",
     "typeinfo": "c",
-    "stdlib.h": "c"
+    "stdlib.h": "c",
+    "block.h": "c",
+    "ranges": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

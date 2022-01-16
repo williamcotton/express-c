@@ -18,10 +18,11 @@
 
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-    "ms-vscode.cpptools",
+		"ms-vscode.cpptools",
 		"ms-vscode.cpptools-themes",
 		"ms-vscode.cpptools-extension-pack",
-		"vadimcn.vscode-lldb"
+		"vadimcn.vscode-lldb",
+		"github.copilot-nightly"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
