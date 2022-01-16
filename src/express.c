@@ -1059,8 +1059,115 @@ static response_t buildResponse(client_t client, request_t *req)
 }
 
 #ifdef __linux__
-// TODO: built on something like poll/select
+/*
+
+An implementation of the client handler that uses select().
+
+*/
 static void initClientAcceptEventHandler()
+{
+  fd_set readFdSet;
+  int maxClients = 30;
+  client_t clients[30];
+
+  int activity;
+
+  for (int i = 0; i < maxClients; i++)
+  {
+    client_t client = {.socket = 0};
+    clients[i] = client;
+  }
+
+  struct timeval waitd = {0, 1};
+
+#ifdef CLIENT_NET_DEBUG
+  printf("\nWaiting for client connections...\n");
+#endif // CLIENT_NET_DEBUG
+  while (1)
+  {
+    FD_ZERO(&readFdSet);
+    FD_SET(servSock, &readFdSet);
+    int maxSocket = servSock;
+
+    for (int i = 0; i < maxClients; i++)
+    {
+      if (clients[i].socket > 0)
+        FD_SET(clients[i].socket, &readFdSet);
+
+      if (clients[i].socket > maxSocket)
+        maxSocket = clients[i].socket;
+    }
+
+    activity = select(maxSocket + 1, &readFdSet, NULL, NULL, &waitd);
+
+    if (FD_ISSET(servSock, &readFdSet))
+    {
+#ifdef CLIENT_NET_DEBUG
+      printf("\nRead event on servSock\n");
+#endif // CLIENT_NET_DEBUG
+      client_t client = acceptClientConnection();
+      if (client.socket < 0)
+        continue;
+
+      for (int i = 0; i < maxClients; i++)
+      {
+        if (clients[i].socket == 0)
+        {
+          clients[i] = client;
+          break;
+        }
+      }
+    }
+
+    for (int i = 0; i < maxClients; i++)
+    {
+      client_t client = clients[i];
+
+      if (FD_ISSET(client.socket, &readFdSet))
+      {
+        request_t req = parseRequest(client);
+
+        if (req.method == NULL)
+        {
+          closeClientConnection(client);
+          return;
+        }
+
+        __block response_t res = buildResponse(client, &req);
+
+        runMiddleware(0, &req, &res, ^{
+          route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
+          if (routeHandler.handler == NULL)
+          {
+            res.status = 404;
+            res.sendf(errorHTML, req.path);
+          }
+          else
+          {
+            routeHandler.handler((request_t *)&req, (response_t *)&res);
+          }
+        });
+
+        closeClientConnection(client);
+        clients[i].socket = 0;
+      }
+    }
+  }
+}
+/*
+
+The below code is cross-platform but it causes a simular bug with some browsers.
+Eg, in Safari certain requests are not handled properly and hang. This does not happen in Chrome.
+
+The darwin version of initClientAcceptEventHandler() works as expected but contains
+an additional call to dispatch_source on the client socket. However it will hang on all requests
+on linux, hence the above implementation based on select().
+
+Keeping this code here for reference.
+
+*/
+#if false
+UNUSED static void initClientAcceptEventHandlerBuggyDispatch()
 {
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
 
@@ -1106,6 +1213,7 @@ static void initClientAcceptEventHandler()
 #endif // CLIENT_NET_DEBUG
   dispatch_resume(acceptSource);
 }
+#endif
 #elif __MACH__
 static void initClientAcceptEventHandler()
 {
@@ -1245,7 +1353,9 @@ app_t express()
 
   app.listen = ^(int port, void (^handler)()) {
     initServerListen(port);
-    initClientAcceptEventHandler();
+    dispatch_async(serverQueue, ^{
+      initClientAcceptEventHandler();
+    });
     handler();
     dispatch_main();
   };
