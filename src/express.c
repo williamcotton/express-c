@@ -17,7 +17,7 @@
 #include <sys/errno.h>
 #include "express.h"
 
-// #define CLIENT_NET_DEBUG 1
+// #define CLIENT_NET_DEBUG
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -925,18 +925,8 @@ static request_t parseRequest(client_t client)
 
       char *contentLength = hash_get(req.headersHash, "Content-Length");
       if (method[0] == 'P' && parseBytes == readBytes && contentLength[0] != '0')
-      {
-#ifdef CLIENT_NET_DEBUG
-        printf("\nWaiting for second request...\n");
-#endif // CLIENT_NET_DEBUG
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
-
-#ifdef CLIENT_NET_DEBUG
-        printf("\nSecond request received\n");
-#endif // CLIENT_NET_DEBUG
-      }
-
       break;
     }
     else if (parseBytes == -1)
@@ -1068,33 +1058,46 @@ static void initClientAcceptEventHandler()
       if (client.socket < 0)
         continue;
 
-      request_t req = parseRequest(client);
+      dispatch_source_t readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, client.socket, 0, serverQueue);
+      dispatch_source_set_event_handler(readSource, ^{
+#ifdef CLIENT_NET_DEBUG
+        printf("\nGot client read\n");
+#endif // CLIENT_NET_DEBUG
+        request_t req = parseRequest(client);
 
-      if (req.method == NULL)
-      {
+        if (req.method == NULL)
+        {
+          closeClientConnection(client);
+          return;
+        }
+
+        __block response_t res = buildResponse(client, &req);
+
+        runMiddleware(0, &req, &res, ^{
+          route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
+          if (routeHandler.handler == NULL)
+          {
+            res.status = 404;
+            res.sendf(errorHTML, req.path);
+          }
+          else
+          {
+            routeHandler.handler((request_t *)&req, (response_t *)&res);
+          }
+        });
+
         closeClientConnection(client);
-        return;
-      }
-
-      __block response_t res = buildResponse(client, &req);
-
-      runMiddleware(0, &req, &res, ^{
-        route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
-        if (routeHandler.handler == NULL)
-        {
-          res.status = 404;
-          res.sendf(errorHTML, req.path);
-        }
-        else
-        {
-          routeHandler.handler((request_t *)&req, (response_t *)&res);
-        }
       });
-
-      closeClientConnection(client);
+#ifdef CLIENT_NET_DEBUG
+      printf("\nWaiting for client reads...\n");
+#endif // CLIENT_NET_DEBUG
+      dispatch_resume(readSource);
     }
   });
 
+#ifdef CLIENT_NET_DEBUG
+  printf("\nWaiting for client connections...\n");
+#endif // CLIENT_NET_DEBUG
   dispatch_resume(acceptSource);
 }
 
