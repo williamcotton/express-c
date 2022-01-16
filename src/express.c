@@ -1043,6 +1043,55 @@ static response_t buildResponse(client_t client, request_t *req)
   return res;
 }
 
+#ifdef __linux__
+// TODO: built on something like poll/select
+static void initClientAcceptEventHandler()
+{
+  dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
+
+  dispatch_source_set_event_handler(acceptSource, ^{
+#ifdef CLIENT_NET_DEBUG
+    printf("\nRead event on servSock\n");
+#endif // CLIENT_NET_DEBUG
+    const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
+    for (unsigned long i = 0; i < numPendingConnections; i++)
+    {
+      client_t client = acceptClientConnection();
+      if (client.socket < 0)
+        continue;
+
+      request_t req = parseRequest(client);
+
+      if (req.method == NULL)
+      {
+        closeClientConnection(client);
+        return;
+      }
+
+      __block response_t res = buildResponse(client, &req);
+
+      runMiddleware(0, &req, &res, ^{
+        route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
+        if (routeHandler.handler == NULL)
+        {
+          res.status = 404;
+          res.sendf(errorHTML, req.path);
+        }
+        else
+        {
+          routeHandler.handler((request_t *)&req, (response_t *)&res);
+        }
+      });
+
+      closeClientConnection(client);
+    }
+  });
+#ifdef CLIENT_NET_DEBUG
+  printf("\nWaiting for client connections...\n");
+#endif // CLIENT_NET_DEBUG
+  dispatch_resume(acceptSource);
+}
+#elif __MACH__
 static void initClientAcceptEventHandler()
 {
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
@@ -1100,6 +1149,7 @@ static void initClientAcceptEventHandler()
 #endif // CLIENT_NET_DEBUG
   dispatch_resume(acceptSource);
 }
+#endif
 
 middlewareHandler expressStatic(char *path)
 {
