@@ -12,6 +12,14 @@
 #define PORT 3000
 #endif // !PORT
 
+typedef int (^filterCallback)(void *item);
+typedef void (^eachCallback)(void *item);
+
+typedef struct collection_t
+{
+  void (^each)(eachCallback);
+} collection_t;
+
 typedef struct todo_t
 {
   int id;
@@ -29,6 +37,8 @@ typedef struct todo_store_t
   todo_t * (^find)(int id);
   void (^update)(int id, todo_t *todo);
   void (^delete)(int id);
+  collection_t * (^all)();
+  collection_t * (^filter)(filterCallback);
 } todo_store_t;
 
 middlewareHandler todoStoreMiddleware()
@@ -82,6 +92,31 @@ middlewareHandler todoStoreMiddleware()
         return (todo_t *)hash_get(todoStore->store, key);
       });
 
+      todoStore->all = Block_copy(^() {
+        collection_t *collection = malloc(sizeof(collection_t));
+        collection->each = Block_copy(^(eachCallback callback) {
+          hash_each(todoStore->store, {
+            todo_t *todo = val;
+            callback(todo);
+          });
+        });
+        return collection;
+      });
+
+      todoStore->filter = Block_copy(^(filterCallback fCb) {
+        collection_t *collection = malloc(sizeof(collection_t));
+        collection->each = Block_copy(^(eachCallback eCb) {
+          hash_each(todoStore->store, {
+            todo_t *todo = val;
+            if (fCb(todo))
+            {
+              eCb(todo);
+            }
+          });
+        });
+        return collection;
+      });
+
       req->session->set("todoStore", todoStore);
     }
 
@@ -111,23 +146,26 @@ int main()
     cJSON_AddStringToObject(json, "filterActive", strcmp(filter, "active") == 0 ? "selected" : "");
     cJSON_AddStringToObject(json, "filterCompleted", strcmp(filter, "completed") == 0 ? "selected" : "");
 
-    int completedCount = 0;
-    int total = 0;
+    __block int completedCount = 0;
+    __block int total = 0;
 
     cJSON *todos = cJSON_AddArrayToObject(json, "todos");
 
     todo_store_t *todoStore = req->m("todoStore");
-    hash_each(todoStore->store, {
-      todo_t *todo = (todo_t *)val;
+
+    collection_t *todosCollection = todoStore->filter(^(void *item) {
+      todo_t *todo = (todo_t *)item;
       total++;
       if (todo->completed)
         completedCount++;
-      if (strcmp(filter, "all") == 0 ||
-          (strcmp(filter, "active") == 0 && !todo->completed) ||
-          (strcmp(filter, "completed") == 0 && todo->completed))
-      {
-        cJSON_AddItemToArray(todos, todo->toJSON());
-      }
+      return strcmp(filter, "all") == 0 ||
+             (strcmp(filter, "active") == 0 && !todo->completed) ||
+             (strcmp(filter, "completed") == 0 && todo->completed);
+    });
+
+    todosCollection->each(^(void *item) {
+      todo_t *todo = item;
+      cJSON_AddItemToArray(todos, todo->toJSON());
     });
 
     int uncompletedCount = total - completedCount;
@@ -171,13 +209,17 @@ int main()
 
   app.post("/todo_clear_all_completed", ^(UNUSED request_t *req, response_t *res) {
     todo_store_t *todoStore = req->m("todoStore");
-    hash_each(todoStore->store, {
-      todo_t *todo = (todo_t *)val;
-      if (todo->completed)
-      {
-        todoStore->delete (todo->id);
-      }
+
+    collection_t *todosCollection = todoStore->filter(^(void *item) {
+      todo_t *todo = item;
+      return todo->completed;
     });
+
+    todosCollection->each(^(void *item) {
+      todo_t *todo = item;
+      todoStore->delete (todo->id);
+    });
+
     res->redirect("back");
   });
 
