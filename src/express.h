@@ -23,6 +23,13 @@ typedef struct cookie_opts_t
   int httpOnly;
 } cookie_opts_t;
 
+typedef struct param_match_t
+{
+  char *regexRoute;
+  char **keys;
+  int count;
+} param_match_t;
+
 typedef struct request_t
 {
   char *path;
@@ -43,6 +50,7 @@ typedef struct request_t
   char * (^query)(char *queryKey);
   void *headersHash;
   char * (^get)(char *headerKey);
+  param_match_t *paramMatch;
   void *paramsHash;
   char **paramValues;
   char * (^params)(char *paramKey);

@@ -217,13 +217,6 @@ typedef struct client_t
   char *ip;
 } client_t;
 
-typedef struct param_match_t
-{
-  char *regexRoute;
-  char **keys;
-  int count;
-} param_match_t;
-
 param_match_t *paramMatch(char *route)
 {
   param_match_t *pm = malloc(sizeof(param_match_t));
@@ -287,7 +280,7 @@ param_match_t *paramMatch(char *route)
 
   regfree(&regexCompiled);
 
-  pm->regexRoute = malloc(strlen(regexRoute) + 1);
+  pm->regexRoute = malloc(sizeof(char) * (strlen(regexRoute) + 1));
   strcpy(pm->regexRoute, regexRoute);
 
   return pm;
@@ -653,6 +646,7 @@ static setCookie cookieFactory(response_t *res)
     char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieString) + 1));
     strcpy(valueWithOptions, value);
     strcat(valueWithOptions, cookieString);
+    free(cookieString);
     return hash_set(res->cookiesHash, key, valueWithOptions);
   });
 }
@@ -741,12 +735,12 @@ char *matchFilepath(request_t *req, char *path)
   {
     char *fileName = buffer + pmatch[1].rm_so;
     fileName[pmatch[1].rm_eo - pmatch[1].rm_so] = 0;
-    char *file_path = malloc(sizeof(char) * (strlen(fileName) + strlen(".//") + strlen(path) + 1));
-    sprintf(file_path, "./%s/%s", path, fileName);
+    char *filePath = malloc(sizeof(char) * (strlen(fileName) + strlen(".//") + strlen(path) + 1));
+    sprintf(filePath, "./%s/%s", path, fileName);
     regfree(&regex);
     free(buffer);
     free(pattern);
-    return file_path;
+    return filePath;
   }
   else
   {
@@ -864,10 +858,33 @@ static void freeMiddlewares()
   free(middlewares);
 }
 
+static void paramMatchFree(param_match_t *paramMatch)
+{
+  for (int i = 0; i < paramMatch->count; i++)
+  {
+    free(paramMatch->keys[i]);
+  }
+  free(paramMatch->keys);
+  free(paramMatch->regexRoute);
+}
+
+static void freeRouteHandlers()
+{
+  for (int i = 0; i < routeHandlerCount; i++)
+  {
+    if (routeHandlers[i].regex)
+    {
+      paramMatchFree(routeHandlers[i].paramMatch);
+    }
+    Block_release(routeHandlers[i].handler);
+  }
+  free(routeHandlers);
+}
+
 static void closeServer()
 {
   printf("\nClosing server...\n");
-  free(routeHandlers);
+  freeRouteHandlers();
   freeMiddlewares();
   close(servSock);
   dispatch_release(serverQueue);
@@ -940,20 +957,22 @@ static request_t parseRequest(client_t client)
                                    &minorVersion, headers, &numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
+      // TODO: move this out of the loop
       req.headersHash = hash_new();
       for (size_t i = 0; i != numHeaders; ++i)
       {
-        char *key = malloc(headers[i].name_len + 1);
+        char *key = malloc(sizeof(char) * (headers[i].name_len + 1)); // leak?
         sprintf(key, "%.*s", (int)headers[i].name_len, headers[i].name);
-        char *value = malloc(headers[i].value_len + 1);
+        char *value = malloc(sizeof(char) * (headers[i].value_len + 1)); // leak?
         sprintf(value, "%.*s", (int)headers[i].value_len, headers[i].value);
         hash_set(req.headersHash, key, value);
       }
 
-      req.method = malloc(methodLen + 1);
+      req.method = malloc(sizeof(char) * (methodLen + 1));
       memcpy(req.method, method, methodLen);
       req.method[methodLen] = '\0';
 
+      // TODO: loop read while checking against content-length
       char *contentLength = hash_get(req.headersHash, "Content-Length");
       if (method[0] == 'P' && parseBytes == readBytes && contentLength[0] != '0')
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
@@ -969,7 +988,7 @@ static request_t parseRequest(client_t client)
 
   req.rawRequest = buffer;
 
-  req.url = malloc(urlLen + 1);
+  req.url = malloc(sizeof(char) * (urlLen + 1));
   memcpy(req.url, url, urlLen);
   req.url[urlLen] = '\0';
 
@@ -980,14 +999,14 @@ static request_t parseRequest(client_t client)
   if (queryStringStart)
   {
     int queryStringLen = strlen(queryStringStart + 1);
-    req.queryString = malloc(queryStringLen + 1);
+    req.queryString = malloc(sizeof(char) * (queryStringLen + 1));
     memcpy(req.queryString, queryStringStart + 1, queryStringLen);
     req.queryString[queryStringLen] = '\0';
     *queryStringStart = '\0';
     parseQueryString(req.queryHash, req.queryString);
   }
 
-  req.path = malloc(strlen(copy) + 1);
+  req.path = malloc(sizeof(char) * (strlen(copy) + 1));
   memcpy(req.path, copy, strlen(copy));
   req.path[strlen(copy)] = '\0';
 
@@ -1018,23 +1037,22 @@ static route_handler_t matchRouteHandler(request_t *req)
   {
     if (strcmp(routeHandlers[i].method, req->method) != 0)
       continue;
-    param_match_t *pm = routeHandlers[i].paramMatch;
-    if (pm != NULL)
+    req->paramMatch = routeHandlers[i].paramMatch;
+    if (req->paramMatch != NULL)
     {
-      char *values[pm->count];
-      req->paramValues = values;
-      for (int j = 0; j < pm->count; j++)
+      req->paramValues = malloc(sizeof(char *) * req->paramMatch->count);
+      for (int j = 0; j < req->paramMatch->count; j++)
       {
-        values[j] = NULL;
+        req->paramValues[j] = NULL;
       }
       int match = 0;
-      routeMatch(req->path, pm, req->paramValues, &match);
+      routeMatch(req->path, req->paramMatch, req->paramValues, &match);
       if (match)
       {
         req->paramsHash = hash_new();
-        for (int k = 0; k < pm->count; k++)
+        for (int k = 0; k < req->paramMatch->count; k++)
         {
-          hash_set(req->paramsHash, pm->keys[k], req->paramValues[k]);
+          hash_set(req->paramsHash, req->paramMatch->keys[k], req->paramValues[k]);
         }
         req->params = reqParamFactory(req);
         match = 0;
@@ -1056,6 +1074,8 @@ static void freeRequest(request_t req)
   free(req.path);
   free(req.url);
   free(req.session);
+  free(req.paramMatch);
+  free(req.paramValues);
   if (strlen(req.queryString) > 0)
     free(req.queryString);
   hash_free(req.queryHash);
@@ -1306,7 +1326,7 @@ middlewareHandler expressStatic(char *path)
 
 char *generateUuid()
 {
-  char *guid = malloc(37);
+  char *guid = malloc(sizeof(char) * 37);
   if (guid == NULL)
   {
     return NULL;
@@ -1339,7 +1359,7 @@ middlewareHandler memSessionMiddlewareFactory()
     }
     else
     {
-      req->session->store = hash_new();
+      req->session->store = hash_new(); // is not being freed
       dispatch_sync(memSessionQueue, ^{
         hash_set(memSessionStore, sessionUuid, req->session->store);
       });
