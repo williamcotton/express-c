@@ -6,8 +6,9 @@ endif
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 DEV_CFLAGS = -g -O0 -fdiagnostics-color=always -fno-omit-frame-pointer -fno-optimize-sibling-calls -DDEPLOY_ENV=$(DEPLOY_ENV)
+TEST_CFLAGS = -Werror -DTEST_ENV=$(TEST_ENV)
 SRC = src/express.c
-SRC += $(wildcard deps/*/*.c)
+SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
 BUILD_DIR = build
 PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
@@ -29,7 +30,7 @@ $(TARGETS):
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS)
+	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS)
 	$(BUILD_DIR)/$@
 
 clean:

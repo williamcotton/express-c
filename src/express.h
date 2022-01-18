@@ -3,6 +3,8 @@
 
 #define UNUSED __attribute__((unused))
 
+char *generateUuid();
+
 typedef struct session_t
 {
   char *uuid;

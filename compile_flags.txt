@@ -4,7 +4,6 @@
 -fblocks
 -Wall
 -Wextra
--Werror
 -Wformat
 -Wshadow
 -Wdouble-promotion

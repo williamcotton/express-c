@@ -561,8 +561,10 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
     }
     char *response = malloc(sizeof(char) * (strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: \r\n\r\n") + 20));
     // TODO: mimetype
+    // TODO: use res.set() and refactor header building
     sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: %zu\r\n\r\n", fileSize(path));
     write(client.socket, response, strlen(response));
+    // TODO: use sendfile
     char *buffer = malloc(4096);
     size_t bytesRead = fread(buffer, 1, 4096, file);
     while (bytesRead > 0)
@@ -1290,7 +1292,7 @@ middlewareHandler expressStatic(char *path)
   });
 }
 
-static char *generateUuid()
+char *generateUuid()
 {
   char *guid = malloc(37);
   if (guid == NULL)

@@ -29,7 +29,7 @@
 			{{/noTodos}}
 			{{^noTodos}}
 			<footer class="footer">
-				<span class="todo-count"><strong>{{uncompletedCount}}</strong> item{{#allCompleted}}s{{/allCompleted}} left</span>
+				<span class="todo-count"><strong>{{uncompletedCount}}</strong> item{{^hasUncompletedSingular}}s{{/hasUncompletedSingular}} left</span>
 				<ul class="filters">
 					<li>
 						<a class="{{filterAll}}" href="/">All</a>
