@@ -160,16 +160,16 @@ middlewareHandler todoStoreMiddleware()
 
     req->mSet("todoStore", todoStore);
 
-    cleanup(Block_copy(^() {
-      printf("cleanup todoStoreMiddleware\n");
-      // Block_release(todoStore->filter);
-      // Block_release(todoStore->new);
-      // Block_release(todoStore->update);
-      // Block_release(todoStore->all);
-      // Block_release(todoStore->delete);
-      // Block_release(todoStore->create);
-      // Block_release(todoStore->find);
-      // free(todoStore);
+    cleanup(Block_copy(^(request_t *finishedReq) {
+      todo_store_t *ts = finishedReq->m("todoStore");
+      Block_release(ts->new);
+      Block_release(ts->create);
+      Block_release(ts->update);
+      Block_release(ts->delete);
+      Block_release(ts->find);
+      Block_release(ts->all);
+      Block_release(ts->filter);
+      free(ts);
     }));
 
     next();

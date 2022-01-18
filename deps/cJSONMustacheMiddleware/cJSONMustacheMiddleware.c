@@ -118,8 +118,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
       free(template);
       cJSON_Delete(json);
     };
-    cleanup(Block_copy(^() {
-      printf("Cleanup cJSONMustacheMiddleware\n");
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
     next();
   });

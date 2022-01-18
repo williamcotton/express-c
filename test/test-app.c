@@ -111,7 +111,7 @@ int main()
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super test";
     req->mSet("super", super);
-    cleanup(Block_copy(^(){
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
     next();
   });

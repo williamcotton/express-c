@@ -1092,12 +1092,12 @@ static void freeRequest(request_t req)
 {
   for (int i = 1; i <= req.middlewareStackIndex; i++)
   {
-    dispatch_sync(cleanupBlocksQueue, ^{
+    // dispatch_sync(cleanupBlocksQueue, ^{
 #ifdef MIDDLEWARE_DEBUG
-      printf("Freeing middleware %d\n", i);
+    printf("Freeing middleware %d\n", i);
 #endif // MIDDLEWARE_DEBUG
-      cleanupBlocks[i]();
-    });
+    cleanupBlocks[i]((request_t *)&req);
+    // });
   }
   free(req.method);
   free(req.path);
@@ -1402,8 +1402,12 @@ middlewareHandler memSessionMiddlewareFactory()
       hash_set(req->session->store, key, value);
     };
 
-    cleanup(Block_copy(^(){
-        // printf("\nCleaning up session store\n");
+<<<<<<< HEAD
+    cleanup(Block_copy(^() {
+=======
+        cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+>>>>>>> 60327f5 (add middleware cleanup handlers)
+      // printf("\nCleaning up session store\n");
     }));
 
     next();

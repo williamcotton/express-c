@@ -94,7 +94,7 @@ typedef struct error_t
   char *message;
 } error_t;
 
-typedef void (^cleanupHandler)();
+typedef void (^cleanupHandler)(request_t *finishedReq);
 typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler));
 typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());      // TODO: add errorHandler

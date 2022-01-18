@@ -54,11 +54,10 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
       res->cookie("sessionStore", sessionStoreString, (cookie_opts_t){.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = 1});
     };
 
-    cleanup(Block_copy(^{
-      printf("Cleanup cJSONCookieSessionMiddleware\n");
-      // cJSON_Delete(req->session->store);
-      // Block_release(req->session->get);
-      // Block_release(req->session->set);
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+      cJSON_Delete(finishedReq->session->store);
+      Block_release(finishedReq->session->get);
+      Block_release(finishedReq->session->set);
     }));
 
     next();
