@@ -5,7 +5,7 @@ endif
 
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-DEV_CFLAGS = -g -O0 -fdiagnostics-color=always -fno-omit-frame-pointer -fno-optimize-sibling-calls -DDEPLOY_ENV=$(DEPLOY_ENV)
+DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror -DTEST_ENV=$(TEST_ENV)
 SRC = src/express.c
 SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
@@ -18,19 +18,17 @@ else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined
 endif
 
-CFLAGS += $(DEV_CFLAGS)
-
 all: $(TARGETS)
 
 .PHONY: $(TARGETS)
 $(TARGETS):
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS)
+	clang -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS)
 
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS)
+	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
 clean:
@@ -55,3 +53,7 @@ test-tape:
 	mkdir -p $(BUILD_DIR)
 	clang -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
+
+$(TARGETS)-build-leaks:
+	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS)
+	codesign -s - -v -f --entitlements debug.plist build/$(TARGETS)

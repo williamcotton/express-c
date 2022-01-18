@@ -590,7 +590,6 @@ static setBlock setFactory(response_t *res)
 typedef char * (^getBlock)(char *headerKey);
 static getBlock getFactory(response_t *res)
 {
-  res->headersHash = hash_new();
   return Block_copy(^(char *headerKey) {
     return (char *)hash_get(res->headersHash, headerKey);
   });
@@ -729,25 +728,31 @@ char *matchFilepath(request_t *req, char *path)
   regmatch_t pmatch[2];
   char *pattern = malloc(sizeof(char) * (strlen(path) + strlen("//(.*)") + 1));
   sprintf(pattern, "/%s/(.*)", path);
-  char *bufferfer = malloc(sizeof(char) * (strlen(req->url) + 1));
-  strcpy(bufferfer, req->path);
+  char *buffer = malloc(sizeof(char) * (strlen(req->url) + 1));
+  strcpy(buffer, req->path);
   reti = regcomp(&regex, pattern, REG_EXTENDED);
   if (reti)
   {
     fprintf(stderr, "Could not compile regex\n");
     exit(6);
   }
-  reti = regexec(&regex, bufferfer, nmatch, pmatch, 0);
+  reti = regexec(&regex, buffer, nmatch, pmatch, 0);
   if (reti == 0)
   {
-    char *fileName = bufferfer + pmatch[1].rm_so;
+    char *fileName = buffer + pmatch[1].rm_so;
     fileName[pmatch[1].rm_eo - pmatch[1].rm_so] = 0;
     char *file_path = malloc(sizeof(char) * (strlen(fileName) + strlen(".//") + strlen(path) + 1));
     sprintf(file_path, "./%s/%s", path, fileName);
+    regfree(&regex);
+    free(buffer);
+    free(pattern);
     return file_path;
   }
   else
   {
+    regfree(&regex);
+    free(buffer);
+    free(pattern);
     return NULL;
   }
 }
@@ -849,11 +854,21 @@ static void initServerSocket()
   }
 }
 
+static void freeMiddlewares()
+{
+  for (int i = 0; i < middlewareCount; i++)
+  {
+    free(middlewares[i].path);
+    Block_release(middlewares[i].handler);
+  }
+  free(middlewares);
+}
+
 static void closeServer()
 {
   printf("\nClosing server...\n");
   free(routeHandlers);
-  free(middlewares);
+  freeMiddlewares();
   close(servSock);
   dispatch_release(serverQueue);
   exit(EXIT_SUCCESS);
@@ -1033,6 +1048,44 @@ static route_handler_t matchRouteHandler(request_t *req)
     }
   }
   return (route_handler_t){.method = NULL, .path = NULL, .handler = NULL};
+}
+
+static void freeRequest(request_t req)
+{
+  free(req.method);
+  free(req.path);
+  free(req.url);
+  free(req.session);
+  if (strlen(req.queryString) > 0)
+    free(req.queryString);
+  hash_free(req.queryHash);
+  hash_free(req.headersHash);
+  hash_free(req.paramsHash);
+  hash_free(req.bodyHash);
+  hash_free(req.cookiesHash);
+  hash_free(req.middlewareHash);
+  Block_release(req.get);
+  Block_release(req.query);
+  Block_release(req.params);
+  Block_release(req.body);
+  Block_release(req.cookie);
+  Block_release(req.m);
+  Block_release(req.mSet);
+}
+
+static void freeResponse(response_t res)
+{
+  hash_free(res.headersHash);
+  hash_free(res.cookiesHash);
+  Block_release(res.send);
+  Block_release(res.sendFile);
+  Block_release(res.sendf);
+  Block_release(res.set);
+  Block_release(res.get);
+  Block_release(res.cookie);
+  Block_release(res.clearCookie);
+  Block_release(res.location);
+  Block_release(res.redirect);
 }
 
 static void closeClientConnection(client_t client)
@@ -1242,6 +1295,9 @@ static void initClientAcceptEventHandler()
         if (req.method == NULL)
         {
           closeClientConnection(client);
+          freeRequest(req);
+          dispatch_source_cancel(readSource);
+          dispatch_release(readSource);
           return;
         }
 
@@ -1261,6 +1317,10 @@ static void initClientAcceptEventHandler()
         });
 
         closeClientConnection(client);
+        freeRequest(req);
+        freeResponse(res);
+        dispatch_source_cancel(readSource);
+        dispatch_release(readSource);
       });
 #ifdef CLIENT_NET_DEBUG
       printf("\nWaiting for client reads...\n");
@@ -1307,7 +1367,7 @@ char *generateUuid()
 
 middlewareHandler memSessionMiddlewareFactory()
 {
-  __block hash_t *memSessionStore = hash_new();
+  __block hash_t *memSessionStore = hash_new(); // is not being freed
 
   dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
 
