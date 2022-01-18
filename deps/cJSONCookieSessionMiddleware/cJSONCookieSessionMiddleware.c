@@ -43,6 +43,7 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
       if (item == NULL)
       {
         cJSON_AddItemToObject(req->session->store, key, value);
+        cJSON_Delete(item);
       }
       else
       {

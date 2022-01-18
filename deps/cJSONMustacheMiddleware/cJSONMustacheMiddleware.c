@@ -53,13 +53,14 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
       fseek(templateFd, 0, SEEK_SET);
       template = malloc(length + 1);
       fread(template, 1, length, templateFd);
-      fclose(templateFd);
       template[length] = '\0';
+      fclose(templateFd);
     }
+    free(templatePath);
     return template;
   };
 
-  void (^loadPartials)(cJSON *data, char *templateFile) = ^(UNUSED cJSON *data, char *templateFile) {
+  void (^loadPartials)(cJSON *data, char *templateFile) = ^(cJSON *data, char *templateFile) {
     UNUSED struct dirent *de;
     DIR *dr = opendir(viewsPath);
     while ((de = readdir(dr)) != NULL)
@@ -71,6 +72,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
         char *partialNameSplit = strtok(partialName, ".");
         cJSON_AddStringToObject(data, partialNameSplit, partial);
         free(partial);
+        free(partialName);
       }
     }
     closedir(dr);
@@ -99,6 +101,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
         if (result == 0)
         {
           res->send(renderedTemplate);
+          free(renderedTemplate);
         }
         else
         {
@@ -111,6 +114,9 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
         res->status = 500;
         res->send("Template file not found");
       }
+      free(templateFile);
+      free(template);
+      cJSON_Delete(json);
     };
     next();
   });

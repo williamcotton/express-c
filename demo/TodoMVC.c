@@ -61,6 +61,21 @@ int main()
     total == 0 ? cJSON_AddTrueToObject(json, "noTodos") : cJSON_AddFalseToObject(json, "noTodos");
 
     res->render("index", json);
+
+    cJSON_Delete(req->session->store);
+    Block_release(req->session->get);
+    Block_release(req->session->set);
+    Block_release(todoStore->filter);
+    Block_release(todoStore->new);
+    Block_release(todoStore->update);
+    Block_release(todoStore->all);
+    Block_release(todoStore->delete);
+    Block_release(todoStore->create);
+    Block_release(todoStore->find);
+    Block_release(todosCollection->each);
+
+    free(todosCollection);
+    free(todoStore);
   });
 
   app.post("/todo", ^(request_t *req, response_t *res) {
