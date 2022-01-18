@@ -1187,6 +1187,7 @@ static void initClientAcceptEventHandler()
         if (req.method == NULL)
         {
           closeClientConnection(client);
+          freeRequest(req);
           return;
         }
 
@@ -1206,6 +1207,8 @@ static void initClientAcceptEventHandler()
         });
 
         closeClientConnection(client);
+        freeRequest(req);
+        freeResponse(res);
         clients[i].socket = 0;
       }
     }
