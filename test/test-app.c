@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <Block.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 #include "tape.h"
@@ -106,10 +107,12 @@ int main()
     char *uuid;
   } super_t;
 
-  app.use(^(request_t *req, UNUSED response_t *res, void (^next)()) {
+  app.use(^(request_t *req, UNUSED response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super test";
     req->mSet("super", super);
+    cleanup(Block_copy(^(){
+    }));
     next();
   });
 

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include "todo.h"
@@ -28,7 +29,7 @@ static todo_t *buildTodoFromJson(cJSON *json)
 
 middlewareHandler todoStoreMiddleware()
 {
-  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)()) {
+  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     todo_store_t *todoStore = malloc(sizeof(todo_store_t));
     cJSON *todoStoreJson = req->session->get("todoStore");
 
@@ -158,6 +159,18 @@ middlewareHandler todoStoreMiddleware()
     req->session->set("todoStore", todoStore->store);
 
     req->mSet("todoStore", todoStore);
+
+    cleanup(Block_copy(^() {
+      printf("cleanup todoStoreMiddleware\n");
+      // Block_release(todoStore->filter);
+      // Block_release(todoStore->new);
+      // Block_release(todoStore->update);
+      // Block_release(todoStore->all);
+      // Block_release(todoStore->delete);
+      // Block_release(todoStore->create);
+      // Block_release(todoStore->find);
+      // free(todoStore);
+    }));
 
     next();
   });

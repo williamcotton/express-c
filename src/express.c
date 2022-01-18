@@ -18,6 +18,7 @@
 #include "express.h"
 
 // #define CLIENT_NET_DEBUG
+// #define MIDDLEWARE_DEBUG
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -711,8 +712,10 @@ static route_handler_t *routeHandlers = NULL;
 static int routeHandlerCount = 0;
 static middleware_t *middlewares = NULL;
 static int middlewareCount = 0;
+cleanupHandler *cleanupBlocks = NULL;
 static int servSock = -1;
 static dispatch_queue_t serverQueue = NULL;
+static dispatch_queue_t cleanupBlocksQueue = NULL;
 
 char *matchFilepath(request_t *req, char *path)
 {
@@ -773,21 +776,36 @@ static void addRouteHandler(char *method, char *path, requestHandler handler)
 static void initMiddlewareHandlers()
 {
   middlewares = malloc(sizeof(middleware_t));
+  cleanupBlocks = malloc(sizeof(cleanupHandler));
 }
 
 static void addMiddlewareHandler(middlewareHandler handler)
 {
   middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
+  cleanupBlocks = realloc(cleanupBlocks, sizeof(cleanupHandler) * (middlewareCount + 1));
   middlewares[middlewareCount++] = (middleware_t){.handler = handler};
+  cleanupBlocksQueue = dispatch_queue_create("cleanupBlocksQueue", NULL);
 }
 
 static void runMiddleware(int index, request_t *req, response_t *res, void (^next)())
 {
   if (index < middlewareCount)
   {
-    middlewares[index].handler(req, res, ^{
-      runMiddleware(index + 1, req, res, next);
-    });
+    req->middlewareStackIndex = index;
+#ifdef MIDDLEWARE_DEBUG
+    printf("Running middleware %d\n", index);
+#endif // MIDDLEWARE_DEBUG
+    void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
+#ifdef MIDDLEWARE_DEBUG
+      printf("Adding cleanup block %d\n", index);
+#endif // MIDDLEWARE_DEBUG
+      cleanupBlocks[index] = cleanupBlock;
+    };
+    middlewares[index].handler(
+        req, res, ^{
+          runMiddleware(index + 1, req, res, next);
+        },
+        cleanup);
   }
   else
   {
@@ -1018,6 +1036,8 @@ static request_t parseRequest(client_t client)
   req.m = reqMiddlewareFactory(&req);
   req.mSet = reqMiddlewareSetFactory(&req);
 
+  req.middlewareStackIndex = 0;
+
   char *_method = req.body("_method");
   if (_method)
   {
@@ -1070,6 +1090,15 @@ static route_handler_t matchRouteHandler(request_t *req)
 
 static void freeRequest(request_t req)
 {
+  for (int i = 1; i <= req.middlewareStackIndex; i++)
+  {
+    dispatch_sync(cleanupBlocksQueue, ^{
+#ifdef MIDDLEWARE_DEBUG
+      printf("Freeing middleware %d\n", i);
+#endif // MIDDLEWARE_DEBUG
+      cleanupBlocks[i]();
+    });
+  }
   free(req.method);
   free(req.path);
   free(req.url);
@@ -1310,7 +1339,7 @@ static void initClientAcceptEventHandler()
 
 middlewareHandler expressStatic(char *path)
 {
-  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
+  return Block_copy(^(request_t *req, response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
     char *filePath = matchFilepath(req, path);
     if (filePath != NULL)
     {
@@ -1339,11 +1368,11 @@ char *generateUuid()
 
 middlewareHandler memSessionMiddlewareFactory()
 {
-  __block hash_t *memSessionStore = hash_new(); // is not being freed
+  __block hash_t *memSessionStore = hash_new();
 
   dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
 
-  return Block_copy(^(request_t *req, response_t *res, void (^next)()) {
+  return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     char *sessionUuid = req->cookie("sessionUuid");
     if (sessionUuid == NULL)
     {
@@ -1372,6 +1401,10 @@ middlewareHandler memSessionMiddlewareFactory()
     req->session->set = ^(char *key, void *value) {
       hash_set(req->session->store, key, value);
     };
+
+    cleanup(Block_copy(^(){
+        // printf("\nCleaning up session store\n");
+    }));
 
     next();
   });

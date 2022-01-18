@@ -78,7 +78,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
     closedir(dr);
   };
 
-  return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)()) {
+  return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
     res->render = ^(void *templateName, void *data) {
       cJSON *json = data;
       char *templateFile;
@@ -118,6 +118,9 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
       free(template);
       cJSON_Delete(json);
     };
+    cleanup(Block_copy(^() {
+      printf("Cleanup cJSONMustacheMiddleware\n");
+    }));
     next();
   });
 }

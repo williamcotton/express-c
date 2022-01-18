@@ -57,6 +57,7 @@ typedef struct request_t
   char *bodyString;
   void *bodyHash;
   char * (^body)(char *bodyKey);
+  int middlewareStackIndex;
   void *middlewareHash;
   void * (^m)(char *middlewareKey);
   void (^mSet)(char *middlewareKey, void *middleware);
@@ -93,8 +94,9 @@ typedef struct error_t
   char *message;
 } error_t;
 
+typedef void (^cleanupHandler)();
 typedef void (^requestHandler)(request_t *req, response_t *res);
-typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)());
+typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler));
 typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());      // TODO: add errorHandler
 typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), char *paramValue); // TODO: add paramHandler
 
