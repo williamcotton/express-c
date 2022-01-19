@@ -350,13 +350,6 @@ static getHashBlock reqQueryFactory(request_t *req)
   });
 }
 
-static getHashBlock reqGetHeaderFactory(request_t *req)
-{
-  return Block_copy(^(char *key) {
-    return (char *)hash_get(req->headersHash, key);
-  });
-}
-
 static getHashBlock reqParamFactory(request_t *req)
 {
   return Block_copy(^(char *key) {
@@ -373,7 +366,7 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
 static getHashBlock reqCookieFactory(UNUSED request_t *req)
 {
   req->cookiesHash = hash_new();
-  char *cookiesString = hash_get(req->headersHash, "Cookie");
+  char *cookiesString = req->get("Cookie");
   if (cookiesString != NULL)
   {
     char *cookie = strtok(cookiesString, ";");
@@ -949,8 +942,7 @@ static request_t parseRequest(client_t client)
   memset(buffer, 0, sizeof(buffer));
   char *method, *url;
   int parseBytes, minorVersion;
-  struct phr_header headers[100];
-  size_t bufferLen = 0, prevBufferLen = 0, methodLen, urlLen, numHeaders;
+  size_t bufferLen = 0, prevBufferLen = 0, methodLen, urlLen;
   ssize_t readBytes;
 
   // TODO: timeout support
@@ -968,29 +960,30 @@ static request_t parseRequest(client_t client)
       return req;
     prevBufferLen = bufferLen;
     bufferLen += readBytes;
-    numHeaders = sizeof(headers) / sizeof(headers[0]);
+    req.numHeaders = sizeof(req.headers) / sizeof(req.headers[0]);
     parseBytes = phr_parse_request(buffer, bufferLen, (const char **)&method, &methodLen, (const char **)&url, &urlLen,
-                                   &minorVersion, headers, &numHeaders, prevBufferLen);
+                                   &minorVersion, req.headers, &req.numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
-      // TODO: move this out of the loop
-      req.headersHash = hash_new();
-      for (size_t i = 0; i != numHeaders; ++i)
-      {
-        char *key = malloc(sizeof(char) * (headers[i].name_len + 1)); // leak?
-        sprintf(key, "%.*s", (int)headers[i].name_len, headers[i].name);
-        char *value = malloc(sizeof(char) * (headers[i].value_len + 1)); // leak?
-        sprintf(value, "%.*s", (int)headers[i].value_len, headers[i].value);
-        hash_set(req.headersHash, key, value);
-      }
+      req.get = ^(char *headerKey) {
+        for (size_t i = 0; i != req.numHeaders; ++i)
+        {
 
-      req.method = malloc(sizeof(char) * (methodLen + 1));
-      memcpy(req.method, method, methodLen);
-      req.method[methodLen] = '\0';
-
-      // TODO: loop read while checking against content-length
-      char *contentLength = hash_get(req.headersHash, "Content-Length");
-      if (method[0] == 'P' && parseBytes == readBytes && contentLength[0] != '0')
+          char *key = malloc(sizeof(char) * (req.headers[i].name_len + 1));
+          sprintf(key, "%.*s", (int)req.headers[i].name_len, req.headers[i].name);
+          char *value = malloc(sizeof(char) * (req.headers[i].value_len + 1));
+          sprintf(value, "%.*s", (int)req.headers[i].value_len, req.headers[i].value);
+          if (strcasecmp(key, headerKey) == 0)
+          {
+            return value;
+          }
+          free(key);
+          free(value);
+        }
+        return (char *)NULL;
+      };
+      char *contentLength = req.get("Content-Length");
+      if (contentLength != NULL && parseBytes == readBytes && contentLength[0] != '0')
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
       break;
@@ -1003,6 +996,10 @@ static request_t parseRequest(client_t client)
   }
 
   req.rawRequest = buffer;
+
+  req.method = malloc(sizeof(char) * (methodLen + 1));
+  memcpy(req.method, method, methodLen);
+  req.method[methodLen] = '\0';
 
   req.url = malloc(sizeof(char) * (urlLen + 1));
   memcpy(req.url, url, urlLen);
@@ -1026,7 +1023,6 @@ static request_t parseRequest(client_t client)
   memcpy(req.path, copy, strlen(copy));
   req.path[strlen(copy)] = '\0';
 
-  req.get = reqGetHeaderFactory(&req);
   req.query = reqQueryFactory(&req);
   req.body = reqBodyFactory(&req);
   req.session = reqSessionFactory(&req);
@@ -1104,12 +1100,10 @@ static void freeRequest(request_t req)
   if (strlen(req.queryString) > 0)
     free(req.queryString);
   hash_free(req.queryHash);
-  hash_free(req.headersHash);
   hash_free(req.paramsHash);
   hash_free(req.bodyHash);
   hash_free(req.cookiesHash);
   hash_free(req.middlewareHash);
-  Block_release(req.get);
   Block_release(req.query);
   Block_release(req.params);
   Block_release(req.body);

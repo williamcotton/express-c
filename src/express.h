@@ -1,3 +1,5 @@
+#include <picohttpparser/picohttpparser.h>
+
 #ifndef EXPRESS_H
 #define EXPRESS_H
 
@@ -48,7 +50,8 @@ typedef struct request_t
   char *queryString;
   void *queryHash;
   char * (^query)(char *queryKey);
-  void *headersHash;
+  struct phr_header headers[100];
+  size_t numHeaders;
   char * (^get)(char *headerKey);
   param_match_t *paramMatch;
   void *paramsHash;
