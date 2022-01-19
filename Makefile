@@ -5,8 +5,10 @@ endif
 
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV)
 DEV_CFLAGS = -g -O0
-TEST_CFLAGS = -Werror -DTEST_ENV=$(TEST_ENV)
+PROD_CFLAGS = -Ofast
+TEST_CFLAGS = -Werror
 SRC = src/express.c
 SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
 BUILD_DIR = build
@@ -24,6 +26,10 @@ all: $(TARGETS)
 $(TARGETS):
 	mkdir -p $(BUILD_DIR)
 	clang -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS)
+
+$(TARGETS)-prod:
+	mkdir -p $(BUILD_DIR)
+	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS)
 
 .PHONY: test
 test:
