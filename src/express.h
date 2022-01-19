@@ -81,6 +81,8 @@ typedef struct response_t
   void (^set)(char *, char *);
   char * (^get)(char *);
   void *cookiesHash;
+  int cookieHeadersLength;
+  char cookieHeaders[4096];
   void (^cookie)(char *, char *, cookie_opts_t);
   void (^clearCookie)(char *, cookie_opts_t);
   void (^json)(char *, ...); // TODO: add res.json

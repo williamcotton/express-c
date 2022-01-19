@@ -363,7 +363,7 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
   return session;
 }
 
-static getHashBlock reqCookieFactory(UNUSED request_t *req)
+static getHashBlock reqCookieFactory(request_t *req)
 {
   req->cookiesHash = hash_new();
   char *cookiesString = req->get("Cookie");
@@ -389,7 +389,7 @@ static getHashBlock reqCookieFactory(UNUSED request_t *req)
     }
   }
 
-  return Block_copy(^(UNUSED char *key) {
+  return Block_copy(^(char *key) {
     return (char *)hash_get(req->cookiesHash, key);
   });
 }
@@ -484,22 +484,8 @@ static char *buildResponseString(char *body, response_t *res)
     customHeadersLen += headersLen;
   });
 
-  hash_each((hash_t *)res->cookiesHash, {
-    size_t headersLen = strlen(key) + strlen(val) + 16;
-    strncpy(customHeaders + customHeadersLen, "Set-Cookie", 10);
-    customHeaders[customHeadersLen + 10] = ':';
-    customHeaders[customHeadersLen + 11] = ' ';
-    strncpy(customHeaders + customHeadersLen + 12, key, strlen(key));
-    customHeaders[customHeadersLen + 12 + strlen(key)] = '=';
-    strncpy(customHeaders + customHeadersLen + 13 + strlen(key), val, strlen(val));
-    customHeaders[customHeadersLen + 13 + strlen(key) + strlen(val)] = ';';
-    customHeaders[customHeadersLen + 14 + strlen(key) + strlen(val)] = '\r';
-    customHeaders[customHeadersLen + 15 + strlen(key) + strlen(val)] = '\n';
-    customHeadersLen += headersLen;
-  });
-
-  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + customHeadersLen + 1));
-  sprintf(headers, "HTTP/1.1 %s\r\n%s\r\n", status, customHeaders);
+  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + customHeadersLen + res->cookieHeadersLength + 1));
+  sprintf(headers, "HTTP/1.1 %s\r\n%s%s\r\n", status, customHeaders, res->cookieHeaders);
 
   char *responseString = malloc(sizeof(char) * (strlen(headers) + strlen(body) + 1));
   strcpy(responseString, headers);
@@ -582,7 +568,7 @@ static getBlock getFactory(response_t *res)
   });
 }
 
-char *cookieStringFromOpts(UNUSED cookie_opts_t opts)
+static char *cookieOptsStringFromOpts(cookie_opts_t opts)
 {
   char cookieOptsString[1024];
   memset(cookieOptsString, 0, 1024);
@@ -635,13 +621,28 @@ typedef void (^setCookie)(char *cookieKey, char *cookieValue, cookie_opts_t opts
 static setCookie cookieFactory(response_t *res)
 {
   res->cookiesHash = hash_new();
+  memset(res->cookieHeaders, 0, sizeof(res->cookieHeaders));
+  res->cookieHeadersLength = 0;
   return Block_copy(^(char *key, char *value, cookie_opts_t opts) {
-    char *cookieString = cookieStringFromOpts(opts);
-    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieString) + 1)); // leak?
+    char *cookieOptsString = cookieOptsStringFromOpts(opts);
+    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieOptsString) + 1)); // leak?
     strcpy(valueWithOptions, value);
-    strcat(valueWithOptions, cookieString);
-    free(cookieString);
-    return hash_set(res->cookiesHash, key, valueWithOptions);
+    strcat(valueWithOptions, cookieOptsString);
+
+    size_t headersLen = strlen(key) + strlen(valueWithOptions) + 16;
+    strncpy(res->cookieHeaders + res->cookieHeadersLength, "Set-Cookie", 10);
+    res->cookieHeaders[res->cookieHeadersLength + 10] = ':';
+    res->cookieHeaders[res->cookieHeadersLength + 11] = ' ';
+    strncpy(res->cookieHeaders + res->cookieHeadersLength + 12, key, strlen(key));
+    res->cookieHeaders[res->cookieHeadersLength + 12 + strlen(key)] = '=';
+    strncpy(res->cookieHeaders + res->cookieHeadersLength + 13 + strlen(key), valueWithOptions, strlen(valueWithOptions));
+    res->cookieHeaders[res->cookieHeadersLength + 13 + strlen(key) + strlen(valueWithOptions)] = ';';
+    res->cookieHeaders[res->cookieHeadersLength + 14 + strlen(key) + strlen(valueWithOptions)] = '\r';
+    res->cookieHeaders[res->cookieHeadersLength + 15 + strlen(key) + strlen(valueWithOptions)] = '\n';
+    res->cookieHeadersLength += headersLen;
+
+    free(cookieOptsString);
+    free(valueWithOptions);
   });
 }
 
@@ -1329,8 +1330,12 @@ static void initClientAcceptEventHandler()
 
 middlewareHandler expressStatic(char *path)
 {
-  return Block_copy(^(request_t *req, response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+  return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     char *filePath = matchFilepath(req, path);
+
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+    }));
+
     if (filePath != NULL)
     {
       res->sendFile(filePath);
