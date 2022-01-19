@@ -20,10 +20,9 @@ static toJSON todoToJSON(todo_t *todo)
 static todo_t *buildTodoFromJson(cJSON *json)
 {
   todo_t *todo = malloc(sizeof(todo_t));
-  // TODO: check for NULL
-  todo->id = cJSON_GetObjectItem(json, "id")->valueint;
-  todo->title = cJSON_GetObjectItem(json, "title")->valuestring;
-  todo->completed = cJSON_GetObjectItem(json, "completed")->valueint;
+  todo->id = cJSON_GetObjectItem(json, "id") ? cJSON_GetObjectItem(json, "id")->valueint : 0;
+  todo->title = cJSON_GetObjectItem(json, "title") ? cJSON_GetObjectItem(json, "title")->valuestring : NULL;
+  todo->completed = cJSON_GetObjectItem(json, "completed") ? cJSON_GetObjectItem(json, "completed")->valueint : 0;
   todo->toJSON = todoToJSON(todo);
   return todo;
 }
@@ -46,10 +45,11 @@ middlewareHandler todoStoreMiddleware()
       cJSON *item;
       cJSON_ArrayForEach(item, todoStore->store)
       {
-        int id = cJSON_GetObjectItem(item, "id")->valueint;
-        if (id > maxId)
+        if (cJSON_GetObjectItem(item, "id"))
         {
-          maxId = id;
+          int id = cJSON_GetObjectItem(item, "id")->valueint;
+          if (id > maxId)
+            maxId = id;
         }
       }
       todoStore->count = maxId + 1;
