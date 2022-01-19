@@ -209,6 +209,7 @@ static void parseQueryString(hash_t *hash, char *string)
       }
     }
     curl_easy_cleanup(curl);
+    free(query);
   }
 }
 
