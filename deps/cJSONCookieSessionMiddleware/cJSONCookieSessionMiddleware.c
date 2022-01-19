@@ -7,14 +7,14 @@
 middlewareHandler cJSONCookieSessionMiddlewareFactory()
 {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
-    char *sessionUuid = req->cookie("sessionUuid");
-    if (sessionUuid == NULL)
+    if (req->cookie("sessionUuid") == NULL)
     {
-      sessionUuid = generateUuid();
+      char *sessionUuid = generateUuid();
       cookie_opts_t opts = {.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = 1};
       res->cookie("sessionUuid", sessionUuid, opts);
+      free(sessionUuid);
     }
-    req->session->uuid = sessionUuid;
+    req->session->uuid = req->cookie("sessionUuid");
 
     if (req->cookie("sessionStore"))
     {
@@ -32,7 +32,9 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
     else
     {
       req->session->store = cJSON_CreateObject();
-      res->cookie("sessionStore", cJSON_Print(req->session->store), (cookie_opts_t){.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = 1});
+      char *sessionStoreString = cJSON_Print(req->session->store);
+      res->cookie("sessionStore", sessionStoreString, (cookie_opts_t){.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = 1});
+      free(sessionStoreString);
     }
 
     req->session->get = ^(char *key) {
@@ -52,6 +54,7 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
       }
       char *sessionStoreString = cJSON_PrintUnformatted(req->session->store);
       res->cookie("sessionStore", sessionStoreString, (cookie_opts_t){.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = 1});
+      free(sessionStoreString);
     };
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq) {

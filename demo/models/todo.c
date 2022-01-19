@@ -20,6 +20,7 @@ static toJSON todoToJSON(todo_t *todo)
 static todo_t *buildTodoFromJson(cJSON *json)
 {
   todo_t *todo = malloc(sizeof(todo_t));
+  // TODO: check for NULL
   todo->id = cJSON_GetObjectItem(json, "id")->valueint;
   todo->title = cJSON_GetObjectItem(json, "title")->valuestring;
   todo->completed = cJSON_GetObjectItem(json, "completed")->valueint;
