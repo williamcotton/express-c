@@ -644,7 +644,7 @@ static setCookie cookieFactory(response_t *res)
   res->cookiesHash = hash_new();
   return Block_copy(^(char *key, char *value, cookie_opts_t opts) {
     char *cookieString = cookieStringFromOpts(opts);
-    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieString) + 1));
+    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieString) + 1)); // leak?
     strcpy(valueWithOptions, value);
     strcat(valueWithOptions, cookieString);
     free(cookieString);
@@ -715,7 +715,6 @@ static int middlewareCount = 0;
 cleanupHandler *cleanupBlocks = NULL;
 static int servSock = -1;
 static dispatch_queue_t serverQueue = NULL;
-static dispatch_queue_t cleanupBlocksQueue = NULL;
 
 char *matchFilepath(request_t *req, char *path)
 {
@@ -784,7 +783,6 @@ static void addMiddlewareHandler(middlewareHandler handler)
   middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
   cleanupBlocks = realloc(cleanupBlocks, sizeof(cleanupHandler) * (middlewareCount + 1));
   middlewares[middlewareCount++] = (middleware_t){.handler = handler};
-  cleanupBlocksQueue = dispatch_queue_create("cleanupBlocksQueue", NULL);
 }
 
 static void runMiddleware(int index, request_t *req, response_t *res, void (^next)())
@@ -1092,12 +1090,10 @@ static void freeRequest(request_t req)
 {
   for (int i = 1; i <= req.middlewareStackIndex; i++)
   {
-    // dispatch_sync(cleanupBlocksQueue, ^{
 #ifdef MIDDLEWARE_DEBUG
     printf("Freeing middleware %d\n", i);
 #endif // MIDDLEWARE_DEBUG
     cleanupBlocks[i]((request_t *)&req);
-    // });
   }
   free(req.method);
   free(req.path);
