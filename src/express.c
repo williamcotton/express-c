@@ -1373,24 +1373,23 @@ middlewareHandler memSessionMiddlewareFactory()
   dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
 
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
-    char *sessionUuid = req->cookie("sessionUuid");
-    if (sessionUuid == NULL)
+    req->session->uuid = req->cookie("sessionUuid");
+    if (req->session->uuid == NULL)
     {
-      sessionUuid = generateUuid();
+      req->session->uuid = generateUuid();
       cookie_opts_t opts = {.path = "/", .maxAge = 60 * 60 * 24 * 365, .httpOnly = true};
-      res->cookie("sessionUuid", sessionUuid, opts);
+      res->cookie("sessionUuid", req->session->uuid, opts);
     }
-    req->session->uuid = sessionUuid;
 
-    if (hash_has(memSessionStore, sessionUuid))
+    if (hash_has(memSessionStore, req->session->uuid))
     {
-      req->session->store = hash_get(memSessionStore, sessionUuid);
+      req->session->store = hash_get(memSessionStore, req->session->uuid);
     }
     else
     {
       req->session->store = hash_new(); // is not being freed
       dispatch_sync(memSessionQueue, ^{
-        hash_set(memSessionStore, sessionUuid, req->session->store);
+        hash_set(memSessionStore, req->session->uuid, req->session->store);
       });
     }
 
@@ -1402,12 +1401,7 @@ middlewareHandler memSessionMiddlewareFactory()
       hash_set(req->session->store, key, value);
     };
 
-<<<<<<< HEAD
-    cleanup(Block_copy(^() {
-=======
-        cleanup(Block_copy(^(UNUSED request_t *finishedReq){
->>>>>>> 60327f5 (add middleware cleanup handlers)
-      // printf("\nCleaning up session store\n");
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
 
     next();
