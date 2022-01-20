@@ -1,12 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <Block.h>
+#include <dotenv-c/dotenv.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 #include "tape.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
+
+#define true 1
+#define false 0
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -19,7 +24,7 @@ static char *errorHTML = "<!DOCTYPE html>\n"
                          "</body>\n"
                          "</html>\n";
 
-void runTests()
+void runTests(int runAndExit)
 {
   tape_t t = tape();
 
@@ -89,15 +94,25 @@ void runTests()
     });
   });
 
-  exit(testStatus);
+  if (runAndExit)
+  {
+    exit(testStatus);
+  }
 }
 
 #pragma clang diagnostic pop
 
 int main()
 {
+  env_load(".", false);
+
   app_t app = express();
   int port = 3032;
+
+  int runXTimes = getenv("RUN_X_TIMES") ? atoi(getenv("RUN_X_TIMES")) : 1;
+  int sleepTime = getenv("SLEEP_TIME") ? atoi(getenv("SLEEP_TIME")) : 0;
+
+  sleep(sleepTime);
 
   app.use(expressStatic("test"));
   app.use(memSessionMiddlewareFactory());
@@ -111,7 +126,9 @@ int main()
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super test";
     req->mSet("super", super);
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+      super_t *s = finishedReq->m("super");
+      free(s);
     }));
     next();
   });
@@ -126,11 +143,19 @@ int main()
   });
 
   app.get("/qs", ^(request_t *req, response_t *res) {
-    res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", req->query("value1"), req->query("value2"));
+    char *value1 = req->query("value1");
+    char *value2 = req->query("value2");
+    res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", value1, value2);
+    free(value1);
+    free(value2);
   });
 
   app.get("/headers", ^(request_t *req, response_t *res) {
-    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", req->get("Host"), req->get("Accept"));
+    char *host = req->get("Host");
+    char *accept = req->get("Accept");
+    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", host, accept);
+    free(host);
+    free(accept);
   });
 
   app.get("/file", ^(UNUSED request_t *req, response_t *res) {
@@ -138,7 +163,13 @@ int main()
   });
 
   app.get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
-    res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", req->params("one"), req->params("two"), req->params("three"));
+    char *one = req->params("one");
+    char *two = req->params("two");
+    char *three = req->params("three");
+    res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", one, two, three);
+    free(one);
+    free(two);
+    free(three);
   });
 
   app.get("/form", ^(UNUSED request_t *req, response_t *res) {
@@ -150,31 +181,48 @@ int main()
   });
 
   app.post("/post/:form", ^(request_t *req, response_t *res) {
+    char *param1 = req->body("param1");
+    char *param2 = req->body("param2");
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
+    free(param1);
+    free(param2);
   });
 
   app.post("/session", ^(request_t *req, response_t *res) {
-    req->session->set("param1", req->body("param1"));
+    char *param1 = req->body("param1");
+    req->session->set("param1", param1);
     res->send("ok");
   });
 
+  app.get("/session", ^(request_t *req, response_t *res) {
+    char *param1 = req->session->get("param1");
+    res->send(param1);
+    free(param1);
+  });
+
   app.put("/put/:form", ^(UNUSED request_t *req, response_t *res) {
+    char *param1 = req->body("param1");
+    char *param2 = req->body("param2");
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
+    free(param1);
+    free(param2);
   });
 
   app.patch("/patch/:form", ^(UNUSED request_t *req, response_t *res) {
+    char *param1 = req->body("param1");
+    char *param2 = req->body("param2");
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", req->body("param1"), req->body("param2"));
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
+    free(param1);
+    free(param2);
   });
 
   app.delete("/delete/:id", ^(UNUSED request_t *req, response_t *res) {
-    res->sendf("<h1>Delete</h1><p>ID: %s</p>", req->params("id"));
-  });
-
-  app.get("/session", ^(request_t *req, response_t *res) {
-    res->send(req->session->get("param1"));
+    char *id = req->params("id");
+    res->sendf("<h1>Delete</h1><p>ID: %s</p>", id);
+    free(id);
   });
 
   app.get("/m", ^(request_t *req, response_t *res) {
@@ -189,13 +237,19 @@ int main()
   });
 
   app.get("/set_cookie", ^(UNUSED request_t *req, response_t *res) {
-    res->cookie("session", req->query("session"), (cookie_opts_t){});
-    res->cookie("user", req->query("user"), (cookie_opts_t){});
+    char *session = req->query("session");
+    char *user = req->query("user");
+    res->cookie("session", session, (cookie_opts_t){});
+    res->cookie("user", user, (cookie_opts_t){});
     res->send("ok");
+    free(session);
+    free(user);
   });
 
   app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
-    res->sendf("session: %s - user: %s", req->cookie("session"), req->cookie("user"));
+    char *session = req->cookie("session");
+    char *user = req->cookie("user");
+    res->sendf("session: %s - user: %s", session, user);
   });
 
   app.get("/redirect", ^(UNUSED request_t *req, response_t *res) {
@@ -207,7 +261,12 @@ int main()
   });
 
   app.listen(port, ^{
-    runTests();
+    for (int i = 0; i < runXTimes; i++)
+    {
+      runTests(runXTimes == 1);
+    }
+    if (runXTimes > 1)
+      exit(0);
   });
 
   return 0;

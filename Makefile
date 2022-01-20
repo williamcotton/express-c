@@ -54,6 +54,11 @@ test-watch:
 	make --no-print-directory test || :
 	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make --no-print-directory test
 
+test-trace:
+	clang -o build/test test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) -g -O0
+	codesign -s - -v -f --entitlements debug.plist build/test
+	SLEEP_TIME=5 RUN_X_TIMES=10 build/test
+
 .PHONY: test-tape
 test-tape:
 	mkdir -p $(BUILD_DIR)
