@@ -187,6 +187,7 @@ static void toUpper(char *givenStr)
 
 static void parseQueryString(hash_t *hash, char *string)
 {
+  // TODO: array of structs of *string offsets and lengths
   CURL *curl = curl_easy_init();
   if (curl)
   {
@@ -290,11 +291,9 @@ param_match_t *paramMatch(char *route)
   return pm;
 }
 
-void routeMatch(char *path, param_match_t *pm, char **values, int *match)
+void routeMatch(request_t *req, int *match)
 {
-  char *source = path;
-  char *regexString = pm->regexRoute;
-
+  // TODO: array of structs of *string offsets and lengths
   size_t maxMatches = 100;
   size_t maxGroups = 100;
 
@@ -303,13 +302,13 @@ void routeMatch(char *path, param_match_t *pm, char **values, int *match)
   unsigned int m;
   char *cursor;
 
-  if (regcomp(&regexCompiled, regexString, REG_EXTENDED))
+  if (regcomp(&regexCompiled, req->paramMatch->regexRoute, REG_EXTENDED))
   {
     printf("Could not compile regular expression.\n");
     return;
   };
 
-  cursor = source;
+  cursor = req->path;
   for (m = 0; m < maxMatches; m++)
   {
     if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
@@ -330,14 +329,14 @@ void routeMatch(char *path, param_match_t *pm, char **values, int *match)
       else
       {
         int index = g - 1;
-        values[index] = malloc(sizeof(char) * (groupArray[g].rm_eo - groupArray[g].rm_so + 1));
-        strncpy(values[index], cursor + groupArray[g].rm_so, groupArray[g].rm_eo - groupArray[g].rm_so);
-        values[index][groupArray[g].rm_eo - groupArray[g].rm_so] = '\0';
+        req->paramValues[index] = malloc(sizeof(char) * (groupArray[g].rm_eo - groupArray[g].rm_so + 1));
+        strncpy(req->paramValues[index], cursor + groupArray[g].rm_so, groupArray[g].rm_eo - groupArray[g].rm_so);
+        req->paramValues[index][groupArray[g].rm_eo - groupArray[g].rm_so] = '\0';
       }
 
-      char cursorCopy[strlen(cursor) + 1];
-      strcpy(cursorCopy, cursor);
-      cursorCopy[groupArray[g].rm_eo] = 0;
+      // char cursorCopy[strlen(cursor) + 1];
+      // strcpy(cursorCopy, cursor);
+      // cursorCopy[groupArray[g].rm_eo] = 0;
     }
     cursor += offset;
   }
@@ -348,15 +347,9 @@ void routeMatch(char *path, param_match_t *pm, char **values, int *match)
 typedef char * (^getHashBlock)(char *key);
 static getHashBlock reqQueryFactory(request_t *req)
 {
+  // TODO: replace with reading directly from req.queryString (pointer offsets and lengths)
   return Block_copy(^(char *key) {
     return (char *)hash_get(req->queryHash, key);
-  });
-}
-
-static getHashBlock reqParamFactory(request_t *req)
-{
-  return Block_copy(^(char *key) {
-    return (char *)hash_get(req->paramsHash, key);
   });
 }
 
@@ -368,6 +361,7 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
 
 static getHashBlock reqCookieFactory(request_t *req)
 {
+  // TODO: replace with reading directly from req.cookiesString (pointer offsets and lengths)
   req->cookiesHash = hash_new();
   req->cookiesString = req->get("Cookie");
   if (req->cookiesString != NULL)
@@ -416,6 +410,7 @@ static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
 
 static getHashBlock reqBodyFactory(request_t *req)
 {
+  // TODO: replace with reading directly from req.bodyString (pointer offsets and lengths)
   req->bodyHash = hash_new();
   if (strncmp(req->method, "POST", 4) == 0 || strncmp(req->method, "PATCH", 5) == 0 || strncmp(req->method, "PUT", 3) == 0)
   {
@@ -477,7 +472,7 @@ static char *buildResponseString(char *body, response_t *res)
   char customHeaders[4096];
   memset(customHeaders, 0, 4096);
 
-  // TODO: make hashing function pointers passed in to app during init
+  // TODO: replace with writing directly from res.headersString
   hash_each((hash_t *)res->headersHash, {
     size_t headersLen = strlen(key) + strlen(val) + 4;
     strncpy(customHeaders + customHeadersLen, key, strlen(key));
@@ -559,6 +554,7 @@ static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t
 typedef void (^setBlock)(char *headerKey, char *headerValue);
 static setBlock setFactory(response_t *res)
 {
+  // TODO: replace hash with writing directly to res.headersString
   res->headersHash = hash_new();
   return Block_copy(^(char *headerKey, char *headerValue) {
     return hash_set(res->headersHash, headerKey, headerValue);
@@ -568,6 +564,7 @@ static setBlock setFactory(response_t *res)
 typedef char * (^getBlock)(char *headerKey);
 static getBlock getFactory(response_t *res)
 {
+  // TODO: replace hash with reading directly from res.headersString (pointer offsets and lengths)
   return Block_copy(^(char *headerKey) {
     return (char *)hash_get(res->headersHash, headerKey);
   });
@@ -625,12 +622,11 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts)
 typedef void (^setCookie)(char *cookieKey, char *cookieValue, cookie_opts_t opts);
 static setCookie cookieFactory(response_t *res)
 {
-  res->cookiesHash = hash_new();
   memset(res->cookieHeaders, 0, sizeof(res->cookieHeaders));
   res->cookieHeadersLength = 0;
   return Block_copy(^(char *key, char *value, cookie_opts_t opts) {
     char *cookieOptsString = cookieOptsStringFromOpts(opts);
-    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieOptsString) + 1)); // leak?
+    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieOptsString) + 1));
     strcpy(valueWithOptions, value);
     strcat(valueWithOptions, cookieOptsString);
 
@@ -648,14 +644,6 @@ static setCookie cookieFactory(response_t *res)
 
     free(cookieOptsString);
     free(valueWithOptions);
-  });
-}
-
-typedef void (^clearBlock)(char *key, cookie_opts_t opts);
-static clearBlock clearCookieFactory(response_t *res)
-{
-  return Block_copy(^(char *key, UNUSED cookie_opts_t opts) {
-    return hash_set(res->cookiesHash, key, "; expires=Thu, 01 Jan 1970 00:00:00 GMT");
   });
 }
 
@@ -994,8 +982,8 @@ static request_t parseRequest(client_t client)
       {
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
-        free(contentLength);
       }
+      free(contentLength);
       break;
     }
     else if (parseBytes == -1)
@@ -1018,7 +1006,7 @@ static request_t parseRequest(client_t client)
   char *copy = strdup(req.url);
   char *queryStringStart = strchr(copy, '?');
 
-  req.queryHash = hash_new();
+  req.queryHash = hash_new(); // TODO: replace with reading directly from req.queryString (pointer offsets and lengths)
   if (queryStringStart)
   {
     int queryStringLen = strlen(queryStringStart + 1);
@@ -1070,15 +1058,19 @@ static route_handler_t matchRouteHandler(request_t *req)
         req->paramValues[j] = NULL;
       }
       int match = 0;
-      routeMatch(req->path, req->paramMatch, req->paramValues, &match);
+      routeMatch(req, &match);
       if (match)
       {
+        // TODO: replace with pointer offsets and lengths
         req->paramsHash = hash_new();
         for (int k = 0; k < req->paramMatch->count; k++)
         {
           hash_set(req->paramsHash, req->paramMatch->keys[k], req->paramValues[k]);
         }
-        req->params = reqParamFactory(req);
+        req->params = Block_copy(^(char *key) {
+          // TODO: replace with reading directly from req->paramsString (pointer offsets and lengths)
+          return (char *)hash_get(req->paramsHash, key);
+        });
         match = 0;
         return routeHandlers[i];
       }
@@ -1105,6 +1097,14 @@ static void freeRequest(request_t req)
   free(req.path);
   free(req.url);
   free(req.session);
+  if (req.paramMatch != NULL)
+  {
+    for (int i = 0; i < req.paramMatch->count; i++)
+    {
+      free(req.paramMatch->keys[i]);
+      free(req.paramValues[i]);
+    }
+  }
   free(req.paramMatch);
   free(req.paramValues);
   free(req.cookiesString);
@@ -1128,14 +1128,12 @@ static void freeRequest(request_t req)
 static void freeResponse(response_t res)
 {
   hash_free(res.headersHash);
-  hash_free(res.cookiesHash);
   Block_release(res.send);
   Block_release(res.sendFile);
   Block_release(res.sendf);
   Block_release(res.set);
   Block_release(res.get);
   Block_release(res.cookie);
-  Block_release(res.clearCookie);
   Block_release(res.location);
   Block_release(res.redirect);
 }
@@ -1159,7 +1157,6 @@ static response_t buildResponse(client_t client, request_t *req)
   res.set = setFactory(&res);
   res.get = getFactory(&res);
   res.cookie = cookieFactory(&res);
-  res.clearCookie = clearCookieFactory(&res);
   res.location = locationFactory(req, &res);
   res.redirect = redirectFactory(req, &res);
   return res;

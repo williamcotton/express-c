@@ -85,8 +85,8 @@ typedef struct response_t
   int cookieHeadersLength;
   char cookieHeaders[4096];
   void (^cookie)(char *, char *, cookie_opts_t);
-  void (^clearCookie)(char *, cookie_opts_t);
-  void (^json)(char *, ...); // TODO: add res.json
+  void (^clearCookie)(char *, cookie_opts_t); // TODO: add res.clearCookie
+  void (^json)(char *, ...);                  // TODO: add res.json
   void (^location)(char *);
   void (^redirect)(char *);
   void (^sendStatus)(int);          // TODO: add res.sendStatus
@@ -118,6 +118,11 @@ typedef struct router_t // TODO: implement router_t
   void (^useRouter)(char *path, struct router_t *router);
   void (^param)(char *param, paramHandler);
 } router_t;
+
+typedef struct server_t
+{
+  void (^close)();
+} server_t;
 
 typedef struct app_t
 {
