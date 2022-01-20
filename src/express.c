@@ -210,6 +210,8 @@ static void parseQueryString(hash_t *hash, char *string)
     }
     curl_easy_cleanup(curl);
     free(query);
+    free(tokens);
+    free(p);
   }
 }
 
@@ -367,10 +369,10 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
 static getHashBlock reqCookieFactory(request_t *req)
 {
   req->cookiesHash = hash_new();
-  char *cookiesString = req->get("Cookie");
-  if (cookiesString != NULL)
+  req->cookiesString = req->get("Cookie");
+  if (req->cookiesString != NULL)
   {
-    char *cookie = strtok(cookiesString, ";");
+    char *cookie = strtok(req->cookiesString, ";");
     int i = 0;
     while (cookie != NULL)
     {
@@ -430,18 +432,20 @@ static getHashBlock reqBodyFactory(request_t *req)
           req->bodyString[i] = ' ';
         i++;
       }
-      if (strncmp(req->get("Content-Type"), "application/x-www-form-urlencoded", 33) == 0)
+      char *contentType = req->get("Content-Type");
+      if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
         parseQueryString(req->bodyHash, req->bodyString);
       }
-      else if (strncmp(req->get("Content-Type"), "application/json", 16) == 0)
+      else if (strncmp(contentType, "application/json", 16) == 0)
       {
         printf("%s\n", req->bodyString);
       }
-      else if (strncmp(req->get("Content-Type"), "multipart/form-data", 20) == 0)
+      else if (strncmp(contentType, "multipart/form-data", 20) == 0)
       {
         printf("%s\n", req->bodyString);
       }
+      free(contentType);
     }
     else
     {
@@ -977,6 +981,7 @@ static request_t parseRequest(client_t client)
           sprintf(value, "%.*s", (int)req.headers[i].value_len, req.headers[i].value);
           if (strcasecmp(key, headerKey) == 0)
           {
+            free(key);
             return value;
           }
           free(key);
@@ -986,8 +991,11 @@ static request_t parseRequest(client_t client)
       };
       char *contentLength = req.get("Content-Length");
       if (contentLength != NULL && parseBytes == readBytes && contentLength[0] != '0')
+      {
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
+        free(contentLength);
+      }
       break;
     }
     else if (parseBytes == -1)
@@ -1099,6 +1107,9 @@ static void freeRequest(request_t req)
   free(req.session);
   free(req.paramMatch);
   free(req.paramValues);
+  free(req.cookiesString);
+  // if (req.bodyString != NULL && strlen(req.bodyString) > 0)
+  //   free(req.bodyString);
   if (strlen(req.queryString) > 0)
     free(req.queryString);
   hash_free(req.queryHash);

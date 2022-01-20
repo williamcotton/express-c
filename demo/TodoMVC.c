@@ -71,6 +71,8 @@ int main()
     todo_t *newTodo = todoStore->new (req->body("title"));
     todoStore->create(newTodo);
     res->redirect("back");
+
+    free(newTodo);
   });
 
   app.put("/todo/:id", ^(request_t *req, response_t *res) {
@@ -83,6 +85,9 @@ int main()
       todoStore->update(todo);
     }
     res->redirect("back");
+
+    if (todo != NULL)
+      free(todo);
   });
 
   app.delete("/todo/:id", ^(request_t *req, response_t *res) {
@@ -106,6 +111,9 @@ int main()
     });
 
     res->redirect("back");
+
+    Block_release(todosCollection->each);
+    free(todosCollection);
   });
 
   app.listen(port, ^{

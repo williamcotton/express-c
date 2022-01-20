@@ -66,6 +66,7 @@ typedef struct request_t
   void (^mSet)(char *middlewareKey, void *middleware);
   char *rawRequest;
   session_t *session;
+  char *cookiesString;
   char *cookies[4096];
   void *cookiesHash;
   char * (^cookie)(char *key);
