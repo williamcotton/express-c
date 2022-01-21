@@ -23,8 +23,7 @@ int main()
   app.use(cJSONMustacheMiddleware("demo/views"));
 
   app.get("/", ^(request_t *req, response_t *res) {
-    char *filter = req->query("filter") ? req->query("filter") : "all";
-
+    char *filter = req->query("filter") ? req->query("filter") : strdup("all");
     todo_store_t *todoStore = req->m("todoStore");
 
     __block int completedCount = 0;
@@ -63,21 +62,27 @@ int main()
     res->render("index", json);
 
     Block_release(todosCollection->each);
+    free(filter);
     free(todosCollection);
   });
 
   app.post("/todo", ^(request_t *req, response_t *res) {
     todo_store_t *todoStore = req->m("todoStore");
-    todo_t *newTodo = todoStore->new (req->body("title"));
+    char *title = req->body("title");
+
+    todo_t *newTodo = todoStore->new (title);
     todoStore->create(newTodo);
     res->redirect("back");
 
+    free(title);
     free(newTodo);
   });
 
   app.put("/todo/:id", ^(request_t *req, response_t *res) {
     todo_store_t *todoStore = req->m("todoStore");
-    int id = atoi(req->params("id"));
+    char *idString = req->params("id");
+
+    int id = atoi(idString);
     todo_t *todo = todoStore->find(id);
     if (todo != NULL)
     {
@@ -92,9 +97,13 @@ int main()
 
   app.delete("/todo/:id", ^(request_t *req, response_t *res) {
     todo_store_t *todoStore = req->m("todoStore");
-    int id = atoi(req->params("id"));
+    char *idString = req->params("id");
+
+    int id = atoi(idString);
     todoStore->delete (id);
     res->redirect("back");
+
+    free(idString);
   });
 
   app.post("/todo_clear_all_completed", ^(UNUSED request_t *req, response_t *res) {
