@@ -45,6 +45,7 @@ typedef struct request_t
 {
   char *path;
   char *method;
+  char *_method;
   char *url;         // TODO: replace req.url with req.baseUrl and req.originalUrl
   char *baseUrl;     // TODO: add req.baseUrl
   char *originalUrl; // TODO: add req.originalUrl
@@ -67,14 +68,16 @@ typedef struct request_t
   void *paramsHash;
   char **paramValues;
   char * (^params)(char *paramKey);
-  char *bodyString;
-  void *bodyHash;
+  query_string_t bodyStrings[100];
+  size_t bodyStringCount;
+  const char *bodyString;
   char * (^body)(char *bodyKey);
   int middlewareStackIndex;
   void *middlewareHash;
   void * (^m)(char *middlewareKey);
   void (^mSet)(char *middlewareKey, void *middleware);
   char *rawRequest;
+  char *rawRequestBody;
   session_t *session;
   char *cookiesString;
   char *cookies[4096];

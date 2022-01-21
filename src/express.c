@@ -185,36 +185,6 @@ static void toUpper(char *givenStr)
   }
 }
 
-static void parseQueryStringHash(hash_t *hash, char *string)
-{
-  CURL *curl = curl_easy_init();
-  if (curl)
-  {
-    char *query = strdup(string);
-    char *tokens = query;
-    char *p;
-    while ((p = strsep(&tokens, "&\n")))
-    {
-      char *key = strtok(p, "=");
-      char *value = NULL;
-      if (key && (value = strtok(NULL, "=")))
-      {
-        char *decodedKey = curl_easy_unescape(curl, key, strlen(key), NULL);
-        char *decodedValue = curl_easy_unescape(curl, value, strlen(value), NULL);
-        hash_set(hash, decodedKey, decodedValue);
-      }
-      else
-      {
-        hash_set(hash, key, "");
-      }
-    }
-    curl_easy_cleanup(curl);
-    free(query);
-    free(tokens);
-    free(p);
-  }
-}
-
 static void parseQueryString(const char *buf, const char *bufEnd, query_string_t *queryStrings, size_t *queryStringCount, size_t maxQueryStrings)
 {
   const char *keyStart = buf;
@@ -366,10 +336,6 @@ void routeMatch(request_t *req, int *match)
         strncpy(req->paramValues[index], cursor + groupArray[g].rm_so, groupArray[g].rm_eo - groupArray[g].rm_so);
         req->paramValues[index][groupArray[g].rm_eo - groupArray[g].rm_so] = '\0';
       }
-
-      // char cursorCopy[strlen(cursor) + 1];
-      // strcpy(cursorCopy, cursor);
-      // cursorCopy[groupArray[g].rm_eo] = 0;
     }
     cursor += offset;
   }
@@ -391,8 +357,10 @@ static getHashBlock reqQueryFactory(request_t *req)
         memcpy(value, req->queryStrings[i].value, req->queryStrings[i].valueLen);
         value[req->queryStrings[i].valueLen] = '\0';
         char *decodedValue = curl_easy_unescape(req->curl, value, req->queryStrings[i].valueLen, NULL); // curl_free ??
+        free(value);
         return decodedValue;
       }
+      curl_free(decodedKey);
     }
     return (char *)NULL;
   });
@@ -455,27 +423,20 @@ static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
 
 static getHashBlock reqBodyFactory(request_t *req)
 {
-  // TODO: replace with reading directly from req.bodyString (pointer offsets and lengths)
-  req->bodyHash = hash_new();
   if (strncmp(req->method, "POST", 4) == 0 || strncmp(req->method, "PATCH", 5) == 0 || strncmp(req->method, "PUT", 3) == 0)
   {
-    char *copy = strdup(req->rawRequest);
-    req->bodyString = strstr(copy, "\r\n\r\n");
-
+    req->rawRequestBody = strdup(req->rawRequest);
+    req->bodyString = strstr(req->rawRequestBody, "\r\n\r\n");
     if (req->bodyString && strlen(req->bodyString) > 4)
     {
       req->bodyString += 4;
-      int i = 0;
-      while (req->bodyString[i] != '\0')
-      {
-        if (req->bodyString[i] == '+')
-          req->bodyString[i] = ' ';
-        i++;
-      }
       char *contentType = req->get("Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
-        parseQueryStringHash(req->bodyHash, req->bodyString);
+        int bodyStringLen = strlen(req->bodyString);
+        req->bodyStringCount = 0;
+        parseQueryString(req->bodyString, req->bodyString + bodyStringLen, req->bodyStrings, &req->bodyStringCount,
+                         sizeof(req->bodyStrings) / sizeof(req->bodyStrings[0]));
       }
       else if (strncmp(contentType, "application/json", 16) == 0)
       {
@@ -491,10 +452,31 @@ static getHashBlock reqBodyFactory(request_t *req)
     {
       req->bodyString = "";
     }
-    free(copy);
   }
   return Block_copy(^(char *key) {
-    return (char *)hash_get(req->bodyHash, key);
+    for (size_t i = 0; i != req->bodyStringCount; ++i)
+    {
+      char *decodedKey = curl_easy_unescape(req->curl, req->bodyStrings[i].key, req->bodyStrings[i].keyLen, NULL); // curl_free ??
+      if (strcmp(decodedKey, key) == 0)
+      {
+        char *value = malloc(sizeof(char) * (req->bodyStrings[i].valueLen + 1));
+        memcpy(value, req->bodyStrings[i].value, req->bodyStrings[i].valueLen);
+        value[req->bodyStrings[i].valueLen] = '\0';
+        int j = 0;
+        while (value[j] != '\0')
+        {
+          if (value[j] == '+')
+            value[j] = ' ';
+          j++;
+        }
+        char *decodedValue = curl_easy_unescape(req->curl, value, req->bodyStrings[i].valueLen, NULL); // curl_free ??
+        free(value);
+        curl_free(decodedKey);
+        return decodedValue;
+      }
+      curl_free(decodedKey);
+    }
+    return (char *)NULL;
   });
 }
 
@@ -1050,8 +1032,8 @@ static request_t parseRequest(client_t client)
   memcpy(req.url, url, urlLen);
   req.url[urlLen] = '\0';
 
-  char *copy = strdup(req.url);
-  char *queryStringStart = strchr(copy, '?');
+  char *copyUrl = strdup(req.url);
+  char *queryStringStart = strchr(copyUrl, '?');
 
   if (queryStringStart)
   {
@@ -1060,13 +1042,14 @@ static request_t parseRequest(client_t client)
     memcpy(req.queryString, queryStringStart + 1, queryStringLen);
     req.queryString[queryStringLen] = '\0';
     *queryStringStart = '\0';
+    req.queryStringCount = 0;
     parseQueryString(req.queryString, req.queryString + queryStringLen, req.queryStrings, &req.queryStringCount,
                      sizeof(req.queryStrings) / sizeof(req.queryStrings[0]));
   }
 
-  req.path = malloc(sizeof(char) * (strlen(copy) + 1));
-  memcpy(req.path, copy, strlen(copy));
-  req.path[strlen(copy)] = '\0';
+  req.path = malloc(sizeof(char) * (strlen(copyUrl) + 1));
+  memcpy(req.path, copyUrl, strlen(copyUrl));
+  req.path[strlen(copyUrl)] = '\0';
 
   req.query = reqQueryFactory(&req);
   req.body = reqBodyFactory(&req);
@@ -1077,15 +1060,15 @@ static request_t parseRequest(client_t client)
 
   req.middlewareStackIndex = 0;
 
-  char *_method = req.body("_method");
-  if (_method)
+  req._method = req.body("_method");
+  if (req._method)
   {
-    toUpper(_method);
-    if (strcmp(_method, "PUT") == 0 || strcmp(_method, "DELETE") == 0 || strcmp(_method, "PATCH") == 0)
-      req.method = _method;
+    toUpper(req._method);
+    if (strcmp(req._method, "PUT") == 0 || strcmp(req._method, "DELETE") == 0 || strcmp(req._method, "PATCH") == 0)
+      req.method = req._method;
   }
 
-  free(copy);
+  free(copyUrl);
 
   return req;
 }
@@ -1140,7 +1123,10 @@ static void freeRequest(request_t req)
 #endif // MIDDLEWARE_DEBUG
     cleanupBlocks[i]((request_t *)&req);
   }
-  free(req.method);
+  if (req._method != NULL)
+    curl_free(req._method);
+  else
+    free(req.method);
   free(req.path);
   free(req.url);
   free(req.session);
@@ -1155,12 +1141,12 @@ static void freeRequest(request_t req)
   free(req.paramMatch);
   free(req.paramValues);
   free(req.cookiesString);
+  free(req.rawRequestBody);
   // if (req.bodyString != NULL && strlen(req.bodyString) > 0)
   //   free(req.bodyString);
   if (strlen(req.queryString) > 0)
     free(req.queryString);
   hash_free(req.paramsHash);
-  hash_free(req.bodyHash);
   hash_free(req.cookiesHash);
   hash_free(req.middlewareHash);
   Block_release(req.query);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <Block.h>
+#include <curl/curl.h>
 #include <dotenv-c/dotenv.h>
 #include "../src/express.h"
 #include "test-harnass.h"
@@ -146,8 +147,8 @@ int main()
     char *value1 = req->query("value1");
     char *value2 = req->query("value2");
     res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", value1, value2);
-    free(value1);
-    free(value2);
+    curl_free(value1);
+    curl_free(value2);
   });
 
   app.get("/headers", ^(request_t *req, response_t *res) {
@@ -185,8 +186,8 @@ int main()
     char *param2 = req->body("param2");
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
-    free(param1);
-    free(param2);
+    curl_free(param1);
+    curl_free(param2);
   });
 
   app.post("/session", ^(request_t *req, response_t *res) {
@@ -198,7 +199,7 @@ int main()
   app.get("/session", ^(request_t *req, response_t *res) {
     char *param1 = req->session->get("param1");
     res->send(param1);
-    free(param1);
+    curl_free(param1);
   });
 
   app.put("/put/:form", ^(UNUSED request_t *req, response_t *res) {
@@ -206,8 +207,8 @@ int main()
     char *param2 = req->body("param2");
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
-    free(param1);
-    free(param2);
+    curl_free(param1);
+    curl_free(param2);
   });
 
   app.patch("/patch/:form", ^(UNUSED request_t *req, response_t *res) {
@@ -215,8 +216,8 @@ int main()
     char *param2 = req->body("param2");
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
-    free(param1);
-    free(param2);
+    curl_free(param1);
+    curl_free(param2);
   });
 
   app.delete("/delete/:id", ^(UNUSED request_t *req, response_t *res) {
@@ -242,8 +243,8 @@ int main()
     res->cookie("session", session, (cookie_opts_t){});
     res->cookie("user", user, (cookie_opts_t){});
     res->send("ok");
-    free(session);
-    free(user);
+    curl_free(session);
+    curl_free(user);
   });
 
   app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
