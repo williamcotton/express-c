@@ -23,7 +23,8 @@ int main()
   app.use(cJSONMustacheMiddleware("demo/views"));
 
   app.get("/", ^(request_t *req, response_t *res) {
-    char *filter = req->query("filter") ? req->query("filter") : strdup("all");
+    char *queryFilter = req->query("filter");
+    char *filter = queryFilter ? queryFilter : "all";
     todo_store_t *todoStore = req->m("todoStore");
 
     __block int completedCount = 0;
@@ -62,7 +63,8 @@ int main()
     res->render("index", json);
 
     Block_release(todosCollection->each);
-    free(filter);
+    if (strcmp(filter, "all") != 0)
+      free(filter);
     free(todosCollection);
   });
 
@@ -75,7 +77,6 @@ int main()
     res->redirect("back");
 
     free(title);
-    free(newTodo);
   });
 
   app.put("/todo/:id", ^(request_t *req, response_t *res) {
@@ -91,8 +92,6 @@ int main()
     }
     res->redirect("back");
 
-    if (todo != NULL)
-      free(todo);
     free(idString);
   });
 

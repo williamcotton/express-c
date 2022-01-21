@@ -17,9 +17,8 @@ static toJSON todoToJSON(todo_t *todo)
   });
 }
 
-static todo_t *buildTodoFromJson(cJSON *json)
+static todo_t *buildTodoFromJson(todo_t *todo, cJSON *json)
 {
-  todo_t *todo = malloc(sizeof(todo_t));
   todo->id = cJSON_GetObjectItem(json, "id") ? cJSON_GetObjectItem(json, "id")->valueint : 0;
   todo->title = cJSON_GetObjectItem(json, "title") ? cJSON_GetObjectItem(json, "title")->valuestring : NULL;
   todo->completed = cJSON_GetObjectItem(json, "completed") ? cJSON_GetObjectItem(json, "completed")->valueint : 0;
@@ -56,7 +55,7 @@ middlewareHandler todoStoreMiddleware()
     }
 
     todoStore->new = Block_copy(^(char *title) {
-      __block todo_t *newTodo = malloc(sizeof(todo_t));
+      todo_t *newTodo = req->malloc(sizeof(todo_t));
       newTodo->id = todoStore->count;
       newTodo->title = title;
       newTodo->completed = 0;
@@ -117,7 +116,8 @@ middlewareHandler todoStoreMiddleware()
       {
         return (todo_t *)NULL;
       }
-      todo_t *todo = buildTodoFromJson(item);
+      todo_t *todo = req->malloc(sizeof(todo_t));
+      todo = buildTodoFromJson(todo, item); // leak
       return todo;
     });
 
@@ -127,7 +127,8 @@ middlewareHandler todoStoreMiddleware()
         cJSON *item = NULL;
         cJSON_ArrayForEach(item, todoStore->store)
         {
-          todo_t *todo = buildTodoFromJson(item);
+          todo_t *todo = req->malloc(sizeof(todo_t));
+          todo = buildTodoFromJson(todo, item); // leak
           callback(todo);
         }
       });
@@ -143,7 +144,8 @@ middlewareHandler todoStoreMiddleware()
         int filteredTodosCount = 0;
         cJSON_ArrayForEach(item, todoStore->store)
         {
-          todo_t *todo = buildTodoFromJson(item);
+          todo_t *todo = req->malloc(sizeof(todo_t));
+          todo = buildTodoFromJson(todo, item); // leak
           if (fCb(todo))
           {
             filteredTodos[filteredTodosCount++] = todo;
