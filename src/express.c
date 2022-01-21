@@ -185,7 +185,7 @@ static void toUpper(char *givenStr)
   }
 }
 
-static void parseQueryString(const char *buf, const char *bufEnd, query_string_t *queryStrings, size_t *queryStringCount, size_t maxQueryStrings)
+static void parseQueryString(const char *buf, const char *bufEnd, key_value_t *queryKeyValues, size_t *queryKeyValueCount, size_t maxQueryStrings)
 {
   const char *keyStart = buf;
   const char *keyEnd = NULL;
@@ -205,13 +205,13 @@ static void parseQueryString(const char *buf, const char *bufEnd, query_string_t
     {
       valueEnd = buf;
       valueLen = valueEnd - valueStart;
-      if (*queryStringCount < maxQueryStrings)
+      if (*queryKeyValueCount < maxQueryStrings)
       {
-        queryStrings[*queryStringCount].key = keyStart;
-        queryStrings[*queryStringCount].keyLen = keyLen;
-        queryStrings[*queryStringCount].value = valueStart;
-        queryStrings[*queryStringCount].valueLen = valueLen;
-        (*queryStringCount)++;
+        queryKeyValues[*queryKeyValueCount].key = keyStart;
+        queryKeyValues[*queryKeyValueCount].keyLen = keyLen;
+        queryKeyValues[*queryKeyValueCount].value = valueStart;
+        queryKeyValues[*queryKeyValueCount].valueLen = valueLen;
+        (*queryKeyValueCount)++;
       }
       keyStart = buf + 1;
     }
@@ -294,69 +294,20 @@ param_match_t *paramMatch(char *route)
   return pm;
 }
 
-void routeMatch(request_t *req, int *match)
-{
-  // TODO: array of structs of *string offsets and lengths
-  size_t maxMatches = 100;
-  size_t maxGroups = 100;
-
-  regex_t regexCompiled;
-  regmatch_t groupArray[maxGroups];
-  unsigned int m;
-  char *cursor;
-
-  if (regcomp(&regexCompiled, req->paramMatch->regexRoute, REG_EXTENDED))
-  {
-    printf("Could not compile regular expression.\n");
-    return;
-  };
-
-  cursor = req->path;
-  for (m = 0; m < maxMatches; m++)
-  {
-    if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
-      break; // No more matches
-
-    unsigned int g = 0;
-    unsigned int offset = 0;
-    for (g = 0; g < maxGroups; g++)
-    {
-      if (groupArray[g].rm_so == (long long)(size_t)-1)
-        break; // No more groups
-
-      if (g == 0)
-      {
-        offset = groupArray[g].rm_eo;
-        *match = 1;
-      }
-      else
-      {
-        int index = g - 1;
-        req->paramValues[index] = malloc(sizeof(char) * (groupArray[g].rm_eo - groupArray[g].rm_so + 1));
-        strncpy(req->paramValues[index], cursor + groupArray[g].rm_so, groupArray[g].rm_eo - groupArray[g].rm_so);
-        req->paramValues[index][groupArray[g].rm_eo - groupArray[g].rm_so] = '\0';
-      }
-    }
-    cursor += offset;
-  }
-
-  regfree(&regexCompiled);
-}
-
 typedef char * (^getHashBlock)(char *key);
 static getHashBlock reqQueryFactory(request_t *req)
 {
   return Block_copy(^(char *key) {
-    for (size_t i = 0; i != req->queryStringCount; ++i)
+    for (size_t i = 0; i != req->queryKeyValueCount; ++i)
     {
-      char *decodedKey = curl_easy_unescape(req->curl, req->queryStrings[i].key, req->queryStrings[i].keyLen, NULL); // curl_free ??
+      char *decodedKey = curl_easy_unescape(req->curl, req->queryKeyValues[i].key, req->queryKeyValues[i].keyLen, NULL); // curl_free ??
       if (strcmp(decodedKey, key) == 0)
       {
         curl_free(decodedKey);
-        char *value = malloc(sizeof(char) * (req->queryStrings[i].valueLen + 1));
-        memcpy(value, req->queryStrings[i].value, req->queryStrings[i].valueLen);
-        value[req->queryStrings[i].valueLen] = '\0';
-        char *decodedValue = curl_easy_unescape(req->curl, value, req->queryStrings[i].valueLen, NULL); // curl_free ??
+        char *value = malloc(sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
+        memcpy(value, req->queryKeyValues[i].value, req->queryKeyValues[i].valueLen);
+        value[req->queryKeyValues[i].valueLen] = '\0';
+        char *decodedValue = curl_easy_unescape(req->curl, value, req->queryKeyValues[i].valueLen, NULL); // curl_free ??
         free(value);
         return decodedValue;
       }
@@ -370,6 +321,23 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
 {
   session_t *session = malloc(sizeof(session_t));
   return session;
+}
+
+static getHashBlock reqParamsFactory(request_t *req)
+{
+  return Block_copy(^(char *key) {
+    for (size_t j = 0; j < req->paramKeyValueCount; j++)
+    {
+      if (strcmp(req->paramKeyValues[j].key, key) == 0)
+      {
+        char *value = malloc(sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
+        memcpy(value, req->paramKeyValues[j].value, req->paramKeyValues[j].valueLen);
+        value[req->paramKeyValues[j].valueLen] = '\0';
+        return value;
+      }
+    }
+    return (char *)NULL;
+  });
 }
 
 static getHashBlock reqCookieFactory(request_t *req)
@@ -434,9 +402,9 @@ static getHashBlock reqBodyFactory(request_t *req)
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
         int bodyStringLen = strlen(req->bodyString);
-        req->bodyStringCount = 0;
-        parseQueryString(req->bodyString, req->bodyString + bodyStringLen, req->bodyStrings, &req->bodyStringCount,
-                         sizeof(req->bodyStrings) / sizeof(req->bodyStrings[0]));
+        req->bodyKeyValueCount = 0;
+        parseQueryString(req->bodyString, req->bodyString + bodyStringLen, req->bodyKeyValues, &req->bodyKeyValueCount,
+                         sizeof(req->bodyKeyValues) / sizeof(req->bodyKeyValues[0]));
       }
       else if (strncmp(contentType, "application/json", 16) == 0)
       {
@@ -454,14 +422,14 @@ static getHashBlock reqBodyFactory(request_t *req)
     }
   }
   return Block_copy(^(char *key) {
-    for (size_t i = 0; i != req->bodyStringCount; ++i)
+    for (size_t i = 0; i != req->bodyKeyValueCount; ++i)
     {
-      char *decodedKey = curl_easy_unescape(req->curl, req->bodyStrings[i].key, req->bodyStrings[i].keyLen, NULL); // curl_free ??
+      char *decodedKey = curl_easy_unescape(req->curl, req->bodyKeyValues[i].key, req->bodyKeyValues[i].keyLen, NULL); // curl_free ??
       if (strcmp(decodedKey, key) == 0)
       {
-        char *value = malloc(sizeof(char) * (req->bodyStrings[i].valueLen + 1));
-        memcpy(value, req->bodyStrings[i].value, req->bodyStrings[i].valueLen);
-        value[req->bodyStrings[i].valueLen] = '\0';
+        char *value = malloc(sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
+        memcpy(value, req->bodyKeyValues[i].value, req->bodyKeyValues[i].valueLen);
+        value[req->bodyKeyValues[i].valueLen] = '\0';
         int j = 0;
         while (value[j] != '\0')
         {
@@ -469,7 +437,7 @@ static getHashBlock reqBodyFactory(request_t *req)
             value[j] = ' ';
           j++;
         }
-        char *decodedValue = curl_easy_unescape(req->curl, value, req->bodyStrings[i].valueLen, NULL); // curl_free ??
+        char *decodedValue = curl_easy_unescape(req->curl, value, req->bodyKeyValues[i].valueLen, NULL); // curl_free ??
         free(value);
         curl_free(decodedKey);
         return decodedValue;
@@ -955,6 +923,53 @@ static void initServerListen(int port)
   }
 };
 
+UNUSED void routeMatch(const char *path, UNUSED const char *pathEnd, const char *regexRoute, UNUSED key_value_t *paramKeyValues, int *match)
+{
+  // TODO: array of structs of *string offsets and lengths
+  size_t maxMatches = 100;
+  size_t maxGroups = 100;
+
+  regex_t regexCompiled;
+  regmatch_t groupArray[maxGroups];
+  unsigned int m;
+
+  if (regcomp(&regexCompiled, regexRoute, REG_EXTENDED))
+  {
+    printf("Could not compile regular expression.\n");
+    return;
+  };
+
+  const char *cursor = path;
+  for (m = 0; m < maxMatches; m++)
+  {
+    if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
+      break; // No more matches
+
+    unsigned int g = 0;
+    unsigned int offset = 0;
+    for (g = 0; g < maxGroups; g++)
+    {
+      if (groupArray[g].rm_so == (long long)(size_t)-1)
+        break; // No more groups
+
+      if (g == 0)
+      {
+        offset = groupArray[g].rm_eo;
+        *match = 1;
+      }
+      else
+      {
+        int index = g - 1;
+        paramKeyValues[index].value = cursor + groupArray[g].rm_so;
+        paramKeyValues[index].valueLen = groupArray[g].rm_eo - groupArray[g].rm_so;
+      }
+    }
+    cursor += offset;
+  }
+
+  regfree(&regexCompiled);
+}
+
 static request_t parseRequest(client_t client)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
@@ -989,18 +1004,12 @@ static request_t parseRequest(client_t client)
       req.get = ^(char *headerKey) {
         for (size_t i = 0; i != req.numHeaders; ++i)
         {
-
-          char *key = malloc(sizeof(char) * (req.headers[i].name_len + 1));
-          sprintf(key, "%.*s", (int)req.headers[i].name_len, req.headers[i].name);
-          char *value = malloc(sizeof(char) * (req.headers[i].value_len + 1));
-          sprintf(value, "%.*s", (int)req.headers[i].value_len, req.headers[i].value);
-          if (strcasecmp(key, headerKey) == 0)
+          if (strncmp(req.headers[i].name, headerKey, req.headers[i].name_len) == 0)
           {
-            free(key);
+            char *value = malloc(sizeof(char) * (req.headers[i].value_len + 1));
+            sprintf(value, "%.*s", (int)req.headers[i].value_len, req.headers[i].value);
             return value;
           }
-          free(key);
-          free(value);
         }
         return (char *)NULL;
       };
@@ -1032,7 +1041,7 @@ static request_t parseRequest(client_t client)
   memcpy(req.url, url, urlLen);
   req.url[urlLen] = '\0';
 
-  char *copyUrl = strdup(req.url);
+  char *copyUrl = req.url;
   char *queryStringStart = strchr(copyUrl, '?');
 
   if (queryStringStart)
@@ -1042,15 +1051,37 @@ static request_t parseRequest(client_t client)
     memcpy(req.queryString, queryStringStart + 1, queryStringLen);
     req.queryString[queryStringLen] = '\0';
     *queryStringStart = '\0';
-    req.queryStringCount = 0;
-    parseQueryString(req.queryString, req.queryString + queryStringLen, req.queryStrings, &req.queryStringCount,
-                     sizeof(req.queryStrings) / sizeof(req.queryStrings[0]));
+    req.queryKeyValueCount = 0;
+    parseQueryString(req.queryString, req.queryString + queryStringLen, req.queryKeyValues, &req.queryKeyValueCount,
+                     sizeof(req.queryKeyValues) / sizeof(req.queryKeyValues[0]));
   }
 
   req.path = malloc(sizeof(char) * (strlen(copyUrl) + 1));
   memcpy(req.path, copyUrl, strlen(copyUrl));
   req.path[strlen(copyUrl)] = '\0';
 
+  req.pathMatch = "";
+  for (int i = 0; i < routeHandlerCount; i++)
+  {
+    if (routeHandlers[i].paramMatch != NULL)
+    {
+      int match = 0;
+      routeMatch(req.path, req.path + strlen(req.path), routeHandlers[i].paramMatch->regexRoute, req.paramKeyValues, &match);
+      if (match)
+      {
+        req.pathMatch = routeHandlers[i].path;
+        req.paramKeyValueCount = routeHandlers[i].paramMatch->count;
+        for (int j = 0; j < routeHandlers[i].paramMatch->count; j++)
+        {
+          req.paramKeyValues[j].key = routeHandlers[i].paramMatch->keys[j];
+          req.paramKeyValues[j].keyLen = strlen(routeHandlers[i].paramMatch->keys[j]);
+        }
+        break;
+      }
+    }
+  }
+
+  req.params = reqParamsFactory(&req);
   req.query = reqQueryFactory(&req);
   req.body = reqBodyFactory(&req);
   req.session = reqSessionFactory(&req);
@@ -1065,10 +1096,11 @@ static request_t parseRequest(client_t client)
   {
     toUpper(req._method);
     if (strcmp(req._method, "PUT") == 0 || strcmp(req._method, "DELETE") == 0 || strcmp(req._method, "PATCH") == 0)
+    {
+      free(req.method);
       req.method = req._method;
+    }
   }
-
-  free(copyUrl);
 
   return req;
 }
@@ -1079,37 +1111,12 @@ static route_handler_t matchRouteHandler(request_t *req)
   {
     if (strcmp(routeHandlers[i].method, req->method) != 0)
       continue;
-    req->paramMatch = routeHandlers[i].paramMatch;
-    if (req->paramMatch != NULL)
-    {
-      req->paramValues = malloc(sizeof(char *) * req->paramMatch->count);
-      for (int j = 0; j < req->paramMatch->count; j++)
-      {
-        req->paramValues[j] = NULL;
-      }
-      int match = 0;
-      routeMatch(req, &match);
-      if (match)
-      {
-        // TODO: replace with pointer offsets and lengths
-        req->paramsHash = hash_new();
-        for (int k = 0; k < req->paramMatch->count; k++)
-        {
-          hash_set(req->paramsHash, req->paramMatch->keys[k], req->paramValues[k]);
-        }
-        req->params = Block_copy(^(char *key) {
-          // TODO: replace with reading directly from req->paramsString (pointer offsets and lengths)
-          return (char *)hash_get(req->paramsHash, key);
-        });
-        match = 0;
-        return routeHandlers[i];
-      }
-    }
 
-    if (strcmp(routeHandlers[i].method, req->method) == 0 && strcmp(routeHandlers[i].path, req->path) == 0)
-    {
+    if (strcmp(routeHandlers[i].path, req->pathMatch) == 0)
       return routeHandlers[i];
-    }
+
+    if (strcmp(routeHandlers[i].path, req->path) == 0)
+      return routeHandlers[i];
   }
   return (route_handler_t){.method = NULL, .path = NULL, .handler = NULL};
 }
@@ -1135,18 +1142,15 @@ static void freeRequest(request_t req)
     for (int i = 0; i < req.paramMatch->count; i++)
     {
       free(req.paramMatch->keys[i]);
-      free(req.paramValues[i]);
     }
   }
   free(req.paramMatch);
-  free(req.paramValues);
   free(req.cookiesString);
   free(req.rawRequestBody);
   // if (req.bodyString != NULL && strlen(req.bodyString) > 0)
   //   free(req.bodyString);
   if (strlen(req.queryString) > 0)
     free(req.queryString);
-  hash_free(req.paramsHash);
   hash_free(req.cookiesHash);
   hash_free(req.middlewareHash);
   Block_release(req.query);

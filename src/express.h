@@ -33,13 +33,13 @@ typedef struct param_match_t
   int count;
 } param_match_t;
 
-typedef struct query_string_t
+typedef struct key_value_t
 {
   const char *key;
   size_t keyLen;
   const char *value;
   size_t valueLen;
-} query_string_t;
+} key_value_t;
 
 typedef struct request_t
 {
@@ -57,19 +57,20 @@ typedef struct request_t
   void *route;       // TODO: add req.route
   int xhr;           // TODO: add req.xhr
   char **subdomains; // TODO: add req.subdomains
-  query_string_t queryStrings[100];
-  size_t queryStringCount;
+  key_value_t queryKeyValues[100];
+  size_t queryKeyValueCount;
   char *queryString;
   char * (^query)(char *queryKey);
   struct phr_header headers[100];
   size_t numHeaders;
   char * (^get)(char *headerKey);
   param_match_t *paramMatch;
-  void *paramsHash;
-  char **paramValues;
+  char *pathMatch;
+  key_value_t paramKeyValues[100];
+  size_t paramKeyValueCount;
   char * (^params)(char *paramKey);
-  query_string_t bodyStrings[100];
-  size_t bodyStringCount;
+  key_value_t bodyKeyValues[100];
+  size_t bodyKeyValueCount;
   const char *bodyString;
   char * (^body)(char *bodyKey);
   int middlewareStackIndex;
