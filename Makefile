@@ -65,7 +65,7 @@ test-tape:
 	clang -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
 
-$(TARGETS)-build-leaks:
+$(TARGETS)-trace:
 	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) -g -O0
 	codesign -s - -v -f --entitlements debug.plist build/$(TARGETS)
 
