@@ -93,6 +93,7 @@ int main()
 
     if (todo != NULL)
       free(todo);
+    free(idString);
   });
 
   app.delete("/todo/:id", ^(request_t *req, response_t *res) {
