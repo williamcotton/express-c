@@ -1,4 +1,5 @@
 #include <picohttpparser/picohttpparser.h>
+#include <curl/curl.h>
 
 #ifndef EXPRESS_H
 #define EXPRESS_H
@@ -32,6 +33,14 @@ typedef struct param_match_t
   int count;
 } param_match_t;
 
+typedef struct query_string_t
+{
+  const char *key;
+  size_t keyLen;
+  const char *value;
+  size_t valueLen;
+} query_string_t;
+
 typedef struct request_t
 {
   char *path;
@@ -47,8 +56,9 @@ typedef struct request_t
   void *route;       // TODO: add req.route
   int xhr;           // TODO: add req.xhr
   char **subdomains; // TODO: add req.subdomains
+  query_string_t queryStrings[100];
+  size_t queryStringCount;
   char *queryString;
-  void *queryHash;
   char * (^query)(char *queryKey);
   struct phr_header headers[100];
   size_t numHeaders;
@@ -70,6 +80,7 @@ typedef struct request_t
   char *cookies[4096];
   void *cookiesHash;
   char * (^cookie)(char *key);
+  CURL *curl;
 } request_t;
 
 typedef struct response_t

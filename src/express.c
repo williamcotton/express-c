@@ -185,9 +185,8 @@ static void toUpper(char *givenStr)
   }
 }
 
-static void parseQueryString(hash_t *hash, char *string)
+static void parseQueryStringHash(hash_t *hash, char *string)
 {
-  // TODO: array of structs of *string offsets and lengths
   CURL *curl = curl_easy_init();
   if (curl)
   {
@@ -213,6 +212,40 @@ static void parseQueryString(hash_t *hash, char *string)
     free(query);
     free(tokens);
     free(p);
+  }
+}
+
+static void parseQueryString(const char *buf, const char *bufEnd, query_string_t *queryStrings, size_t *queryStringCount, size_t maxQueryStrings)
+{
+  const char *keyStart = buf;
+  const char *keyEnd = NULL;
+  const char *valueStart = NULL;
+  const char *valueEnd = NULL;
+  size_t keyLen = 0;
+  size_t valueLen = 0;
+  while (buf <= bufEnd)
+  {
+    if (*buf == '=')
+    {
+      keyEnd = buf;
+      keyLen = keyEnd - keyStart;
+      valueStart = buf + 1;
+    }
+    else if (*buf == '&' || *buf == '\0')
+    {
+      valueEnd = buf;
+      valueLen = valueEnd - valueStart;
+      if (*queryStringCount < maxQueryStrings)
+      {
+        queryStrings[*queryStringCount].key = keyStart;
+        queryStrings[*queryStringCount].keyLen = keyLen;
+        queryStrings[*queryStringCount].value = valueStart;
+        queryStrings[*queryStringCount].valueLen = valueLen;
+        (*queryStringCount)++;
+      }
+      keyStart = buf + 1;
+    }
+    buf++;
   }
 }
 
@@ -347,9 +380,21 @@ void routeMatch(request_t *req, int *match)
 typedef char * (^getHashBlock)(char *key);
 static getHashBlock reqQueryFactory(request_t *req)
 {
-  // TODO: replace with reading directly from req.queryString (pointer offsets and lengths)
   return Block_copy(^(char *key) {
-    return (char *)hash_get(req->queryHash, key);
+    for (size_t i = 0; i != req->queryStringCount; ++i)
+    {
+      char *decodedKey = curl_easy_unescape(req->curl, req->queryStrings[i].key, req->queryStrings[i].keyLen, NULL); // curl_free ??
+      if (strcmp(decodedKey, key) == 0)
+      {
+        curl_free(decodedKey);
+        char *value = malloc(sizeof(char) * (req->queryStrings[i].valueLen + 1));
+        memcpy(value, req->queryStrings[i].value, req->queryStrings[i].valueLen);
+        value[req->queryStrings[i].valueLen] = '\0';
+        char *decodedValue = curl_easy_unescape(req->curl, value, req->queryStrings[i].valueLen, NULL); // curl_free ??
+        return decodedValue;
+      }
+    }
+    return (char *)NULL;
   });
 }
 
@@ -430,7 +475,7 @@ static getHashBlock reqBodyFactory(request_t *req)
       char *contentType = req->get("Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
-        parseQueryString(req->bodyHash, req->bodyString);
+        parseQueryStringHash(req->bodyHash, req->bodyString);
       }
       else if (strncmp(contentType, "application/json", 16) == 0)
       {
@@ -993,6 +1038,8 @@ static request_t parseRequest(client_t client)
       return req;
   }
 
+  req.curl = curl_easy_init();
+
   req.rawRequest = buffer;
 
   req.method = malloc(sizeof(char) * (methodLen + 1));
@@ -1006,7 +1053,6 @@ static request_t parseRequest(client_t client)
   char *copy = strdup(req.url);
   char *queryStringStart = strchr(copy, '?');
 
-  req.queryHash = hash_new(); // TODO: replace with reading directly from req.queryString (pointer offsets and lengths)
   if (queryStringStart)
   {
     int queryStringLen = strlen(queryStringStart + 1);
@@ -1014,7 +1060,8 @@ static request_t parseRequest(client_t client)
     memcpy(req.queryString, queryStringStart + 1, queryStringLen);
     req.queryString[queryStringLen] = '\0';
     *queryStringStart = '\0';
-    parseQueryString(req.queryHash, req.queryString);
+    parseQueryString(req.queryString, req.queryString + queryStringLen, req.queryStrings, &req.queryStringCount,
+                     sizeof(req.queryStrings) / sizeof(req.queryStrings[0]));
   }
 
   req.path = malloc(sizeof(char) * (strlen(copy) + 1));
@@ -1112,7 +1159,6 @@ static void freeRequest(request_t req)
   //   free(req.bodyString);
   if (strlen(req.queryString) > 0)
     free(req.queryString);
-  hash_free(req.queryHash);
   hash_free(req.paramsHash);
   hash_free(req.bodyHash);
   hash_free(req.cookiesHash);
@@ -1123,6 +1169,7 @@ static void freeRequest(request_t req)
   Block_release(req.cookie);
   Block_release(req.m);
   Block_release(req.mSet);
+  curl_easy_cleanup(req.curl);
 }
 
 static void freeResponse(response_t res)
