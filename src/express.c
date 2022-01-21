@@ -294,6 +294,17 @@ param_match_t *paramMatch(char *route)
   return pm;
 }
 
+typedef void * (^mallocBlock)(size_t);
+static mallocBlock reqMallocFactory(request_t *req)
+{
+  req->mallocCount = 0;
+  return Block_copy(^(size_t size) {
+    void *ptr = malloc(size);
+    req->mallocs[req->mallocCount++] = (req_malloc_t){.ptr = ptr};
+    return ptr;
+  });
+}
+
 typedef char * (^getHashBlock)(char *key);
 static getHashBlock reqQueryFactory(request_t *req)
 {
@@ -974,6 +985,8 @@ static request_t parseRequest(client_t client)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
 
+  req.malloc = reqMallocFactory(&req);
+
   char buffer[4096];
   memset(buffer, 0, sizeof(buffer));
   char *method, *url;
@@ -1153,12 +1166,17 @@ static void freeRequest(request_t req)
     free(req.queryString);
   hash_free(req.cookiesHash);
   hash_free(req.middlewareHash);
+  for (int i = 0; i < req.mallocCount; i++)
+  {
+    free(req.mallocs[i].ptr);
+  }
   Block_release(req.query);
   Block_release(req.params);
   Block_release(req.body);
   Block_release(req.cookie);
   Block_release(req.m);
   Block_release(req.mSet);
+  Block_release(req.malloc);
   curl_easy_cleanup(req.curl);
 }
 

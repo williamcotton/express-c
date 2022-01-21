@@ -41,6 +41,11 @@ typedef struct key_value_t
   size_t valueLen;
 } key_value_t;
 
+typedef struct req_malloc_t
+{
+  void *ptr;
+} req_malloc_t;
+
 typedef struct request_t
 {
   char *path;
@@ -84,6 +89,9 @@ typedef struct request_t
   char *cookies[4096];
   void *cookiesHash;
   char * (^cookie)(char *key);
+  int mallocCount;
+  req_malloc_t mallocs[1024];
+  void * (^malloc)(size_t size);
   CURL *curl;
 } request_t;
 
