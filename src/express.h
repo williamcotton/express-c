@@ -1,4 +1,5 @@
 #include <picohttpparser/picohttpparser.h>
+#include <dispatch/dispatch.h>
 #include <curl/curl.h>
 
 #ifndef EXPRESS_H
@@ -46,6 +47,11 @@ typedef struct req_malloc_t
   void *ptr;
 } req_malloc_t;
 
+typedef struct req_block_copy_t
+{
+  void *ptr;
+} req_block_copy_t;
+
 typedef struct request_t
 {
   char *path;
@@ -92,6 +98,9 @@ typedef struct request_t
   int mallocCount;
   req_malloc_t mallocs[1024];
   void * (^malloc)(size_t size);
+  int blockCopyCount;
+  req_block_copy_t blockCopies[1024];
+  void * (^blockCopy)(void *);
   CURL *curl;
 } request_t;
 

@@ -305,6 +305,17 @@ static mallocBlock reqMallocFactory(request_t *req)
   });
 }
 
+typedef void * (^Block_copyBlock)(void *);
+static Block_copyBlock reqBlockCopyFactory(request_t *req)
+{
+  req->blockCopyCount = 0;
+  return Block_copy(^(void *block) {
+    void *ptr = Block_copy(block);
+    req->blockCopies[req->blockCopyCount++] = (req_block_copy_t){.ptr = ptr};
+    return ptr;
+  });
+}
+
 typedef char * (^getHashBlock)(char *key);
 static getHashBlock reqQueryFactory(request_t *req)
 {
@@ -986,6 +997,7 @@ static request_t parseRequest(client_t client)
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
 
   req.malloc = reqMallocFactory(&req);
+  req.blockCopy = reqBlockCopyFactory(&req);
 
   char buffer[4096];
   memset(buffer, 0, sizeof(buffer));
@@ -1160,8 +1172,6 @@ static void freeRequest(request_t req)
   free(req.paramMatch);
   free(req.cookiesString);
   free(req.rawRequestBody);
-  // if (req.bodyString != NULL && strlen(req.bodyString) > 0)
-  //   free(req.bodyString);
   if (strlen(req.queryString) > 0)
     free(req.queryString);
   hash_free(req.cookiesHash);
@@ -1170,6 +1180,10 @@ static void freeRequest(request_t req)
   {
     free(req.mallocs[i].ptr);
   }
+  for (int i = 0; i < req.blockCopyCount; i++)
+  {
+    Block_release(req.blockCopies[i].ptr);
+  }
   Block_release(req.query);
   Block_release(req.params);
   Block_release(req.body);
@@ -1177,6 +1191,7 @@ static void freeRequest(request_t req)
   Block_release(req.m);
   Block_release(req.mSet);
   Block_release(req.malloc);
+  Block_release(req.blockCopy);
   curl_easy_cleanup(req.curl);
 }
 
