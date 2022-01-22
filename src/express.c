@@ -20,6 +20,29 @@
 // #define CLIENT_NET_DEBUG
 // #define MIDDLEWARE_DEBUG
 
+typedef struct route_handler_t
+{
+  char *method;
+  char *path;
+  int regex;
+  param_match_t *paramMatch;
+  requestHandler handler;
+} route_handler_t;
+
+typedef struct middleware_t
+{
+  char *path;
+  middlewareHandler handler;
+} middleware_t;
+
+static route_handler_t *routeHandlers = NULL;
+static int routeHandlerCount = 0;
+static middleware_t *middlewares = NULL;
+static int middlewareCount = 0;
+cleanupHandler *cleanupBlocks = NULL;
+static int servSock = -1;
+static dispatch_queue_t serverQueue = NULL;
+
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
                          "<head>\n"
@@ -185,7 +208,7 @@ static void toUpper(char *givenStr)
   }
 }
 
-static void parseQueryString(const char *buf, const char *bufEnd, key_value_t *queryKeyValues, size_t *queryKeyValueCount, size_t maxQueryStrings)
+static void parseQueryString(const char *buf, const char *bufEnd, key_value_t *keyValues, size_t *keyValueCount, size_t max)
 {
   const char *keyStart = buf;
   const char *keyEnd = NULL;
@@ -205,13 +228,13 @@ static void parseQueryString(const char *buf, const char *bufEnd, key_value_t *q
     {
       valueEnd = buf;
       valueLen = valueEnd - valueStart;
-      if (*queryKeyValueCount < maxQueryStrings)
+      if (*keyValueCount < max)
       {
-        queryKeyValues[*queryKeyValueCount].key = keyStart;
-        queryKeyValues[*queryKeyValueCount].keyLen = keyLen;
-        queryKeyValues[*queryKeyValueCount].value = valueStart;
-        queryKeyValues[*queryKeyValueCount].valueLen = valueLen;
-        (*queryKeyValueCount)++;
+        keyValues[*keyValueCount].key = keyStart;
+        keyValues[*keyValueCount].keyLen = keyLen;
+        keyValues[*keyValueCount].value = valueStart;
+        keyValues[*keyValueCount].valueLen = valueLen;
+        (*keyValueCount)++;
       }
       keyStart = buf + 1;
     }
@@ -305,8 +328,8 @@ static mallocBlock reqMallocFactory(request_t *req)
   });
 }
 
-typedef void * (^Block_copyBlock)(void *);
-static Block_copyBlock reqBlockCopyFactory(request_t *req)
+typedef void * (^copyBlock)(void *);
+static copyBlock reqBlockCopyFactory(request_t *req)
 {
   req->blockCopyCount = 0;
   return Block_copy(^(void *block) {
@@ -316,8 +339,8 @@ static Block_copyBlock reqBlockCopyFactory(request_t *req)
   });
 }
 
-typedef char * (^getHashBlock)(char *key);
-static getHashBlock reqQueryFactory(request_t *req)
+typedef char * (^getBlock)(char *key);
+static getBlock reqQueryFactory(request_t *req)
 {
   return Block_copy(^(char *key) {
     for (size_t i = 0; i != req->queryKeyValueCount; ++i)
@@ -345,8 +368,74 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
   return session;
 }
 
-static getHashBlock reqParamsFactory(request_t *req)
+void routeMatch(const char *path, const char *regexRoute, key_value_t *paramKeyValues, int *match)
 {
+  size_t maxMatches = 100;
+  size_t maxGroups = 100;
+
+  regex_t regexCompiled;
+  regmatch_t groupArray[maxGroups];
+  unsigned int m;
+
+  if (regcomp(&regexCompiled, regexRoute, REG_EXTENDED))
+  {
+    printf("Could not compile regular expression.\n");
+    return;
+  };
+
+  const char *cursor = path;
+  for (m = 0; m < maxMatches; m++)
+  {
+    if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
+      break; // No more matches
+
+    unsigned int g = 0;
+    unsigned int offset = 0;
+    for (g = 0; g < maxGroups; g++)
+    {
+      if (groupArray[g].rm_so == (long long)(size_t)-1)
+        break; // No more groups
+
+      if (g == 0)
+      {
+        offset = groupArray[g].rm_eo;
+        *match = 1;
+      }
+      else
+      {
+        int index = g - 1;
+        paramKeyValues[index].value = cursor + groupArray[g].rm_so;
+        paramKeyValues[index].valueLen = groupArray[g].rm_eo - groupArray[g].rm_so;
+      }
+    }
+    cursor += offset;
+  }
+
+  regfree(&regexCompiled);
+}
+
+static getBlock reqParamsFactory(request_t *req)
+{
+  req->pathMatch = "";
+  for (int i = 0; i < routeHandlerCount; i++)
+  {
+    if (routeHandlers[i].paramMatch != NULL)
+    {
+      int match = 0;
+      routeMatch(req->path, routeHandlers[i].paramMatch->regexRoute, req->paramKeyValues, &match);
+      if (match)
+      {
+        req->pathMatch = routeHandlers[i].path;
+        req->paramKeyValueCount = routeHandlers[i].paramMatch->count;
+        for (int j = 0; j < routeHandlers[i].paramMatch->count; j++)
+        {
+          req->paramKeyValues[j].key = routeHandlers[i].paramMatch->keys[j];
+          req->paramKeyValues[j].keyLen = strlen(routeHandlers[i].paramMatch->keys[j]);
+        }
+        break;
+      }
+    }
+  }
   return Block_copy(^(char *key) {
     for (size_t j = 0; j < req->paramKeyValueCount; j++)
     {
@@ -362,7 +451,7 @@ static getHashBlock reqParamsFactory(request_t *req)
   });
 }
 
-static getHashBlock reqCookieFactory(request_t *req)
+static getBlock reqCookieFactory(request_t *req)
 {
   // TODO: replace with reading directly from req.cookiesString (pointer offsets and lengths)
   req->cookiesHash = hash_new();
@@ -411,7 +500,7 @@ static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
   });
 }
 
-static getHashBlock reqBodyFactory(request_t *req)
+static getBlock reqBodyFactory(request_t *req)
 {
   if (strncmp(req->method, "POST", 4) == 0 || strncmp(req->method, "PATCH", 5) == 0 || strncmp(req->method, "PUT", 3) == 0)
   {
@@ -538,8 +627,7 @@ static sendfBlock sendfFactory(response_t *res)
   });
 }
 
-typedef void (^sendFileBlock)(char *body);
-static sendFileBlock sendFileFactory(client_t client, request_t *req, response_t *res)
+static sendBlock sendFileFactory(client_t client, request_t *req, response_t *res)
 {
   return Block_copy(^(char *path) {
     FILE *file = fopen(path, "r");
@@ -578,7 +666,6 @@ static setBlock setFactory(response_t *res)
   });
 }
 
-typedef char * (^getBlock)(char *headerKey);
 static getBlock getFactory(response_t *res)
 {
   // TODO: replace hash with reading directly from res.headersString (pointer offsets and lengths)
@@ -696,29 +783,6 @@ static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
     return;
   });
 }
-
-typedef struct route_handler_t
-{
-  char *method;
-  char *path;
-  int regex;
-  param_match_t *paramMatch;
-  requestHandler handler;
-} route_handler_t;
-
-typedef struct middleware_t
-{
-  char *path;
-  middlewareHandler handler;
-} middleware_t;
-
-static route_handler_t *routeHandlers = NULL;
-static int routeHandlerCount = 0;
-static middleware_t *middlewares = NULL;
-static int middlewareCount = 0;
-cleanupHandler *cleanupBlocks = NULL;
-static int servSock = -1;
-static dispatch_queue_t serverQueue = NULL;
 
 char *matchFilepath(request_t *req, char *path)
 {
@@ -945,53 +1009,6 @@ static void initServerListen(int port)
   }
 };
 
-UNUSED void routeMatch(const char *path, UNUSED const char *pathEnd, const char *regexRoute, UNUSED key_value_t *paramKeyValues, int *match)
-{
-  // TODO: array of structs of *string offsets and lengths
-  size_t maxMatches = 100;
-  size_t maxGroups = 100;
-
-  regex_t regexCompiled;
-  regmatch_t groupArray[maxGroups];
-  unsigned int m;
-
-  if (regcomp(&regexCompiled, regexRoute, REG_EXTENDED))
-  {
-    printf("Could not compile regular expression.\n");
-    return;
-  };
-
-  const char *cursor = path;
-  for (m = 0; m < maxMatches; m++)
-  {
-    if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
-      break; // No more matches
-
-    unsigned int g = 0;
-    unsigned int offset = 0;
-    for (g = 0; g < maxGroups; g++)
-    {
-      if (groupArray[g].rm_so == (long long)(size_t)-1)
-        break; // No more groups
-
-      if (g == 0)
-      {
-        offset = groupArray[g].rm_eo;
-        *match = 1;
-      }
-      else
-      {
-        int index = g - 1;
-        paramKeyValues[index].value = cursor + groupArray[g].rm_so;
-        paramKeyValues[index].valueLen = groupArray[g].rm_eo - groupArray[g].rm_so;
-      }
-    }
-    cursor += offset;
-  }
-
-  regfree(&regexCompiled);
-}
-
 static request_t parseRequest(client_t client)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
@@ -1084,27 +1101,6 @@ static request_t parseRequest(client_t client)
   req.path = malloc(sizeof(char) * (strlen(copyUrl) + 1));
   memcpy(req.path, copyUrl, strlen(copyUrl));
   req.path[strlen(copyUrl)] = '\0';
-
-  req.pathMatch = "";
-  for (int i = 0; i < routeHandlerCount; i++)
-  {
-    if (routeHandlers[i].paramMatch != NULL)
-    {
-      int match = 0;
-      routeMatch(req.path, req.path + strlen(req.path), routeHandlers[i].paramMatch->regexRoute, req.paramKeyValues, &match);
-      if (match)
-      {
-        req.pathMatch = routeHandlers[i].path;
-        req.paramKeyValueCount = routeHandlers[i].paramMatch->count;
-        for (int j = 0; j < routeHandlers[i].paramMatch->count; j++)
-        {
-          req.paramKeyValues[j].key = routeHandlers[i].paramMatch->keys[j];
-          req.paramKeyValues[j].keyLen = strlen(routeHandlers[i].paramMatch->keys[j]);
-        }
-        break;
-      }
-    }
-  }
 
   req.params = reqParamsFactory(&req);
   req.query = reqQueryFactory(&req);
