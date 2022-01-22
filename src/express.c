@@ -286,8 +286,7 @@ param_match_t *paramMatch(char *route)
         break; // No more groups
 
       char cursorCopy[strlen(cursor) + 1];
-      strcpy(cursorCopy, cursor);
-      cursorCopy[groupArray[g].rm_eo] = 0;
+      strlcpy(cursorCopy, cursor, groupArray[g].rm_eo + 1);
 
       if (g == 0)
       {
@@ -299,8 +298,7 @@ param_match_t *paramMatch(char *route)
         pm->keys = realloc(pm->keys, sizeof(char *) * (m + 1));
         pm->count++;
         char *key = malloc(sizeof(char) * (groupArray[g].rm_eo - groupArray[g].rm_so + 1));
-        strncpy(key, cursorCopy + groupArray[g].rm_so, groupArray[g].rm_eo - groupArray[g].rm_so);
-        key[groupArray[g].rm_eo - groupArray[g].rm_so] = '\0';
+        strlcpy(key, cursorCopy + groupArray[g].rm_so, groupArray[g].rm_eo - groupArray[g].rm_so + 1);
         pm->keys[m] = key;
       }
     }
@@ -311,8 +309,9 @@ param_match_t *paramMatch(char *route)
 
   regfree(&regexCompiled);
 
-  pm->regexRoute = malloc(sizeof(char) * (strlen(regexRoute) + 1));
-  strcpy(pm->regexRoute, regexRoute);
+  size_t regexLen = strlen(regexRoute) + 1;
+  pm->regexRoute = malloc(sizeof(char) * regexLen);
+  strncpy(pm->regexRoute, regexRoute, regexLen);
 
   return pm;
 }
@@ -345,13 +344,13 @@ static getBlock reqQueryFactory(request_t *req)
   return Block_copy(^(char *key) {
     for (size_t i = 0; i != req->queryKeyValueCount; ++i)
     {
+      size_t keyLen = strlen(key);
       char *decodedKey = curl_easy_unescape(req->curl, req->queryKeyValues[i].key, req->queryKeyValues[i].keyLen, NULL); // curl_free ??
-      if (strcmp(decodedKey, key) == 0)
+      if (strncmp(decodedKey, key, keyLen) == 0)
       {
         curl_free(decodedKey);
         char *value = malloc(sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
-        memcpy(value, req->queryKeyValues[i].value, req->queryKeyValues[i].valueLen);
-        value[req->queryKeyValues[i].valueLen] = '\0';
+        strlcpy(value, req->queryKeyValues[i].value, req->queryKeyValues[i].valueLen + 1);
         char *decodedValue = curl_easy_unescape(req->curl, value, req->queryKeyValues[i].valueLen, NULL); // curl_free ??
         free(value);
         return decodedValue;
@@ -439,11 +438,11 @@ static getBlock reqParamsFactory(request_t *req)
   return Block_copy(^(char *key) {
     for (size_t j = 0; j < req->paramKeyValueCount; j++)
     {
-      if (strcmp(req->paramKeyValues[j].key, key) == 0)
+      size_t keyLen = strlen(key);
+      if (strncmp(req->paramKeyValues[j].key, key, keyLen) == 0)
       {
         char *value = malloc(sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
-        memcpy(value, req->paramKeyValues[j].value, req->paramKeyValues[j].valueLen);
-        value[req->paramKeyValues[j].valueLen] = '\0';
+        strlcpy(value, req->paramKeyValues[j].value, req->paramKeyValues[j].valueLen + 1);
         return value;
       }
     }
@@ -512,7 +511,7 @@ static getBlock reqBodyFactory(request_t *req)
       char *contentType = req->get("Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
-        int bodyStringLen = strlen(req->bodyString);
+        size_t bodyStringLen = strlen(req->bodyString);
         req->bodyKeyValueCount = 0;
         parseQueryString(req->bodyString, req->bodyString + bodyStringLen, req->bodyKeyValues, &req->bodyKeyValueCount,
                          sizeof(req->bodyKeyValues) / sizeof(req->bodyKeyValues[0]));
@@ -535,12 +534,12 @@ static getBlock reqBodyFactory(request_t *req)
   return Block_copy(^(char *key) {
     for (size_t i = 0; i != req->bodyKeyValueCount; ++i)
     {
+      size_t keyLen = strlen(key);
       char *decodedKey = curl_easy_unescape(req->curl, req->bodyKeyValues[i].key, req->bodyKeyValues[i].keyLen, NULL); // curl_free ??
-      if (strcmp(decodedKey, key) == 0)
+      if (strncmp(decodedKey, key, keyLen) == 0)
       {
         char *value = malloc(sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
-        memcpy(value, req->bodyKeyValues[i].value, req->bodyKeyValues[i].valueLen);
-        value[req->bodyKeyValues[i].valueLen] = '\0';
+        strlcpy(value, req->bodyKeyValues[i].value, req->bodyKeyValues[i].valueLen + 1);
         int j = 0;
         while (value[j] != '\0')
         {
@@ -593,9 +592,11 @@ static char *buildResponseString(char *body, response_t *res)
   char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + customHeadersLen + res->cookieHeadersLength + 1));
   sprintf(headers, "HTTP/1.1 %s\r\n%s%s\r\n", status, customHeaders, res->cookieHeaders);
 
-  char *responseString = malloc(sizeof(char) * (strlen(headers) + strlen(body) + 1));
-  strcpy(responseString, headers);
-  strcat(responseString, body);
+  size_t headersLen = strlen(headers) + 1;
+  size_t bodyLen = strlen(body);
+  char *responseString = malloc(sizeof(char) * (headersLen + bodyLen));
+  strncpy(responseString, headers, headersLen);
+  strncat(responseString, body, bodyLen);
   free(status);
   free(headers);
   free(contentLength);
@@ -678,46 +679,50 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts)
 {
   char cookieOptsString[1024];
   memset(cookieOptsString, 0, 1024);
-  int i = 0;
+  size_t i = 0;
   if (opts.httpOnly)
   {
-    strcpy(cookieOptsString + i, "; HttpOnly");
+    strncpy(cookieOptsString + i, "; HttpOnly", 10);
     i += strlen("; HttpOnly");
   }
   if (opts.secure)
   {
-    strcpy(cookieOptsString + i, "; Secure");
+    strncpy(cookieOptsString + i, "; Secure", 8);
     i += strlen("; HttpOnly; Secure");
   }
   if (opts.maxAge != 0)
   {
-    char *maxAgeValue = malloc(sizeof(char) * (strlen("; Max-Age=") + 20));
+    size_t maxAgeLen = strlen("; Max-Age=") + 20;
+    char *maxAgeValue = malloc(sizeof(char) * maxAgeLen);
     sprintf(maxAgeValue, "; Max-Age=%d", opts.maxAge);
-    strcpy(cookieOptsString + i, maxAgeValue);
+    strncpy(cookieOptsString + i, maxAgeValue, maxAgeLen);
     i += strlen(maxAgeValue);
     free(maxAgeValue);
   }
   if (opts.expires != NULL)
   {
-    char *expiresValue = malloc(sizeof(char) * (strlen("; Expires=") + 20));
+    size_t expiresLen = strlen("; Expires=") + 20;
+    char *expiresValue = malloc(sizeof(char) * expiresLen);
     sprintf(expiresValue, "; Expires=%s", opts.expires);
-    strcpy(cookieOptsString + i, expiresValue);
+    strncpy(cookieOptsString + i, expiresValue, expiresLen);
     i += strlen(expiresValue);
     free(expiresValue);
   }
   if (opts.domain != NULL)
   {
-    char *domainValue = malloc(sizeof(char) * (strlen("; Domain=") + strlen(opts.domain) + 1));
+    size_t domainLen = strlen("; Domain=") + strlen(opts.domain) + 1;
+    char *domainValue = malloc(sizeof(char) * domainLen);
     sprintf(domainValue, "; Domain=%s", opts.domain);
-    strcpy(cookieOptsString + i, domainValue);
+    strncpy(cookieOptsString + i, domainValue, domainLen);
     i += strlen(domainValue);
     free(domainValue);
   }
   if (opts.path != NULL)
   {
-    char *pathValue = malloc(sizeof(char) * (strlen("; Path=") + strlen(opts.path) + 1));
+    size_t pathLen = strlen("; Path=") + strlen(opts.path) + 1;
+    char *pathValue = malloc(sizeof(char) * pathLen);
     sprintf(pathValue, "; Path=%s", opts.path);
-    strcpy(cookieOptsString + i, pathValue);
+    strncpy(cookieOptsString + i, pathValue, pathLen);
     free(pathValue);
   }
   return strdup(cookieOptsString);
@@ -730,9 +735,11 @@ static setCookie cookieFactory(response_t *res)
   res->cookieHeadersLength = 0;
   return Block_copy(^(char *key, char *value, cookie_opts_t opts) {
     char *cookieOptsString = cookieOptsStringFromOpts(opts);
-    char *valueWithOptions = malloc(sizeof(char) * (strlen(value) + strlen(cookieOptsString) + 1));
-    strcpy(valueWithOptions, value);
-    strcat(valueWithOptions, cookieOptsString);
+    size_t valueLen = strlen(value) + 1;
+    size_t cookieStringOptsLen = strlen(cookieOptsString);
+    char *valueWithOptions = malloc(sizeof(char) * (valueLen + cookieStringOptsLen));
+    strncpy(valueWithOptions, value, valueLen);
+    strncat(valueWithOptions, cookieOptsString, cookieStringOptsLen);
 
     size_t headersLen = strlen(key) + strlen(valueWithOptions) + 16;
     strncpy(res->cookieHeaders + res->cookieHeadersLength, "Set-Cookie", 10);
@@ -755,7 +762,7 @@ typedef void (^urlBlock)(char *url);
 static urlBlock locationFactory(request_t *req, response_t *res)
 {
   return Block_copy(^(char *url) {
-    if (strcmp(url, "back") == 0)
+    if (strncmp(url, "back", 4) == 0)
     {
       char *referer = req->get("Referer");
       if (referer != NULL)
@@ -790,10 +797,12 @@ char *matchFilepath(request_t *req, char *path)
   int reti;
   size_t nmatch = 2;
   regmatch_t pmatch[2];
-  char *pattern = malloc(sizeof(char) * (strlen(path) + strlen("//(.*)") + 1));
-  sprintf(pattern, "/%s/(.*)", path);
-  char *buffer = malloc(sizeof(char) * (strlen(req->url) + 1));
-  strcpy(buffer, req->path);
+  size_t patternLen = strlen(path) + strlen("//(.*)") + 1;
+  char *pattern = malloc(sizeof(char) * patternLen);
+  snprintf(pattern, patternLen, "/%s/(.*)", path);
+  size_t pathLen = strlen(req->path) + 1;
+  char *buffer = malloc(sizeof(char) * pathLen);
+  strncpy(buffer, req->path, pathLen);
   reti = regcomp(&regex, pattern, REG_EXTENDED);
   if (reti)
   {
@@ -805,8 +814,9 @@ char *matchFilepath(request_t *req, char *path)
   {
     char *fileName = buffer + pmatch[1].rm_so;
     fileName[pmatch[1].rm_eo - pmatch[1].rm_so] = 0;
-    char *filePath = malloc(sizeof(char) * (strlen(fileName) + strlen(".//") + strlen(path) + 1));
-    sprintf(filePath, "./%s/%s", path, fileName);
+    size_t filePathLen = strlen(fileName) + strlen(".//") + strlen(path) + 1;
+    char *filePath = malloc(sizeof(char) * filePathLen);
+    snprintf(filePath, filePathLen, "./%s/%s", path, fileName);
     regfree(&regex);
     free(buffer);
     free(pattern);
@@ -1076,31 +1086,28 @@ static request_t parseRequest(client_t client)
   req.rawRequest = buffer;
 
   req.method = malloc(sizeof(char) * (methodLen + 1));
-  memcpy(req.method, method, methodLen);
-  req.method[methodLen] = '\0';
+  strlcpy(req.method, method, methodLen + 1);
 
   req.url = malloc(sizeof(char) * (urlLen + 1));
-  memcpy(req.url, url, urlLen);
-  req.url[urlLen] = '\0';
+  strlcpy(req.url, url, urlLen + 1);
 
-  char *copyUrl = req.url;
-  char *queryStringStart = strchr(copyUrl, '?');
+  char *path = req.url;
+  char *queryStringStart = strchr(path, '?');
 
   if (queryStringStart)
   {
-    int queryStringLen = strlen(queryStringStart + 1);
+    size_t queryStringLen = strlen(queryStringStart + 1);
     req.queryString = malloc(sizeof(char) * (queryStringLen + 1));
-    memcpy(req.queryString, queryStringStart + 1, queryStringLen);
-    req.queryString[queryStringLen] = '\0';
+    strlcpy(req.queryString, queryStringStart + 1, queryStringLen + 1);
     *queryStringStart = '\0';
     req.queryKeyValueCount = 0;
     parseQueryString(req.queryString, req.queryString + queryStringLen, req.queryKeyValues, &req.queryKeyValueCount,
                      sizeof(req.queryKeyValues) / sizeof(req.queryKeyValues[0]));
   }
 
-  req.path = malloc(sizeof(char) * (strlen(copyUrl) + 1));
-  memcpy(req.path, copyUrl, strlen(copyUrl));
-  req.path[strlen(copyUrl)] = '\0';
+  size_t pathLen = strlen(path) + 1;
+  req.path = malloc(sizeof(char) * pathLen);
+  snprintf(req.path, pathLen, "%s", path);
 
   req.params = reqParamsFactory(&req);
   req.query = reqQueryFactory(&req);
@@ -1130,7 +1137,9 @@ static route_handler_t matchRouteHandler(request_t *req)
 {
   for (int i = 0; i < routeHandlerCount; i++)
   {
-    if (strcmp(routeHandlers[i].method, req->method) != 0)
+    size_t methodLen = strlen(routeHandlers[i].method);
+
+    if (strncmp(routeHandlers[i].method, req->method, methodLen) != 0)
       continue;
 
     if (strcmp(routeHandlers[i].path, req->pathMatch) == 0)
