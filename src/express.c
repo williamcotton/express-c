@@ -15,6 +15,9 @@
 #include <curl/curl.h>
 #include <uuid/uuid.h>
 #include <sys/errno.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 #include "express.h"
 
 // #define CLIENT_NET_DEBUG
