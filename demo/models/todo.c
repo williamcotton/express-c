@@ -151,6 +151,10 @@ middlewareHandler todoStoreMiddleware()
             filteredTodos[filteredTodosCount++] = todo;
           }
         }
+        if (filteredTodosCount == 0)
+        {
+          return;
+        }
         for (int i = 0; i < filteredTodosCount; i++)
         {
           eCb(filteredTodos[i]);
