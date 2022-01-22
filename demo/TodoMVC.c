@@ -62,10 +62,8 @@ int main()
 
     res->render("index", json);
 
-    Block_release(todosCollection->each);
     if (strcmp(filter, "all") != 0)
       free(filter);
-    free(todosCollection);
   });
 
   app.post("/todo", ^(request_t *req, response_t *res) {
@@ -120,9 +118,6 @@ int main()
     });
 
     res->redirect("back");
-
-    Block_release(todosCollection->each);
-    free(todosCollection);
   });
 
   app.listen(port, ^{

@@ -6,9 +6,9 @@
 
 typedef cJSON * (^toJSON)();
 
-static toJSON todoToJSON(todo_t *todo)
+static toJSON todoToJSON(request_t *req, todo_t *todo)
 {
-  return Block_copy(^(void) {
+  return req->blockCopy(^(void) {
     cJSON *json = cJSON_CreateObject();
     cJSON_AddNumberToObject(json, "id", todo->id);
     cJSON_AddStringToObject(json, "title", todo->title);
@@ -17,19 +17,19 @@ static toJSON todoToJSON(todo_t *todo)
   });
 }
 
-static todo_t *buildTodoFromJson(todo_t *todo, cJSON *json)
+static todo_t *buildTodoFromJson(request_t *req, todo_t *todo, cJSON *json)
 {
   todo->id = cJSON_GetObjectItem(json, "id") ? cJSON_GetObjectItem(json, "id")->valueint : 0;
   todo->title = cJSON_GetObjectItem(json, "title") ? cJSON_GetObjectItem(json, "title")->valuestring : NULL;
   todo->completed = cJSON_GetObjectItem(json, "completed") ? cJSON_GetObjectItem(json, "completed")->valueint : 0;
-  todo->toJSON = todoToJSON(todo);
+  todo->toJSON = todoToJSON(req, todo);
   return todo;
 }
 
 middlewareHandler todoStoreMiddleware()
 {
   return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
-    todo_store_t *todoStore = malloc(sizeof(todo_store_t));
+    todo_store_t *todoStore = req->malloc(sizeof(todo_store_t));
     cJSON *todoStoreJson = req->session->get("todoStore");
 
     if (todoStoreJson == NULL)
@@ -54,16 +54,16 @@ middlewareHandler todoStoreMiddleware()
       todoStore->count = maxId + 1;
     }
 
-    todoStore->new = Block_copy(^(char *title) {
+    todoStore->new = req->blockCopy(^(char *title) {
       todo_t *newTodo = req->malloc(sizeof(todo_t));
       newTodo->id = todoStore->count;
       newTodo->title = title;
       newTodo->completed = 0;
-      newTodo->toJSON = todoToJSON(newTodo);
+      newTodo->toJSON = todoToJSON(req, newTodo);
       return newTodo;
     });
 
-    todoStore->create = Block_copy(^(todo_t *todo) {
+    todoStore->create = req->blockCopy(^(todo_t *todo) {
       todo->id = todoStore->count++;
       cJSON *todoJson = todo->toJSON();
       cJSON_AddItemToArray(todoStore->store, todoJson);
@@ -71,7 +71,7 @@ middlewareHandler todoStoreMiddleware()
       return todo;
     });
 
-    todoStore->update = Block_copy(^(todo_t *todo) {
+    todoStore->update = req->blockCopy(^(todo_t *todo) {
       cJSON *json = todo->toJSON();
       cJSON *item = NULL;
       int i = 0;
@@ -87,7 +87,7 @@ middlewareHandler todoStoreMiddleware()
       req->session->set("todoStore", todoStore->store);
     });
 
-    todoStore->delete = Block_copy(^(int id) {
+    todoStore->delete = req->blockCopy(^(int id) {
       cJSON *item = NULL;
       int i = 0;
       cJSON_ArrayForEach(item, todoStore->store)
@@ -102,7 +102,7 @@ middlewareHandler todoStoreMiddleware()
       req->session->set("todoStore", todoStore->store);
     });
 
-    todoStore->find = Block_copy(^(int id) {
+    todoStore->find = req->blockCopy(^(int id) {
       cJSON *item = NULL;
       cJSON_ArrayForEach(item, todoStore->store)
       {
@@ -117,27 +117,27 @@ middlewareHandler todoStoreMiddleware()
         return (todo_t *)NULL;
       }
       todo_t *todo = req->malloc(sizeof(todo_t));
-      todo = buildTodoFromJson(todo, item); // leak
+      todo = buildTodoFromJson(req, todo, item); // leak
       return todo;
     });
 
-    todoStore->all = Block_copy(^() {
+    todoStore->all = req->blockCopy(^() {
       collection_t *collection = malloc(sizeof(collection_t));
-      collection->each = Block_copy(^(eachCallback callback) {
+      collection->each = req->blockCopy(^(eachCallback callback) {
         cJSON *item = NULL;
         cJSON_ArrayForEach(item, todoStore->store)
         {
           todo_t *todo = req->malloc(sizeof(todo_t));
-          todo = buildTodoFromJson(todo, item); // leak
+          todo = buildTodoFromJson(req, todo, item); // leak
           callback(todo);
         }
       });
       return collection;
     });
 
-    todoStore->filter = Block_copy(^(UNUSED filterCallback fCb) {
-      collection_t *collection = malloc(sizeof(collection_t));
-      collection->each = Block_copy(^(UNUSED eachCallback eCb) {
+    todoStore->filter = req->blockCopy(^(UNUSED filterCallback fCb) {
+      collection_t *collection = req->malloc(sizeof(collection_t));
+      collection->each = req->blockCopy(^(UNUSED eachCallback eCb) {
         cJSON *item = NULL;
         int totalTodos = cJSON_GetArraySize(todoStore->store);
         todo_t *filteredTodos[totalTodos];
@@ -145,7 +145,7 @@ middlewareHandler todoStoreMiddleware()
         cJSON_ArrayForEach(item, todoStore->store)
         {
           todo_t *todo = req->malloc(sizeof(todo_t));
-          todo = buildTodoFromJson(todo, item); // leak
+          todo = buildTodoFromJson(req, todo, item); // leak
           if (fCb(todo))
           {
             filteredTodos[filteredTodosCount++] = todo;
@@ -163,16 +163,7 @@ middlewareHandler todoStoreMiddleware()
 
     req->mSet("todoStore", todoStore);
 
-    cleanup(Block_copy(^(request_t *finishedReq) {
-      todo_store_t *ts = finishedReq->m("todoStore");
-      Block_release(ts->new);
-      Block_release(ts->create);
-      Block_release(ts->update);
-      Block_release(ts->delete);
-      Block_release(ts->find);
-      Block_release(ts->all);
-      Block_release(ts->filter);
-      free(ts);
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
 
     next();
