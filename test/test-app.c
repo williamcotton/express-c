@@ -97,7 +97,7 @@ void runTests(int runAndExit)
 
   if (runAndExit)
   {
-    exit(testStatus);
+    closeServer(testStatus);
   }
 }
 

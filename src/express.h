@@ -171,6 +171,7 @@ typedef struct app_t
   void (^error)(errorHandler); // TODO: add app.error
 } app_t;
 
+void closeServer(int status);
 app_t express();
 router_t expressRouter(); // TODO: implement expressRouter
 

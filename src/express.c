@@ -978,14 +978,14 @@ static void freeRouteHandlers()
   free(routeHandlers);
 }
 
-static void closeServer()
+void closeServer(int status)
 {
   printf("\nClosing server...\n");
   freeRouteHandlers();
   freeMiddlewares();
   close(servSock);
   dispatch_release(serverQueue);
-  exit(EXIT_SUCCESS);
+  exit(status);
 }
 
 static void initServerListen(int port)
@@ -1003,7 +1003,7 @@ static void initServerListen(int port)
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
     printf("bind() failed\n");
-    closeServer();
+    closeServer(EXIT_FAILURE);
   }
 
   // Make the socket non-blocking
@@ -1012,13 +1012,13 @@ static void initServerListen(int port)
     shutdown(servSock, SHUT_RDWR);
     close(servSock);
     perror("fcntl() failed");
-    closeServer();
+    closeServer(EXIT_FAILURE);
   }
 
   if (listen(servSock, 10000) < 0)
   {
     printf("listen() failed");
-    closeServer();
+    closeServer(EXIT_FAILURE);
   }
 };
 

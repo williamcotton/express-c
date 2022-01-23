@@ -54,9 +54,20 @@ test-watch:
 	make --no-print-directory test || :
 	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make --no-print-directory test
 
-test-trace:
+build-test-trace:
 	clang -o build/test test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) -g -O0
+ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist build/test
+endif
+
+test-leaks: build-test-trace
+ifeq ($(PLATFORM),LINUX)
+	# TODO: valgrind
+else ifeq ($(PLATFORM),DARWIN)
+	leaks --atExit -- build/test
+endif
+
+manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 build/test
 
 .PHONY: test-tape
@@ -67,7 +78,9 @@ test-tape:
 
 $(TARGETS)-trace:
 	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) -g -O0
+ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist build/$(TARGETS)
+endif
 
 $(TARGETS)-analyze:
 	clang --analyze demo/$(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
