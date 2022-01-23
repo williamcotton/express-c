@@ -42,7 +42,7 @@ static route_handler_t *routeHandlers = NULL;
 static int routeHandlerCount = 0;
 static middleware_t *middlewares = NULL;
 static int middlewareCount = 0;
-cleanupHandler *cleanupBlocks = NULL;
+cleanupHandler *middlewareCleanupBlocks = NULL;
 static int servSock = -1;
 static dispatch_queue_t serverQueue = NULL;
 
@@ -778,7 +778,7 @@ static urlBlock locationFactory(request_t *req, response_t *res)
       }
       return;
     }
-    char *location = malloc(sizeof(char) * (strlen(req->path) + strlen(url) + 2));
+    char *location = req->malloc(sizeof(char) * (strlen(req->path) + strlen(url) + 2));
     sprintf(location, "%s%s", req->path, url);
     res->set("Location", location);
   });
@@ -856,13 +856,13 @@ static void addRouteHandler(char *method, char *path, requestHandler handler)
 static void initMiddlewareHandlers()
 {
   middlewares = malloc(sizeof(middleware_t));
-  cleanupBlocks = malloc(sizeof(cleanupHandler));
+  middlewareCleanupBlocks = malloc(sizeof(cleanupHandler));
 }
 
 static void addMiddlewareHandler(middlewareHandler handler)
 {
   middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
-  cleanupBlocks = realloc(cleanupBlocks, sizeof(cleanupHandler) * (middlewareCount + 1));
+  middlewareCleanupBlocks = realloc(middlewareCleanupBlocks, sizeof(cleanupHandler) * (middlewareCount + 1));
   middlewares[middlewareCount++] = (middleware_t){.handler = handler};
 }
 
@@ -878,7 +878,7 @@ static void runMiddleware(int index, request_t *req, response_t *res, void (^nex
 #ifdef MIDDLEWARE_DEBUG
       printf("Adding cleanup block %d\n", index);
 #endif // MIDDLEWARE_DEBUG
-      cleanupBlocks[index] = cleanupBlock;
+      middlewareCleanupBlocks[index] = cleanupBlock;
     };
     middlewares[index].handler(
         req, res, ^{
@@ -1161,7 +1161,7 @@ static void freeRequest(request_t req)
 #ifdef MIDDLEWARE_DEBUG
     printf("Freeing middleware %d\n", i);
 #endif // MIDDLEWARE_DEBUG
-    cleanupBlocks[i]((request_t *)&req);
+    middlewareCleanupBlocks[i]((request_t *)&req);
   }
   if (req._method != NULL)
     curl_free(req._method);
@@ -1432,6 +1432,9 @@ middlewareHandler expressStatic(char *path)
 
     char *rPath = realpath(filePath, NULL);
     int isTraversal = rPath && strncmp(rPath, fullPath, strlen(fullPath)) != 0;
+
+    if (rPath)
+      free(rPath);
 
     if (isTraversal)
     {
