@@ -22,6 +22,14 @@ int main()
   app.use(todoStoreMiddleware());
   app.use(cJSONMustacheMiddleware("demo/views"));
 
+  /*
+    TODO: return a CSS class for when a todo was changed on the last request
+
+      This is so that we can animate the todo list when a todo is changed.
+
+      This should be reset after being shown once.
+  */
+
   app.get("/", ^(request_t *req, response_t *res) {
     char *queryFilter = req->query("filter");
     char *filter = queryFilter ? queryFilter : "all";
