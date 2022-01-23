@@ -521,11 +521,11 @@ static getBlock reqBodyFactory(request_t *req)
       }
       else if (strncmp(contentType, "application/json", 16) == 0)
       {
-        printf("%s\n", req->bodyString);
+        printf("application/json: %s\n", req->bodyString);
       }
       else if (strncmp(contentType, "multipart/form-data", 20) == 0)
       {
-        printf("%s\n", req->bodyString);
+        printf("multipart/form-data: %s\n", req->bodyString);
       }
       free(contentType);
     }
@@ -1415,13 +1415,30 @@ static void initClientAcceptEventHandler()
 }
 #endif
 
+// TODO: args for root directory and path
 middlewareHandler expressStatic(char *path)
 {
-  return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
-    char *filePath = matchFilepath(req, path);
+  char cwd[PATH_MAX];
+  getcwd(cwd, sizeof(cwd));
+  size_t fullPathLen = strlen(cwd) + strlen(path) + 2;
+  char *fullPath = malloc(sizeof(char) * fullPathLen);
+  snprintf(fullPath, fullPathLen, "%s/%s", cwd, path);
 
+  return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
+
+    char *filePath = matchFilepath(req, path);
+
+    char *rPath = realpath(filePath, NULL);
+    int isTraversal = rPath && strncmp(rPath, fullPath, strlen(fullPath)) != 0;
+
+    if (isTraversal)
+    {
+      res->status = 403;
+      res->sendf(errorHTML, req->path);
+      return;
+    }
 
     if (filePath != NULL)
     {
