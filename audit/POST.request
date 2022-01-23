@@ -1,0 +1,15 @@
+POST /todo HTTP/1.1
+Host: localhost:3000
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US,en;q=0.9
+Content-Type: application/x-www-form-urlencoded
+Origin: http://localhost:3000
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Referer: http://localhost:3000/
+Content-Length: 12
+Cookie: sessionStore={"todoStore":[{"id":1,"title":"sdf","completed":true},{"id":3,"title":"sdfsdf","completed":true}]}; sessionStore={"todoStore":[{"id":1,"title":"sdfsdf","completed":true},{"id":2,"title":"sdfsdfsdf","completed":false},{"id":3,"title":"sdf","completed":false},{"id":4,"title":"sdfsdfsdfsd","completed":false},{"id":5,"title":"sdfsdf","completed":false}]}; sessionUuid=89BA6A43-B05E-4BFA-81C8-AEC8FD976CC1
+
+`title=sdfdsf`
