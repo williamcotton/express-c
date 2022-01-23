@@ -62,7 +62,7 @@ endif
 
 test-leaks: build-test-trace
 ifeq ($(PLATFORM),LINUX)
-	# TODO: valgrind
+	valgrind --tool=memcheck --leak-check=full --num-callers=30 build/test
 else ifeq ($(PLATFORM),DARWIN)
 	leaks --atExit -- build/test
 endif
