@@ -42,13 +42,17 @@ middlewareHandler todoStoreMiddleware()
       todoStore->store = todoStoreJson;
       int maxId = 0;
       cJSON *item;
-      cJSON_ArrayForEach(item, todoStore->store)
+      int totalTodos = cJSON_GetArraySize(todoStore->store);
+      if (totalTodos > 0)
       {
-        if (cJSON_GetObjectItem(item, "id"))
+        cJSON_ArrayForEach(item, todoStore->store)
         {
-          int id = cJSON_GetObjectItem(item, "id")->valueint;
-          if (id > maxId)
-            maxId = id;
+          if (cJSON_GetObjectItem(item, "id"))
+          {
+            int id = cJSON_GetObjectItem(item, "id")->valueint;
+            if (id > maxId)
+              maxId = id;
+          }
         }
       }
       todoStore->count = maxId + 1;
@@ -75,6 +79,11 @@ middlewareHandler todoStoreMiddleware()
       cJSON *json = todo->toJSON();
       cJSON *item = NULL;
       int i = 0;
+      int totalTodos = cJSON_GetArraySize(todoStore->store);
+      if (totalTodos == 0)
+      {
+        return;
+      }
       cJSON_ArrayForEach(item, todoStore->store)
       {
         if (cJSON_GetObjectItem(item, "id")->valueint == todo->id)
@@ -90,6 +99,11 @@ middlewareHandler todoStoreMiddleware()
     todoStore->delete = req->blockCopy(^(int id) {
       cJSON *item = NULL;
       int i = 0;
+      int totalTodos = cJSON_GetArraySize(todoStore->store);
+      if (totalTodos == 0)
+      {
+        return;
+      }
       cJSON_ArrayForEach(item, todoStore->store)
       {
         if (cJSON_GetObjectItem(item, "id")->valueint == id)
@@ -104,6 +118,11 @@ middlewareHandler todoStoreMiddleware()
 
     todoStore->find = req->blockCopy(^(int id) {
       cJSON *item = NULL;
+      int totalTodos = cJSON_GetArraySize(todoStore->store);
+      if (totalTodos == 0)
+      {
+        return (todo_t *)NULL;
+      }
       cJSON_ArrayForEach(item, todoStore->store)
       {
         if (cJSON_GetObjectItem(item, "id")->valueint == id)
@@ -125,6 +144,11 @@ middlewareHandler todoStoreMiddleware()
       collection_t *collection = malloc(sizeof(collection_t));
       collection->each = req->blockCopy(^(eachCallback callback) {
         cJSON *item = NULL;
+        int totalTodos = cJSON_GetArraySize(todoStore->store);
+        if (totalTodos == 0)
+        {
+          return;
+        }
         cJSON_ArrayForEach(item, todoStore->store)
         {
           todo_t *todo = req->malloc(sizeof(todo_t));
@@ -140,6 +164,10 @@ middlewareHandler todoStoreMiddleware()
       collection->each = req->blockCopy(^(UNUSED eachCallback eCb) {
         cJSON *item = NULL;
         int totalTodos = cJSON_GetArraySize(todoStore->store);
+        if (totalTodos == 0)
+        {
+          return;
+        }
         todo_t *filteredTodos[totalTodos];
         int filteredTodosCount = 0;
         cJSON_ArrayForEach(item, todoStore->store)
