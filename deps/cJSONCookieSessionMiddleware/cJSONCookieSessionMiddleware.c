@@ -59,8 +59,6 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
       cJSON_Delete(finishedReq->session->store);
-      Block_release(finishedReq->session->get);
-      Block_release(finishedReq->session->set);
     }));
 
     next();
