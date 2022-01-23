@@ -119,19 +119,12 @@ static void parse(FILE *file, bool overwrite)
     }
     free(line);
 }
-
-static FILE *open_default(const char *base_path)
+int env_load(const char *base_path, bool overwrite)
 {
-    // char path[strlen(base_path) + strlen("/.env")];
     char *path = malloc(strlen(base_path) + strlen("/.env") + 1);
     sprintf(path, "%s/.env", base_path);
-
-    return fopen(path, "rb");
-}
-
-int env_load(const char *path, bool overwrite)
-{
-    FILE *file = open_default(path);
+    FILE *file = fopen(path, "rb");
+    free(path);
 
     if (!file)
     {
