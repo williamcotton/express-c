@@ -38,6 +38,7 @@ testHandler testHandlerFactory(tape_t *root, int level)
         printf("\nExpected: \033[32m\n\n%s\n\n\033[0m", str2);
         printf("Received: \n\n\033[31m%s\033[0m", str1);
       }
+      free(str1);
       return result;
     };
 
@@ -54,11 +55,13 @@ testHandler testHandlerFactory(tape_t *root, int level)
         printf("\033[31m\n%d tests, %d failed\n\n\033[0m", root->count, root->failed);
       }
     }
+    Block_release(t->test);
+    free(t);
     return root->failed > 0;
   });
 }
 
-tape_t tape()
+tape_t *tape()
 {
   tape_t *tape = malloc(sizeof(tape_t));
   tape->count = 0;
@@ -70,7 +73,7 @@ tape_t tape()
     return 1;
   };
 
-  return *tape;
+  return tape;
 }
 
 #pragma clang diagnostic pop

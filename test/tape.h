@@ -10,4 +10,4 @@ typedef struct tape_t
   int (^test)(char *, void (^)(struct tape_t *));
 } tape_t;
 
-tape_t tape();
+tape_t *tape();

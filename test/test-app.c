@@ -27,9 +27,9 @@ static char *errorHTML = "<!DOCTYPE html>\n"
 
 void runTests(int runAndExit)
 {
-  tape_t t = tape();
+  tape_t *t = tape();
 
-  int testStatus = t.test("express", ^(tape_t *t) {
+  int testStatus = t->test("express", ^(tape_t *t) {
     clearState();
 
     t->test("GET", ^(tape_t *t) {
@@ -63,7 +63,7 @@ void runTests(int runAndExit)
 
     t->test("File", ^(tape_t *t) {
       t->strEqual("file", curlGet("/file"), "hello, world!\n");
-      char *error = malloc(1024);
+      char error[1024];
       sprintf(error, errorHTML, "/test/test3.txt");
       t->strEqual("file not found", curlGet("/test/test3.txt"), error);
     });
@@ -89,11 +89,14 @@ void runTests(int runAndExit)
     });
 
     t->test("Error", ^(tape_t *t) {
-      char *error = malloc(1024);
+      char error[1024];
       sprintf(error, errorHTML, "/error");
       t->strEqual("error", curlGet("/error"), error);
     });
   });
+
+  Block_release(t->test);
+  free(t);
 
   if (runAndExit)
   {
@@ -107,13 +110,13 @@ int main()
 {
   env_load(".", false);
 
-  app_t app = express();
-  int port = 3032;
-
   int runXTimes = getenv("RUN_X_TIMES") ? atoi(getenv("RUN_X_TIMES")) : 1;
   int sleepTime = getenv("SLEEP_TIME") ? atoi(getenv("SLEEP_TIME")) : 0;
 
   sleep(sleepTime);
+
+  app_t app = express();
+  int port = 3032;
 
   app.use(expressStatic("test"));
   app.use(memSessionMiddlewareFactory());
