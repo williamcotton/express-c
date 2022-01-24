@@ -4,6 +4,7 @@
 #include <Block.h>
 #include <curl/curl.h>
 #include <dotenv-c/dotenv.h>
+#include <hash/hash.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 #include "tape.h"
@@ -118,8 +119,12 @@ int main()
   app_t app = express();
   int port = 3032;
 
-  app.use(expressStatic("test"));
-  app.use(memSessionMiddlewareFactory());
+  char *staticFilesPath = cwdFullPath("test");
+  app.use(expressStatic("test", staticFilesPath));
+
+  hash_t *memSessionStore = hash_new();
+  dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
+  app.use(memSessionMiddlewareFactory(memSessionStore, memSessionQueue));
 
   typedef struct super_t
   {
@@ -262,6 +267,17 @@ int main()
 
   app.get("/redirect/back", ^(UNUSED request_t *req, response_t *res) {
     res->redirect("back");
+  });
+
+  app.cleanup(^{
+    free(staticFilesPath);
+    hash_each(memSessionStore, {
+      hash_t *store = (hash_t *)val;
+      free((void *)key);
+      hash_free(store);
+    });
+    hash_free(memSessionStore);
+    dispatch_release(memSessionQueue);
   });
 
   app.listen(port, ^{

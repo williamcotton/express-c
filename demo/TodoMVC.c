@@ -17,7 +17,8 @@ int main()
   app_t app = express();
   int port = getenv("PORT") ? atoi(getenv("PORT")) : 3000;
 
-  app.use(expressStatic("demo/public"));
+  char *staticFilesPath = cwdFullPath("demo/public");
+  app.use(expressStatic("demo/public", staticFilesPath));
   app.use(cJSONCookieSessionMiddlewareFactory());
   app.use(todoStoreMiddleware());
   app.use(cJSONMustacheMiddleware("demo/views"));
@@ -126,6 +127,10 @@ int main()
     });
 
     res->redirect("back");
+  });
+
+  app.cleanup(^{
+    free(staticFilesPath);
   });
 
   app.listen(port, ^{

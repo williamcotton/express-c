@@ -21,7 +21,6 @@
 #include "express.h"
 
 // #define CLIENT_NET_DEBUG
-// #define MIDDLEWARE_DEBUG
 
 typedef struct route_handler_t
 {
@@ -43,6 +42,8 @@ static int routeHandlerCount = 0;
 static middleware_t *middlewares = NULL;
 static int middlewareCount = 0;
 cleanupHandler *middlewareCleanupBlocks = NULL;
+static int appCleanupCount = 0;
+appCleanupHandler *appCleanupBlocks = NULL;
 static int servSock = -1;
 static dispatch_queue_t serverQueue = NULL;
 
@@ -853,6 +854,11 @@ static void addRouteHandler(char *method, char *path, requestHandler handler)
   routeHandlers[routeHandlerCount++] = routeHandler;
 }
 
+static void initAppCleanupBlocks()
+{
+  appCleanupBlocks = malloc(sizeof(appCleanupHandler));
+}
+
 static void initMiddlewareHandlers()
 {
   middlewares = malloc(sizeof(middleware_t));
@@ -866,18 +872,18 @@ static void addMiddlewareHandler(middlewareHandler handler)
   middlewares[middlewareCount++] = (middleware_t){.handler = handler};
 }
 
+static void addCleanupHandler(appCleanupHandler handler)
+{
+  appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) * (appCleanupCount + 1));
+  appCleanupBlocks[appCleanupCount++] = handler;
+}
+
 static void runMiddleware(int index, request_t *req, response_t *res, void (^next)())
 {
   if (index < middlewareCount)
   {
     req->middlewareStackIndex = index;
-#ifdef MIDDLEWARE_DEBUG
-    printf("Running middleware %d\n", index);
-#endif // MIDDLEWARE_DEBUG
     void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
-#ifdef MIDDLEWARE_DEBUG
-      printf("Adding cleanup block %d\n", index);
-#endif // MIDDLEWARE_DEBUG
       middlewareCleanupBlocks[index] = cleanupBlock;
     };
     middlewares[index].handler(
@@ -972,6 +978,7 @@ static void freeRouteHandlers()
     if (routeHandlers[i].regex)
     {
       paramMatchFree(routeHandlers[i].paramMatch);
+      free(routeHandlers[i].paramMatch);
     }
     Block_release(routeHandlers[i].handler);
   }
@@ -985,6 +992,10 @@ void closeServer(int status)
   freeMiddlewares();
   close(servSock);
   dispatch_release(serverQueue);
+  for (int i = 0; i < appCleanupCount; i++)
+  {
+    appCleanupBlocks[i]();
+  }
   exit(status);
 }
 
@@ -1158,9 +1169,6 @@ static void freeRequest(request_t req)
 {
   for (int i = 1; i <= req.middlewareStackIndex; i++)
   {
-#ifdef MIDDLEWARE_DEBUG
-    printf("Freeing middleware %d\n", i);
-#endif // MIDDLEWARE_DEBUG
     middlewareCleanupBlocks[i]((request_t *)&req);
   }
   if (req._method != NULL)
@@ -1415,15 +1423,18 @@ static void initClientAcceptEventHandler()
 }
 #endif
 
-// TODO: args for root directory and path
-middlewareHandler expressStatic(char *path)
+char *cwdFullPath(char *path)
 {
   char cwd[PATH_MAX];
   getcwd(cwd, sizeof(cwd));
   size_t fullPathLen = strlen(cwd) + strlen(path) + 2;
-  char *fullPath = malloc(sizeof(char) * fullPathLen);
+  char *fullPath = malloc(sizeof(char) * fullPathLen); // leak
   snprintf(fullPath, fullPathLen, "%s/%s", cwd, path);
+  return fullPath;
+}
 
+middlewareHandler expressStatic(char *path, char *fullPath)
+{
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
@@ -1468,12 +1479,8 @@ char *generateUuid()
   return guid;
 }
 
-middlewareHandler memSessionMiddlewareFactory()
+middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue)
 {
-  __block hash_t *memSessionStore = hash_new();
-
-  dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
-
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     req->session->uuid = req->cookie("sessionUuid");
     if (req->session->uuid == NULL)
@@ -1514,6 +1521,7 @@ app_t express()
 {
   initMiddlewareHandlers();
   initRouteHandlers();
+  initAppCleanupBlocks();
   initServerQueue();
   initServerSocket();
 
@@ -1553,6 +1561,10 @@ app_t express()
 
   app.use = ^(middlewareHandler handler) {
     addMiddlewareHandler(handler);
+  };
+
+  app.cleanup = ^(appCleanupHandler handler) {
+    addCleanupHandler(handler);
   };
 
   return app;

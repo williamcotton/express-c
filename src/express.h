@@ -1,5 +1,6 @@
 #include <picohttpparser/picohttpparser.h>
 #include <dispatch/dispatch.h>
+#include <hash/hash.h>
 #include <curl/curl.h>
 
 #ifndef EXPRESS_H
@@ -133,6 +134,7 @@ typedef struct error_t
 } error_t;
 
 typedef void (^cleanupHandler)(request_t *finishedReq);
+typedef void (^appCleanupHandler)();
 typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler));
 typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());      // TODO: add errorHandler
@@ -169,13 +171,16 @@ typedef struct app_t
   void (^useRouter)(char *path, router_t *router); // TODO: add app.useRouter
   void (^engine)(char *ext, void *engine);
   void (^error)(errorHandler); // TODO: add app.error
+  void (^cleanup)(appCleanupHandler);
 } app_t;
 
 void closeServer(int status);
 app_t express();
 router_t expressRouter(); // TODO: implement expressRouter
 
-middlewareHandler expressStatic(char *path);
-middlewareHandler memSessionMiddlewareFactory();
+char *cwdFullPath(char *path);
+
+middlewareHandler expressStatic(char *path, char *fullPath);
+middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue);
 
 #endif // EXPRESS_H
