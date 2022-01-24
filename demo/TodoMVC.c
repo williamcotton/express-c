@@ -135,6 +135,7 @@ int main()
 
   app.listen(port, ^{
     printf("TodoMVC app listening at http://localhost:%d\n", port);
+    writePid("server.pid");
   });
 
   return 0;

@@ -1010,8 +1010,6 @@ static void initServerListen(int port)
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
   servAddr.sin_port = htons(port);
 
-  // TODO: run in background
-  // TODO: save pid
   // TODO: TLS/SSL support
 
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
@@ -1662,6 +1660,14 @@ middlewareHandler expressStatic(char *path, char *fullPath)
       next();
     }
   });
+}
+
+int writePid(char *pidFile)
+{
+  char buf[100];
+  int fd = open(pidFile, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  snprintf(buf, 100, "%ld\n", (long)getpid());
+  return (unsigned long)write(fd, buf, strlen(buf)) == (unsigned long)strlen;
 }
 
 char *generateUuid()

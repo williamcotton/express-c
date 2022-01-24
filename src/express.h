@@ -9,6 +9,7 @@
 #define UNUSED __attribute__((unused))
 
 char *generateUuid();
+int writePid(char *pidFile);
 
 typedef struct session_t
 {
