@@ -68,3 +68,33 @@
    fun:env_load
    fun:main
 }
+{
+   epoll server
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:initClientAcceptEventHandler
+}
+{
+   epoll server
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:initClientAcceptEventHandler
+}
+{
+   epoll server
+   Memcheck:Param
+   epoll_ctl(event)
+   fun:epoll_ctl
+   fun:initClientAcceptEventHandler
+}

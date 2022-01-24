@@ -7,7 +7,6 @@ TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV)
 DEV_CFLAGS = -g -O0
-PROD_CFLAGS = -Ofast
 TEST_CFLAGS = -Werror
 SRC = src/express.c
 SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
@@ -15,9 +14,11 @@ BUILD_DIR = build
 PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
 ifeq ($(PLATFORM),LINUX)
-	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid
+	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
+	PROD_CFLAGS = -O1
 else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined
+	PROD_CFLAGS = -Ofast
 endif
 
 all: $(TARGETS)

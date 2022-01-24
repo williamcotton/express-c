@@ -1,6 +1,7 @@
 build/
 *.dSYM/
 *.trace/
+vgcore.*
 .env
 valgrind-suppressions.log
 test/test-cookies.txt

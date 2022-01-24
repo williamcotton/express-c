@@ -54,7 +54,8 @@
     "stdlib.h": "c",
     "block.h": "c",
     "ranges": "c",
-    "cjsonmustachemiddleware.h": "c"
+    "cjsonmustachemiddleware.h": "c",
+    "string.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

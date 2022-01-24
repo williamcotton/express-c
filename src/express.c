@@ -16,7 +16,9 @@
 #include <uuid/uuid.h>
 #include <sys/errno.h>
 #ifdef __linux__
+#include <sys/epoll.h>
 #include <bsd/string.h>
+#include <pthread.h>
 #endif
 #include "express.h"
 
@@ -941,13 +943,13 @@ static void initServerSocket()
 {
   if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
   {
-    printf("socket() failed");
+    perror("socket() failed");
   }
 
   int flag = 1;
   if (-1 == setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)))
   {
-    perror("setsockopt fail");
+    perror("setsockopt() failed");
   }
 }
 
@@ -1251,12 +1253,207 @@ static response_t buildResponse(client_t client, request_t *req)
 #ifdef __linux__
 /*
 
-An synchronous, single-threaded implementation of the client handler that uses select().
-
-TODO: implement a multi-threaded version that uses epoll()
+A multi-threaded implementation of the client handler that uses epoll().
 
 */
+
+#define THREAD_NUM 4
+#define MAX_EVENTS 64
+
+typedef enum req_status_t
+{
+  READING,
+  ENDED
+} req_status_t;
+
+typedef struct http_status_t
+{
+  client_t client;
+  req_status_t reqStatus;
+} http_status_t;
+
+typedef struct client_thread_args_t
+{
+  int serverFd;
+  int epollFd;
+} client_thread_args_t;
+
+void *thread(void *args)
+{
+  struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
+  if (events == NULL)
+  {
+    perror("malloc() failed");
+  }
+  struct epoll_event ev;
+  int epollFd = ((client_thread_args_t *)args)->epollFd;
+  int serverFd = ((client_thread_args_t *)args)->serverFd;
+
+  int nfds;
+  while (1)
+  {
+    nfds = epoll_wait(epollFd, events, MAX_EVENTS, -1);
+
+    if (nfds <= 0)
+    {
+      // perror("epoll_wait() failed");
+      continue;
+    }
+    for (int n = 0; n < nfds; ++n)
+    {
+      if (events[n].data.fd == serverFd)
+      {
+        while (1)
+        {
+          client_t client = acceptClientConnection();
+          if (client.socket < 0)
+          {
+            if (errno == EAGAIN | errno == EWOULDBLOCK)
+            {
+              break;
+            }
+            else
+            {
+              // perror("accept() failed");
+              break;
+            }
+          }
+
+#ifdef CLIENT_NET_DEBUG
+          printf("\nRead event on servSock\n");
+#endif // CLIENT_NET_DEBUG
+
+          ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+
+          http_status_t *status = malloc(sizeof(http_status_t));
+          status->client = client;
+          status->reqStatus = READING;
+
+          ev.data.ptr = status;
+
+          if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client.socket, &ev) < 0)
+          {
+            // perror("epoll_ctl() failed");
+            continue;
+          }
+        }
+      }
+      else
+      {
+        http_status_t *status = (http_status_t *)events[n].data.ptr;
+        if (status->reqStatus == READING)
+        {
+#ifdef CLIENT_NET_DEBUG
+          printf("\nGot client read\n");
+#endif // CLIENT_NET_DEBUG
+
+          ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+          ev.data.ptr = status;
+
+          client_t client = status->client;
+
+          request_t req = parseRequest(client);
+
+          if (req.method == NULL)
+          {
+            closeClientConnection(client);
+            freeRequest(req);
+            continue;
+          }
+
+          __block response_t res = buildResponse(client, &req);
+
+          runMiddleware(0, &req, &res, ^{
+            route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
+            if (routeHandler.handler == NULL)
+            {
+              res.status = 404;
+              res.sendf(errorHTML, req.path);
+            }
+            else
+            {
+              routeHandler.handler((request_t *)&req, (response_t *)&res);
+            }
+          });
+
+          status->reqStatus = ENDED;
+
+          if (epoll_ctl(epollFd, EPOLL_CTL_MOD, client.socket, &ev) < 0)
+          {
+            // perror("epoll_ctl() failed");
+            freeRequest(req);
+            freeResponse(res);
+            closeClientConnection(client);
+            continue;
+          }
+
+          freeRequest(req);
+          freeResponse(res);
+          closeClientConnection(client);
+        }
+        else if (status->reqStatus == ENDED)
+        {
+          free(status);
+        }
+      }
+    }
+  }
+
+  free(events);
+}
+
 static void initClientAcceptEventHandler()
+{
+
+  pthread_t threads[THREAD_NUM];
+
+  int epollFd = epoll_create1(0);
+  if (epollFd < 0)
+  {
+    fprintf(stderr, "error while creating epoll fd\n");
+    closeServer(EXIT_FAILURE);
+  }
+
+  client_thread_args_t threadArgs;
+  threadArgs.epollFd = epollFd;
+  threadArgs.serverFd = servSock;
+
+  struct epoll_event epollEvent;
+  epollEvent.events = EPOLLIN | EPOLLET;
+  epollEvent.data.fd = servSock;
+
+  if (epoll_ctl(epollFd, EPOLL_CTL_ADD, servSock, &epollEvent) < 0)
+  {
+    fprintf(stderr, "error while adding listen fd to epoll inst\n");
+    closeServer(EXIT_FAILURE);
+  }
+
+  for (int i = 0; i < THREAD_NUM; ++i)
+  {
+    if (pthread_create(&threads[i], NULL, thread, &threadArgs) < 0)
+    {
+      fprintf(stderr, "error while creating %d thread\n", i);
+      closeServer(EXIT_FAILURE);
+    }
+  }
+
+#ifdef CLIENT_NET_DEBUG
+  printf("\nWaiting for client reads...\n");
+#endif // CLIENT_NET_DEBUG
+
+#ifdef CLIENT_NET_DEBUG
+  printf("\nWaiting for client connections...\n");
+#endif // CLIENT_NET_DEBUG
+  thread(&threadArgs);
+}
+/*
+
+An synchronous, single-threaded implementation of the client handler that uses select().
+
+Keeping around for reference.
+
+*/
+UNUSED static void initClientAcceptEventHandlerPoll()
 {
   fd_set readFdSet;
   int maxClients = 30;
