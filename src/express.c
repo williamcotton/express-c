@@ -13,6 +13,7 @@
 #include <hash/hash.h>
 #include <signal.h>
 #include <curl/curl.h>
+#include <MegaMimes/MegaMimes.h>
 #include <uuid/uuid.h>
 #include <sys/errno.h>
 #ifdef __linux__
@@ -644,10 +645,10 @@ static sendBlock sendFileFactory(client_t client, request_t *req, response_t *re
       res->sendf(errorHTML, req->path);
       return;
     }
-    char *response = malloc(sizeof(char) * (strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: \r\n\r\n") + 20));
-    // TODO: mimetype
+    char *mimetype = (char *)getMegaMimeType((const char *)path);
+    char *response = malloc(sizeof(char) * (strlen(mimetype) + strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: \r\nContent-Length: \r\n\r\n") + 20));
     // TODO: use res.set() and refactor header building
-    sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: %zu\r\n\r\n", fileSize(path));
+    sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %zu\r\n\r\n", mimetype, fileSize(path));
     write(client.socket, response, strlen(response));
     // TODO: use sendfile
     char *buffer = malloc(4096);
