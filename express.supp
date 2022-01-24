@@ -1,0 +1,70 @@
+{
+   req.get
+   Memcheck:Addr8
+   fun:__main_block_invoke_6
+}
+{
+   req.get
+   Memcheck:Addr8
+   fun:__parseRequest_block_invoke
+}
+{
+   req.get
+   Memcheck:Addr1
+   fun:strncmp
+}
+{
+   req.get
+   Memcheck:Addr1
+   fun:strnlen
+}
+{
+   req.get
+   Memcheck:Addr8
+   fun:_IO_default_xsputn
+}
+{
+   req.get
+   Memcheck:Addr1
+   fun:_IO_default_xsputn
+}
+{
+   req.location
+   Memcheck:Addr8
+   fun:__locationFactory_block_invoke
+}
+{
+   dispatch queue
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:_dispatch_root_queue_poke_slow
+}
+{
+   dispatch queue
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:_dispatch_root_queue_poke_slow
+}
+{
+   dotenv
+   Memcheck:Param
+   openat(filename)
+   fun:open
+   fun:_IO_file_open
+   fun:_IO_file_fopen*
+   fun:__fopen_internal
+   fun:fopen*
+   fun:env_load
+   fun:main
+}

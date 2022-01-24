@@ -55,6 +55,7 @@ test-watch:
 	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make --no-print-directory test
 
 build-test-trace:
+	mkdir -p $(BUILD_DIR)
 	clang -o build/test test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) -g -O0
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist build/test
@@ -62,13 +63,10 @@ endif
 
 test-leaks: build-test-trace
 ifeq ($(PLATFORM),LINUX)
-	valgrind --tool=memcheck --leak-check=full --error-exitcode=1 --num-callers=30 -s build/test
+	valgrind --tool=memcheck --leak-check=full --suppressions=express.supp --gen-suppressions=all --error-exitcode=1 --num-callers=30 -s build/test
 else ifeq ($(PLATFORM),DARWIN)
 	leaks --atExit -- build/test
 endif
-
-valgrind-suppressions.log:
-	valgrind --tool=memcheck --leak-check=full --gen-suppressions=all --log-file=$@ --num-callers=30 -s build/test
 
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 build/test
