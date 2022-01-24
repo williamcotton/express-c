@@ -5,3 +5,4 @@ vgcore.*
 .env
 valgrind-suppressions.log
 test/test-cookies.txt
+audit/slowhttp.*
