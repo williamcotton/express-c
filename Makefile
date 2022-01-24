@@ -62,10 +62,13 @@ endif
 
 test-leaks: build-test-trace
 ifeq ($(PLATFORM),LINUX)
-	valgrind --tool=memcheck --leak-check=full --num-callers=30 build/test
+	valgrind --tool=memcheck --leak-check=full --error-exitcode=1 --num-callers=30 -s build/test
 else ifeq ($(PLATFORM),DARWIN)
 	leaks --atExit -- build/test
 endif
+
+valgrind-suppressions.log:
+	valgrind --tool=memcheck --leak-check=full --gen-suppressions=all --log-file=$@ --num-callers=30 -s build/test
 
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 build/test
