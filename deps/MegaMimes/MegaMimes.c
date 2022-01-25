@@ -140,7 +140,7 @@ static bool isNotReadableFile(const char *url)
 
   fclose(file);
 
-  return pos == LLONG_MAX && c == WEOF;
+  return pos == LLONG_MAX && c == (char)WEOF;
 }
 
 static bool searchThroughMimes(const char *target, const char **extension, const char **name, const char **type,
@@ -297,7 +297,7 @@ bool isTextFile(const char *url)
       return false;
 
     char ch = fgetc(pFile);
-    while (!feof(pFile) && ch != EOF)
+    while (!feof(pFile) && ch != (char)EOF)
     {
       if (iscntrl(ch) && !isspace(ch))
       {
