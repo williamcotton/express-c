@@ -86,3 +86,6 @@ endif
 
 $(TARGETS)-analyze:
 	clang --analyze demo/$(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
+
+$(BUILD_DIR)/libexpress.so:
+	clang -shared -o $@ src/express.c $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
