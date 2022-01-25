@@ -7,4 +7,5 @@ jobs:
       image: ghcr.io/williamcotton/express-c:release
     steps:
       - uses: actions/checkout@v2
+      - run: make test-leaks
       - run: make test
