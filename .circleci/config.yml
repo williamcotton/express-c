@@ -14,10 +14,10 @@ jobs:
           command: "git clone https://github.com/apple/swift-corelibs-libdispatch.git && cd swift-corelibs-libdispatch && cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ . && sudo ninja install && cd .. && rm -rf swift-corelibs-libdispatch"    
       - run:
           name: "Memory Leak Check"
-          command: "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH PATH=/usr/local/lib:$PATH make test-leaks"
+          command: "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH make test-leaks"
       - run:
           name: "Testing"
-          command: "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH PATH=/usr/local/lib:$PATH make test"
+          command: "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH make test"
 
 workflows:
   test-workflow:
