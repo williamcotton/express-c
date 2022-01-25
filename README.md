@@ -2,7 +2,7 @@
 
 Fast, unopinionated, minimalist web framework for C
 
-[![CircleCI](https://circleci.com/gh/williamcotton/express-c/tree/master.svg?style=svg)](https://circleci.com/gh/williamcotton/express-c/tree/master)
+![Test](https://github.com/williamcotton/express-c/actions/workflows/test.yml/badge.svg)
 
 ## Development Status
 
@@ -130,7 +130,7 @@ Features `req.malloc` and `req.blockCopy` to allocate memory which is automatica
 
 Middleware is given a `cleanup` callback which is also called at completion of request.
 
-Take a look at the (Todo store middleware)[https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c] for an example. 
+Take a look at the (Todo store middleware)[https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c] for an example.
 
 ## Installation
 
