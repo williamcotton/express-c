@@ -1,15 +1,22 @@
 version: '3'
 
 services:
+  demo:
+    build: .
+    ports:
+    - "3000:3000"
+    volumes: 
+      - .:/app
+
   test:
     build: .
     volumes: 
-    - .:/app
+      - .:/app
     environment: { TEST }
     command: make test
 
   bash:
     build: .
     volumes: 
-    - .:/app
+      - .:/app
     entrypoint: bash

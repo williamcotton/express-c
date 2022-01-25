@@ -22,3 +22,7 @@ ENV LD_LIBRARY_PATH /usr/local/lib
 WORKDIR /app
 
 COPY . .
+
+RUN make TodoMVC-prod
+
+ENTRYPOINT [ "bash", "start.sh" ]

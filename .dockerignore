@@ -2,4 +2,4 @@
 .gitignore
 docker-compose*
 .env
-build
+build/
