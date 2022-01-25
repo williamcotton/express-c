@@ -27,8 +27,8 @@
 
 typedef struct route_handler_t
 {
-  char *method;
-  char *path;
+  const char *method;
+  const char *path;
   int regex;
   param_match_t *paramMatch;
   requestHandler handler;
@@ -36,7 +36,7 @@ typedef struct route_handler_t
 
 typedef struct middleware_t
 {
-  char *path;
+  const char *path;
   middlewareHandler handler;
 } middleware_t;
 
@@ -196,7 +196,7 @@ static char *getStatusMessage(int status)
   }
 }
 
-size_t fileSize(char *filePath)
+size_t fileSize(const char *filePath)
 {
   struct stat st;
   stat(filePath, &st);
@@ -255,14 +255,14 @@ typedef struct client_t
   char *ip;
 } client_t;
 
-param_match_t *paramMatch(char *route)
+param_match_t *paramMatch(const char *route)
 {
   param_match_t *pm = malloc(sizeof(param_match_t));
   pm->keys = malloc(sizeof(char *));
   pm->count = 0;
   char regexRoute[4096];
   regexRoute[0] = '\0';
-  char *source = route;
+  const char *source = route;
   char *regexString = ":([A-Za-z0-9_]*)";
   size_t maxMatches = 100;
   size_t maxGroups = 100;
@@ -279,7 +279,7 @@ param_match_t *paramMatch(char *route)
     return NULL;
   };
 
-  cursor = source;
+  cursor = (char *)source;
   for (m = 0; m < maxMatches; m++)
   {
     if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
@@ -345,10 +345,10 @@ static copyBlock reqBlockCopyFactory(request_t *req)
   });
 }
 
-typedef char * (^getBlock)(char *key);
+typedef char * (^getBlock)(const char *key);
 static getBlock reqQueryFactory(request_t *req)
 {
-  return Block_copy(^(char *key) {
+  return Block_copy(^(const char *key) {
     for (size_t i = 0; i != req->queryKeyValueCount; ++i)
     {
       size_t keyLen = strlen(key);
@@ -442,7 +442,7 @@ static getBlock reqParamsFactory(request_t *req)
       }
     }
   }
-  return Block_copy(^(char *key) {
+  return Block_copy(^(const char *key) {
     for (size_t j = 0; j < req->paramKeyValueCount; j++)
     {
       size_t keyLen = strlen(key);
@@ -450,7 +450,7 @@ static getBlock reqParamsFactory(request_t *req)
       {
         char *value = malloc(sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
         strlcpy(value, req->paramKeyValues[j].value, req->paramKeyValues[j].valueLen + 1);
-        return value;
+        return (char *)value;
       }
     }
     return (char *)NULL;
@@ -461,10 +461,10 @@ static getBlock reqCookieFactory(request_t *req)
 {
   // TODO: replace with reading directly from req.cookiesString (pointer offsets and lengths)
   req->cookiesHash = hash_new();
-  req->cookiesString = req->get("Cookie");
+  req->cookiesString = (char *)req->get("Cookie");
   if (req->cookiesString != NULL)
   {
-    char *cookie = strtok(req->cookiesString, ";");
+    char *cookie = strtok((char *)req->cookiesString, ";");
     int i = 0;
     while (cookie != NULL)
     {
@@ -476,7 +476,7 @@ static getBlock reqCookieFactory(request_t *req)
     {
       if (req->cookies[i] == NULL)
         break;
-      char *key = strtok(req->cookies[i], "=");
+      char *key = strtok((char *)req->cookies[i], "=");
       char *value = strtok(NULL, "=");
       if (key[0] == ' ')
         key++;
@@ -484,25 +484,25 @@ static getBlock reqCookieFactory(request_t *req)
     }
   }
 
-  return Block_copy(^(char *key) {
-    return (char *)hash_get(req->cookiesHash, key);
+  return Block_copy(^(const char *key) {
+    return (char *)hash_get(req->cookiesHash, (char *)key);
   });
 }
 
-typedef void * (^getMiddlewareBlock)(char *key);
+typedef void * (^getMiddlewareBlock)(const char *key);
 static getMiddlewareBlock reqMiddlewareFactory(request_t *req)
 {
   req->middlewareHash = hash_new();
-  return Block_copy(^(char *key) {
-    return hash_get(req->middlewareHash, key);
+  return Block_copy(^(const char *key) {
+    return hash_get(req->middlewareHash, (char *)key);
   });
 }
 
-typedef void (^getMiddlewareSetBlock)(char *key, void *middleware);
+typedef void (^getMiddlewareSetBlock)(const char *key, void *middleware);
 static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
 {
-  return Block_copy(^(char *key, void *middleware) {
-    return hash_set(req->middlewareHash, key, middleware);
+  return Block_copy(^(const char *key, void *middleware) {
+    return hash_set(req->middlewareHash, (char *)key, middleware);
   });
 }
 
@@ -515,7 +515,7 @@ static getBlock reqBodyFactory(request_t *req)
     if (req->bodyString && strlen(req->bodyString) > 4)
     {
       req->bodyString += 4;
-      char *contentType = req->get("Content-Type");
+      char *contentType = (char *)req->get("Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
         size_t bodyStringLen = strlen(req->bodyString);
@@ -538,7 +538,7 @@ static getBlock reqBodyFactory(request_t *req)
       req->bodyString = "";
     }
   }
-  return Block_copy(^(char *key) {
+  return Block_copy(^(const char *key) {
     for (size_t i = 0; i != req->bodyKeyValueCount; ++i)
     {
       size_t keyLen = strlen(key);
@@ -565,7 +565,7 @@ static getBlock reqBodyFactory(request_t *req)
   });
 }
 
-static char *buildResponseString(char *body, response_t *res)
+static char *buildResponseString(const char *body, response_t *res)
 {
   if (res->get("Content-Type") == NULL)
     res->set("Content-Type", "text/html; charset=utf-8");
@@ -610,20 +610,20 @@ static char *buildResponseString(char *body, response_t *res)
   return responseString;
 }
 
-typedef void (^sendBlock)(char *body);
+typedef void (^sendBlock)(const char *body);
 static sendBlock sendFactory(client_t client, response_t *res)
 {
-  return Block_copy(^(char *body) {
+  return Block_copy(^(const char *body) {
     char *response = buildResponseString(body, res);
     write(client.socket, response, strlen(response));
     free(response);
   });
 }
 
-typedef void (^sendfBlock)(char *format, ...);
+typedef void (^sendfBlock)(const char *format, ...);
 static sendfBlock sendfFactory(response_t *res)
 {
-  return Block_copy(^(char *format, ...) {
+  return Block_copy(^(const char *format, ...) {
     char body[65536];
     va_list args;
     va_start(args, format);
@@ -637,7 +637,7 @@ static sendfBlock sendfFactory(response_t *res)
 
 static sendBlock sendFileFactory(client_t client, request_t *req, response_t *res)
 {
-  return Block_copy(^(char *path) {
+  return Block_copy(^(const char *path) {
     FILE *file = fopen(path, "r");
     if (file == NULL)
     {
@@ -664,21 +664,21 @@ static sendBlock sendFileFactory(client_t client, request_t *req, response_t *re
   });
 }
 
-typedef void (^setBlock)(char *headerKey, char *headerValue);
+typedef void (^setBlock)(const char *headerKey, const char *headerValue);
 static setBlock setFactory(response_t *res)
 {
   // TODO: replace hash with writing directly to res.headersString
   res->headersHash = hash_new();
-  return Block_copy(^(char *headerKey, char *headerValue) {
-    return hash_set(res->headersHash, headerKey, headerValue);
+  return Block_copy(^(const char *headerKey, const char *headerValue) {
+    return hash_set(res->headersHash, (char *)headerKey, (char *)headerValue);
   });
 }
 
 static getBlock getFactory(response_t *res)
 {
   // TODO: replace hash with reading directly from res.headersString (pointer offsets and lengths)
-  return Block_copy(^(char *headerKey) {
-    return (char *)hash_get(res->headersHash, headerKey);
+  return Block_copy(^(const char *headerKey) {
+    return (char *)hash_get(res->headersHash, (char *)headerKey);
   });
 }
 
@@ -735,12 +735,12 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts)
   return strdup(cookieOptsString);
 }
 
-typedef void (^setCookie)(char *cookieKey, char *cookieValue, cookie_opts_t opts);
+typedef void (^setCookie)(const char *cookieKey, const char *cookieValue, cookie_opts_t opts);
 static setCookie cookieFactory(response_t *res)
 {
   memset(res->cookieHeaders, 0, sizeof(res->cookieHeaders));
   res->cookieHeadersLength = 0;
-  return Block_copy(^(char *key, char *value, cookie_opts_t opts) {
+  return Block_copy(^(const char *key, const char *value, cookie_opts_t opts) {
     char *cookieOptsString = cookieOptsStringFromOpts(opts);
     size_t valueLen = strlen(value) + 1;
     size_t cookieStringOptsLen = strlen(cookieOptsString);
@@ -765,13 +765,13 @@ static setCookie cookieFactory(response_t *res)
   });
 }
 
-typedef void (^urlBlock)(char *url);
+typedef void (^urlBlock)(const char *url);
 static urlBlock locationFactory(request_t *req, response_t *res)
 {
-  return Block_copy(^(char *url) {
+  return Block_copy(^(const char *url) {
     if (strncmp(url, "back", 4) == 0)
     {
-      char *referer = req->get("Referer");
+      const char *referer = req->get("Referer");
       if (referer != NULL)
       {
         res->set("Location", referer);
@@ -790,7 +790,7 @@ static urlBlock locationFactory(request_t *req, response_t *res)
 
 static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
 {
-  return Block_copy(^(char *url) {
+  return Block_copy(^(const char *url) {
     res->status = 302;
     res->location(url);
     res->sendf("Redirecting to %s", url);
@@ -798,7 +798,7 @@ static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
   });
 }
 
-char *matchFilepath(request_t *req, char *path)
+char *matchFilepath(request_t *req, const char *path)
 {
   regex_t regex;
   int reti;
@@ -843,7 +843,7 @@ static void initRouteHandlers()
   routeHandlers = malloc(sizeof(route_handler_t));
 }
 
-static void addRouteHandler(char *method, char *path, requestHandler handler)
+static void addRouteHandler(const char *method, const char *path, requestHandler handler)
 {
   int regex = strchr(path, ':') != NULL;
   routeHandlers = realloc(routeHandlers, sizeof(route_handler_t) * (routeHandlerCount + 1));
@@ -958,7 +958,7 @@ static void freeMiddlewares()
 {
   for (int i = 0; i < middlewareCount; i++)
   {
-    free(middlewares[i].path);
+    free((void *)middlewares[i].path);
     Block_release(middlewares[i].handler);
   }
   free(middlewares);
@@ -1068,7 +1068,7 @@ static request_t parseRequest(client_t client)
                                    &minorVersion, req.headers, &req.numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
-      req.get = ^(char *headerKey) {
+      req.get = ^(const char *headerKey) {
         for (size_t i = 0; i != req.numHeaders; ++i)
         {
           if (strncmp(req.headers[i].name, headerKey, req.headers[i].name_len) == 0)
@@ -1080,7 +1080,7 @@ static request_t parseRequest(client_t client)
         }
         return (char *)NULL;
       };
-      char *contentLength = req.get("Content-Length");
+      char *contentLength = (char *)req.get("Content-Length");
       if (contentLength != NULL && parseBytes == readBytes && contentLength[0] != '0')
       {
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
@@ -1101,19 +1101,19 @@ static request_t parseRequest(client_t client)
   req.rawRequest = buffer;
 
   req.method = malloc(sizeof(char) * (methodLen + 1));
-  strlcpy(req.method, method, methodLen + 1);
+  strlcpy((char *)req.method, method, methodLen + 1);
 
   req.url = malloc(sizeof(char) * (urlLen + 1));
-  strlcpy(req.url, url, urlLen + 1);
+  strlcpy((char *)req.url, url, urlLen + 1);
 
-  char *path = req.url;
+  char *path = (char *)req.url;
   char *queryStringStart = strchr(path, '?');
 
   if (queryStringStart)
   {
     size_t queryStringLen = strlen(queryStringStart + 1);
     req.queryString = malloc(sizeof(char) * (queryStringLen + 1));
-    strlcpy(req.queryString, queryStringStart + 1, queryStringLen + 1);
+    strlcpy((char *)req.queryString, queryStringStart + 1, queryStringLen + 1);
     *queryStringStart = '\0';
     req.queryKeyValueCount = 0;
     parseQueryString(req.queryString, req.queryString + queryStringLen, req.queryKeyValues, &req.queryKeyValueCount,
@@ -1122,7 +1122,7 @@ static request_t parseRequest(client_t client)
 
   size_t pathLen = strlen(path) + 1;
   req.path = malloc(sizeof(char) * pathLen);
-  snprintf(req.path, pathLen, "%s", path);
+  snprintf((char *)req.path, pathLen, "%s", path);
 
   req.params = reqParamsFactory(&req);
   req.query = reqQueryFactory(&req);
@@ -1137,10 +1137,10 @@ static request_t parseRequest(client_t client)
   req._method = req.body("_method");
   if (req._method)
   {
-    toUpper(req._method);
+    toUpper((char *)req._method);
     if (strcmp(req._method, "PUT") == 0 || strcmp(req._method, "DELETE") == 0 || strcmp(req._method, "PATCH") == 0)
     {
-      free(req.method);
+      free((void *)req.method);
       req.method = req._method;
     }
   }
@@ -1173,11 +1173,11 @@ static void freeRequest(request_t req)
     middlewareCleanupBlocks[i]((request_t *)&req);
   }
   if (req._method != NULL)
-    curl_free(req._method);
+    curl_free((void *)req._method);
   else
-    free(req.method);
-  free(req.path);
-  free(req.url);
+    free((void *)req.method);
+  free((void *)req.path);
+  free((void *)req.url);
   free(req.session);
   if (req.paramMatch != NULL)
   {
@@ -1187,10 +1187,10 @@ static void freeRequest(request_t req)
     }
   }
   free(req.paramMatch);
-  free(req.cookiesString);
-  free(req.rawRequestBody);
+  free((void *)req.cookiesString);
+  free((void *)req.rawRequestBody);
   if (strlen(req.queryString) > 0)
-    free(req.queryString);
+    free((void *)req.queryString);
   hash_free(req.cookiesHash);
   hash_free(req.middlewareHash);
   for (int i = 0; i < req.mallocCount; i++)
@@ -1619,7 +1619,7 @@ static void initClientAcceptEventHandler()
 }
 #endif
 
-char *cwdFullPath(char *path)
+char *cwdFullPath(const char *path)
 {
   char cwd[PATH_MAX];
   getcwd(cwd, sizeof(cwd));
@@ -1629,7 +1629,7 @@ char *cwdFullPath(char *path)
   return fullPath;
 }
 
-middlewareHandler expressStatic(char *path, char *fullPath)
+middlewareHandler expressStatic(const char *path, const char *fullPath)
 {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
@@ -1694,24 +1694,24 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
       res->cookie("sessionUuid", req->session->uuid, opts);
     }
 
-    if (hash_has(memSessionStore, req->session->uuid))
+    if (hash_has(memSessionStore, (char *)req->session->uuid))
     {
-      req->session->store = hash_get(memSessionStore, req->session->uuid);
+      req->session->store = hash_get(memSessionStore, (char *)req->session->uuid);
     }
     else
     {
       req->session->store = hash_new(); // is not being freed
       dispatch_sync(memSessionQueue, ^{
-        hash_set(memSessionStore, req->session->uuid, req->session->store);
+        hash_set(memSessionStore, (char *)req->session->uuid, req->session->store);
       });
     }
 
-    req->session->get = ^(char *key) {
-      return hash_get(req->session->store, key);
+    req->session->get = ^(const char *key) {
+      return hash_get(req->session->store, (char *)key);
     };
 
-    req->session->set = ^(char *key, void *value) {
-      hash_set(req->session->store, key, value);
+    req->session->set = ^(const char *key, void *value) {
+      hash_set(req->session->store, (char *)key, value);
     };
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
@@ -1743,23 +1743,23 @@ app_t express()
     dispatch_main();
   };
 
-  app.get = ^(char *path, requestHandler handler) {
+  app.get = ^(const char *path, requestHandler handler) {
     addRouteHandler("GET", path, handler);
   };
 
-  app.post = ^(char *path, requestHandler handler) {
+  app.post = ^(const char *path, requestHandler handler) {
     addRouteHandler("POST", path, handler);
   };
 
-  app.put = ^(char *path, requestHandler handler) {
+  app.put = ^(const char *path, requestHandler handler) {
     addRouteHandler("PUT", path, handler);
   };
 
-  app.patch = ^(char *path, requestHandler handler) {
+  app.patch = ^(const char *path, requestHandler handler) {
     addRouteHandler("PATCH", path, handler);
   };
 
-  app.delete = ^(char *path, requestHandler handler) {
+  app.delete = ^(const char *path, requestHandler handler) {
     addRouteHandler("DELETE", path, handler);
   };
 

@@ -18,7 +18,7 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
 
     if (req->cookie("sessionStore"))
     {
-      char *sessionStore = req->cookie("sessionStore");
+      const char *sessionStore = req->cookie("sessionStore");
       cJSON *store = cJSON_Parse(sessionStore);
       if (store == NULL)
       {
@@ -37,11 +37,11 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory()
       free(sessionStoreString);
     }
 
-    req->session->get = ^(char *key) {
+    req->session->get = ^(const char *key) {
       return (void *)cJSON_GetObjectItem(req->session->store, key);
     };
 
-    req->session->set = ^(char *key, void *value) {
+    req->session->set = ^(const char *key, void *value) {
       cJSON *item = cJSON_GetObjectItem(req->session->store, key);
       if (item == NULL)
       {

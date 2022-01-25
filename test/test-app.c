@@ -256,8 +256,8 @@ int main()
   });
 
   app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
-    char *session = req->cookie("session");
-    char *user = req->cookie("user");
+    const char *session = req->cookie("session");
+    const char *user = req->cookie("user");
     res->sendf("session: %s - user: %s", session, user);
   });
 

@@ -13,17 +13,17 @@ int writePid(char *pidFile);
 
 typedef struct session_t
 {
-  char *uuid;
+  const char *uuid;
   void *store;
-  void * (^get)(char *key);
-  void (^set)(char *key, void *value);
+  void * (^get)(const char *key);
+  void (^set)(const char *key, void *value);
 } session_t;
 
 typedef struct cookie_opts_t
 {
-  char *domain;
-  char *path;
-  char *expires;
+  const char *domain;
+  const char *path;
+  const char *expires;
   int maxAge;
   int secure;
   int httpOnly;
@@ -56,47 +56,47 @@ typedef struct req_block_copy_t
 
 typedef struct request_t
 {
-  char *path;
-  char *method;
-  char *_method;
-  char *url;         // TODO: replace req.url with req.baseUrl and req.originalUrl
-  char *baseUrl;     // TODO: add req.baseUrl
-  char *originalUrl; // TODO: add req.originalUrl
-  char *hostname;    // TODO: add req.hostname
-  char *ip;          // TODO: add req.ip
-  char **ips;        // TODO: add req.ips
-  char *protocol;    // TODO: add req.protocol
-  int secure;        // TODO: add req.secure
-  void *route;       // TODO: add req.route
-  int xhr;           // TODO: add req.xhr
-  char **subdomains; // TODO: add req.subdomains
+  const char *path;
+  const char *method;
+  const char *_method;
+  const char *url;         // TODO: replace req.url with req.baseUrl and req.originalUrl
+  const char *baseUrl;     // TODO: add req.baseUrl
+  const char *originalUrl; // TODO: add req.originalUrl
+  const char *hostname;    // TODO: add req.hostname
+  const char *ip;          // TODO: add req.ip
+  const char **ips;        // TODO: add req.ips
+  const char *protocol;    // TODO: add req.protocol
+  int secure;              // TODO: add req.secure
+  void *route;             // TODO: add req.route
+  int xhr;                 // TODO: add req.xhr
+  const char **subdomains; // TODO: add req.subdomains
   key_value_t queryKeyValues[100];
   size_t queryKeyValueCount;
-  char *queryString;
-  char * (^query)(char *queryKey);
+  const char *queryString;
+  char * (^query)(const char *queryKey);
   struct phr_header headers[100];
   size_t numHeaders;
-  char * (^get)(char *headerKey);
+  char * (^get)(const char *headerKey);
   param_match_t *paramMatch;
-  char *pathMatch;
+  const char *pathMatch;
   key_value_t paramKeyValues[100];
   size_t paramKeyValueCount;
-  char * (^params)(char *paramKey);
+  char * (^params)(const char *paramKey);
   key_value_t bodyKeyValues[100];
   size_t bodyKeyValueCount;
   const char *bodyString;
-  char * (^body)(char *bodyKey);
+  char * (^body)(const char *bodyKey);
   int middlewareStackIndex;
   void *middlewareHash;
-  void * (^m)(char *middlewareKey);
-  void (^mSet)(char *middlewareKey, void *middleware);
-  char *rawRequest;
-  char *rawRequestBody;
+  void * (^m)(const char *middlewareKey);
+  void (^mSet)(const char *middlewareKey, void *middleware);
+  const char *rawRequest;
+  const char *rawRequestBody;
   session_t *session;
-  char *cookiesString;
-  char *cookies[4096];
+  const char *cookiesString;
+  const char *cookies[4096];
   void *cookiesHash;
-  char * (^cookie)(char *key);
+  char * (^cookie)(const char *key);
   int mallocCount;
   req_malloc_t mallocs[1024];
   void * (^malloc)(size_t size);
@@ -108,23 +108,23 @@ typedef struct request_t
 
 typedef struct response_t
 {
-  void (^send)(char *);
-  void (^sendf)(char *, ...);
-  void (^sendFile)(char *);
+  void (^send)(const char *);
+  void (^sendf)(const char *, ...);
+  void (^sendFile)(const char *);
   void (^render)(void *, void *);
   void *headersHash;
-  void (^set)(char *, char *);
-  char * (^get)(char *);
+  void (^set)(const char *, const char *);
+  char * (^get)(const char *);
   void *cookiesHash;
   int cookieHeadersLength;
   char cookieHeaders[4096];
-  void (^cookie)(char *, char *, cookie_opts_t);
-  void (^clearCookie)(char *, cookie_opts_t); // TODO: add res.clearCookie
-  void (^json)(char *, ...);                  // TODO: add res.json
-  void (^location)(char *);
-  void (^redirect)(char *);
-  void (^sendStatus)(int);          // TODO: add res.sendStatus
-  void (^download)(char *, char *); // TODO: add res.download
+  void (^cookie)(const char *, const char *, cookie_opts_t);
+  void (^clearCookie)(const char *, cookie_opts_t); // TODO: add res.clearCookie
+  void (^json)(const char *, ...);                  // TODO: add res.json
+  void (^location)(const char *);
+  void (^redirect)(const char *);
+  void (^sendStatus)(int);                      // TODO: add res.sendStatus
+  void (^download)(const char *, const char *); // TODO: add res.download
   int status;
 } response_t;
 
@@ -138,20 +138,20 @@ typedef void (^cleanupHandler)(request_t *finishedReq);
 typedef void (^appCleanupHandler)();
 typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler));
-typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());      // TODO: add errorHandler
-typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), char *paramValue); // TODO: add paramHandler
+typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());            // TODO: add errorHandler
+typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), const char *paramValue); // TODO: add paramHandler
 
 typedef struct router_t // TODO: implement router_t
 {
-  void (^get)(char *path, requestHandler);
-  void (^post)(char *path, requestHandler);
-  void (^put)(char *path, requestHandler);
-  void (^patch)(char *path, requestHandler);
-  void (^delete)(char *path, requestHandler);
-  void (^all)(char *path, requestHandler);
+  void (^get)(const char *path, requestHandler);
+  void (^post)(const char *path, requestHandler);
+  void (^put)(const char *path, requestHandler);
+  void (^patch)(const char *path, requestHandler);
+  void (^delete)(const char *path, requestHandler);
+  void (^all)(const char *path, requestHandler);
   void (^use)(middlewareHandler);
-  void (^useRouter)(char *path, struct router_t *router);
-  void (^param)(char *param, paramHandler);
+  void (^useRouter)(const char *path, struct router_t *router);
+  void (^param)(const char *param, paramHandler);
 } router_t;
 
 typedef struct server_t
@@ -161,16 +161,16 @@ typedef struct server_t
 
 typedef struct app_t
 {
-  void (^get)(char *path, requestHandler);
-  void (^post)(char *path, requestHandler);
-  void (^put)(char *path, requestHandler);
-  void (^patch)(char *path, requestHandler);
-  void (^delete)(char *path, requestHandler);
-  void (^all)(char *path, requestHandler); // TODO: add app.all
+  void (^get)(const char *path, requestHandler);
+  void (^post)(const char *path, requestHandler);
+  void (^put)(const char *path, requestHandler);
+  void (^patch)(const char *path, requestHandler);
+  void (^delete)(const char *path, requestHandler);
+  void (^all)(const char *path, requestHandler); // TODO: add app.all
   void (^listen)(int port, void (^handler)());
   void (^use)(middlewareHandler);
-  void (^useRouter)(char *path, router_t *router); // TODO: add app.useRouter
-  void (^engine)(char *ext, void *engine);
+  void (^useRouter)(const char *path, router_t *router); // TODO: add app.useRouter
+  void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);
 } app_t;
@@ -179,9 +179,9 @@ void closeServer(int status);
 app_t express();
 router_t expressRouter(); // TODO: implement expressRouter
 
-char *cwdFullPath(char *path);
+char *cwdFullPath(const char *path);
 
-middlewareHandler expressStatic(char *path, char *fullPath);
+middlewareHandler expressStatic(const char *path, const char *fullPath);
 middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue);
 
 #endif // EXPRESS_H
