@@ -2,12 +2,14 @@ version: '3'
 
 services:
   demo:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.deploy
     ports:
     - "3000:3000"
     volumes: 
       - .:/app
-    command: bash -c "make TodoMVC-prod && ./start.sh"
+    command: /app/build/TodoMVC
 
   test:
     build: .
@@ -17,7 +19,9 @@ services:
     command: make test
 
   bash:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.deploy
     volumes: 
       - .:/app
     entrypoint: bash

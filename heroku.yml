@@ -1,5 +1,5 @@
 build:
   docker:
-    web: Dockerfile
+    web: Dockerfile.deploy
 run:
-  web: make TodoMVC-prod && ./start.sh
+  web: /app/build/TodoMVC
