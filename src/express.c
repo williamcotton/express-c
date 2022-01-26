@@ -44,7 +44,6 @@ static route_handler_t *routeHandlers = NULL;
 static int routeHandlerCount = 0;
 static middleware_t *middlewares = NULL;
 static int middlewareCount = 0;
-cleanupHandler *middlewareCleanupBlocks = NULL;
 static int appCleanupCount = 0;
 appCleanupHandler *appCleanupBlocks = NULL;
 static int servSock = -1;
@@ -894,13 +893,11 @@ static void initAppCleanupBlocks()
 static void initMiddlewareHandlers()
 {
   middlewares = malloc(sizeof(middleware_t));
-  middlewareCleanupBlocks = malloc(sizeof(cleanupHandler));
 }
 
 static void addMiddlewareHandler(middlewareHandler handler)
 {
   middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
-  middlewareCleanupBlocks = realloc(middlewareCleanupBlocks, sizeof(cleanupHandler) * (middlewareCount + 1));
   middlewares[middlewareCount++] = (middleware_t){.handler = handler};
 }
 
@@ -916,7 +913,7 @@ static void runMiddleware(int index, request_t *req, response_t *res, void (^nex
   {
     req->middlewareStackIndex = index;
     void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
-      middlewareCleanupBlocks[index] = cleanupBlock;
+      req->middlewareCleanupBlocks[index] = (void *)cleanupBlock;
     };
     middlewares[index].handler(
         req, res, ^{
@@ -1070,6 +1067,13 @@ static request_t parseRequest(client_t client)
   req.malloc = reqMallocFactory(&req);
   req.blockCopy = reqBlockCopyFactory(&req);
 
+  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *) * (middlewareCount + 1));
+  for (int i = 0; i < req.middlewareStackIndex; i++)
+  {
+    req.middlewareCleanupBlocks[i] = ^(UNUSED request_t *finishedReq) {
+    };
+  }
+
   char buffer[4096];
   memset(buffer, 0, sizeof(buffer));
   char *method, *url;
@@ -1197,10 +1201,12 @@ static route_handler_t matchRouteHandler(request_t *req)
 
 static void freeRequest(request_t req)
 {
+  cleanupHandler *middlewareCleanupBlocks = (void (^*)(request_t *))req.middlewareCleanupBlocks;
   for (int i = 1; i <= req.middlewareStackIndex; i++)
   {
-    middlewareCleanupBlocks[i]((request_t *)&req);
+    middlewareCleanupBlocks[i](&req);
   }
+  free(req.middlewareCleanupBlocks);
   if (req._method != NULL)
     curl_free((void *)req._method);
   else

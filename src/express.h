@@ -112,6 +112,7 @@ typedef struct request_t
   req_block_copy_t blockCopies[1024];
   void * (^blockCopy)(void *);
   CURL *curl;
+  void **middlewareCleanupBlocks;
 } request_t;
 
 typedef struct response_t
