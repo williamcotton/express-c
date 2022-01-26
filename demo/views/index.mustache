@@ -3,6 +3,9 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script type="module">
+  		import hotwiredTurbo from 'https://cdn.skypack.dev/@hotwired/turbo';
+		</script>
 		<title>express-c • TodoMVC</title>
 		<link rel="stylesheet" href="demo/public/base.css">
 		<link rel="stylesheet" href="demo/public/index.css">
@@ -26,8 +29,6 @@
           {{/todos}}
 				</ul>
 			</section>
-			{{/noTodos}}
-			{{^noTodos}}
 			<footer class="footer">
 				<span class="todo-count"><strong>{{uncompletedCount}}</strong> item{{^hasUncompletedSingular}}s{{/hasUncompletedSingular}} left</span>
 				<ul class="filters">
