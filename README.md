@@ -130,7 +130,7 @@ Features `req.malloc` and `req.blockCopy` to allocate memory which is automatica
 
 Middleware is given a `cleanup` callback which is also called at completion of request.
 
-Take a look at the (Todo store middleware)[https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c] for an example.
+Take a look at the [Todo store middleware](https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c) for an example.
 
 ## Installation
 
@@ -149,6 +149,8 @@ The easiest way is to open this in a GitHub Codespace.
 Otherwise see the Dockerfile in .devcontainer for full system requirements.
 
 ## Demo App
+
+See it running: [https://express-c-demo.herokuapp.com](https://express-c-demo.herokuapp.com).
 
 ```
 $ make TodoMVC
