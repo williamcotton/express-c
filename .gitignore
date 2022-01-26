@@ -7,3 +7,4 @@ valgrind-suppressions.log
 test/test-cookies.txt
 audit/slowhttp.*
 server.pid
+demo/embeddedFiles.h

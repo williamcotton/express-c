@@ -6,6 +6,14 @@
 #ifndef EXPRESS_H
 #define EXPRESS_H
 
+typedef struct embedded_files_data_t
+{
+  unsigned char **data;
+  int *lengths;
+  char **names;
+  int count;
+} embedded_files_data_t;
+
 #define UNUSED __attribute__((unused))
 
 char *generateUuid();
@@ -180,8 +188,9 @@ app_t express();
 router_t expressRouter(); // TODO: implement expressRouter
 
 char *cwdFullPath(const char *path);
+char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles);
 
-middlewareHandler expressStatic(const char *path, const char *fullPath);
+middlewareHandler expressStatic(const char *path, const char *fullPath, embedded_files_data_t embeddedFiles);
 middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue);
 
 #endif // EXPRESS_H

@@ -9,6 +9,11 @@
 #include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
 #include "../src/express.h"
 #include "models/todo.h"
+#ifdef EMBEDDED_FILES
+#include "embeddedFiles.h"
+#else
+embedded_files_data_t embeddedFiles = {0};
+#endif // EMBEDDED_FILES
 
 int main()
 {
@@ -18,7 +23,7 @@ int main()
   int port = getenv("PORT") ? atoi(getenv("PORT")) : 3000;
 
   char *staticFilesPath = cwdFullPath("demo/public");
-  app.use(expressStatic("demo/public", staticFilesPath));
+  app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
   app.use(cJSONCookieSessionMiddlewareFactory());
   app.use(todoStoreMiddleware());
   app.use(cJSONMustacheMiddleware("demo/views"));

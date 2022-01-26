@@ -18,7 +18,7 @@ ifeq ($(PLATFORM),LINUX)
 	PROD_CFLAGS = -O1
 else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined
-	PROD_CFLAGS = -Ofast
+	PROD_CFLAGS = -O1
 endif
 
 all: $(TARGETS)
@@ -28,9 +28,9 @@ $(TARGETS):
 	mkdir -p $(BUILD_DIR)
 	clang -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS)
 
-$(TARGETS)-prod:
+$(TARGETS)-prod: demo/embeddedFiles.h
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS)
+	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 
 .PHONY: test
 test:
@@ -43,13 +43,13 @@ clean:
 	mkdir -p $(BUILD_DIR)
 
 $(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
-	fswatch --event Updated deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} ./watch.sh $(TARGETS)
+	fswatch --event Updated deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} scripts/watch.sh $(TARGETS)
 
 $(TARGETS)-run-background: $(TARGETS)-kill
 	$(BUILD_DIR)/$(TARGETS) &
 
 $(TARGETS)-kill:
-	./kill.sh $(TARGETS)
+	scripts/kill.sh $(TARGETS)
 
 test-watch:
 	make --no-print-directory test || :
@@ -89,3 +89,9 @@ $(TARGETS)-analyze:
 
 $(BUILD_DIR)/libexpress.so:
 	clang -shared -o $@ src/express.c $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
+
+.PHONY: demo/embeddedFiles.h
+demo/embeddedFiles.h:
+	ls demo/public/* | xargs -I % xxd -i % > $@
+	ls demo/views/* | xargs -I % xxd -i % >> $@
+	scripts/static_array.sh >> $@

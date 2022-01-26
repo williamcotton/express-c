@@ -120,7 +120,8 @@ int main()
   int port = 3032;
 
   char *staticFilesPath = cwdFullPath("test");
-  app.use(expressStatic("test", staticFilesPath));
+  embedded_files_data_t embeddedFiles = {0};
+  app.use(expressStatic("test", staticFilesPath, embeddedFiles));
 
   hash_t *memSessionStore = hash_new();
   dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);

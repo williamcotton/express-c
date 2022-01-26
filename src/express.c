@@ -798,6 +798,35 @@ static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
   });
 }
 
+char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles)
+{
+  size_t pathLen = strlen(path);
+  for (int i = 0; i < embeddedFiles.count; i++)
+  {
+    int match = 1;
+    size_t nameLen = strlen(embeddedFiles.names[i]);
+    if (pathLen != nameLen)
+    {
+      continue;
+    }
+    for (size_t j = 0; j < nameLen; j++)
+    {
+      if (embeddedFiles.names[i][j] != path[j] && embeddedFiles.names[i][j] != '_')
+      {
+        match = 0;
+      }
+    }
+    if (match)
+    {
+      char *data = malloc(sizeof(char) * (embeddedFiles.lengths[i] + 1));
+      memcpy(data, embeddedFiles.data[i], embeddedFiles.lengths[i]);
+      data[embeddedFiles.lengths[i]] = '\0';
+      return data;
+    }
+  }
+  return (char *)NULL;
+};
+
 char *matchFilepath(request_t *req, const char *path)
 {
   regex_t regex;
@@ -1629,11 +1658,29 @@ char *cwdFullPath(const char *path)
   return fullPath;
 }
 
-middlewareHandler expressStatic(const char *path, const char *fullPath)
+middlewareHandler expressStatic(const char *path, const char *fullPath, UNUSED embedded_files_data_t embeddedFiles)
 {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
+
+#ifdef EMBEDDED_FILES
+    const char *reqPath = req->path;
+    reqPath++;
+    char *data = matchEmbeddedFile(reqPath, embeddedFiles);
+    const char *mimetype = getMegaMimeType(req->path);
+    res->set("Content-Type", mimetype);
+    if (data != NULL)
+    {
+      res->send(data);
+      free(data);
+    }
+    else
+    {
+      next();
+    }
+    return;
+#endif // EMBEDED_FILES
 
     char *filePath = matchFilepath(req, path);
 
