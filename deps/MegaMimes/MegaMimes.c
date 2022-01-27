@@ -355,7 +355,7 @@ MegaFileInfo *getMegaFileInformation(const char *pFilePath)
   fseek(fp, 0, SEEK_END);
   info->mFileSize = ftell(fp);
 
-  const char *mimetype, *mimename;
+  const char *mimetype = NULL, *mimename = NULL;
   searchThroughMimes(fileextension, NULL, &mimename, &mimetype, false, true);
   info->mMimeName = mimename;
   info->mMimeType = mimetype;
