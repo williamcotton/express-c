@@ -124,7 +124,6 @@ int env_load(const char *base_path, bool overwrite)
     char *path = malloc(strlen(base_path) + strlen("/.env") + 1);
     sprintf(path, "%s/.env", base_path);
     FILE *file = fopen(path, "rb");
-    free(path);
 
     if (!file)
     {
@@ -137,6 +136,7 @@ int env_load(const char *base_path, bool overwrite)
     }
     parse(file, overwrite);
     fclose(file);
+    free(path);
 
     return 0;
 }
