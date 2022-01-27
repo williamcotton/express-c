@@ -38,13 +38,17 @@ static char *mustacheErrorMessage(int result)
   }
 }
 
-middlewareHandler cJSONMustacheMiddleware(char *viewsPath)
+middlewareHandler cJSONMustacheMiddleware(char *viewsPath, UNUSED embedded_files_data_t embeddedFiles)
 {
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;
     size_t length;
     char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);
     sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
+#ifdef EMBEDDED_FILES
+    template = matchEmbeddedFile(templatePath, embeddedFiles);
+    return template;
+#endif // EMBEDED_FILES
     FILE *templateFd = fopen(templatePath, "r");
     if (templateFd)
     {

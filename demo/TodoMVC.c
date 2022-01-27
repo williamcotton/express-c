@@ -26,7 +26,7 @@ int main()
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
   app.use(cJSONCookieSessionMiddlewareFactory());
   app.use(todoStoreMiddleware());
-  app.use(cJSONMustacheMiddleware("demo/views"));
+  app.use(cJSONMustacheMiddleware("demo/views", embeddedFiles));
 
   /*
     TODO: return a CSS class for when a todo was changed on the last request
