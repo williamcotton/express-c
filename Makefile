@@ -69,6 +69,11 @@ else ifeq ($(PLATFORM),DARWIN)
 	leaks --atExit -- $(BUILD_DIR)/test
 endif
 
+test-threads:
+	mkdir -p $(BUILD_DIR)
+	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
+	$(BUILD_DIR)/$@
+
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 $(BUILD_DIR)/test
 
@@ -80,6 +85,12 @@ test-tape:
 
 $(TARGETS)-trace:
 	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) -g -O0
+ifeq ($(PLATFORM),DARWIN)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
+endif
+
+$(TARGETS)-prod-trace:
+	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
 endif
