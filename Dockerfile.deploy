@@ -35,5 +35,7 @@ WORKDIR /app
 COPY --from=buildstage /app/sdeps/lib /usr/lib
 COPY --from=buildstage /app/sdeps/usr/local/lib /usr/lib
 COPY --from=buildstage /app/build/TodoMVC /app/build/TodoMVC
+COPY --from=buildstage /app/demo/public /app/demo/public
+COPY --from=buildstage /app/demo/views /app/demo/views
 
 CMD /app/build/TodoMVC
