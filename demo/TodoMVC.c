@@ -22,6 +22,14 @@ int main()
   app_t app = express();
   int port = getenv("PORT") ? atoi(getenv("PORT")) : 3000;
 
+  signal(SIGINT, SIG_IGN);
+
+  dispatch_source_t sig_src = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
+  dispatch_source_set_event_handler(sig_src, ^{
+    app.closeServer(0);
+  });
+  dispatch_resume(sig_src);
+
   char *staticFilesPath = cwdFullPath("demo/public");
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
   app.use(cJSONCookieSessionMiddlewareFactory());

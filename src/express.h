@@ -150,6 +150,21 @@ typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(
 typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());            // TODO: add errorHandler
 typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), const char *paramValue); // TODO: add paramHandler
 
+typedef struct route_handler_t
+{
+  const char *method;
+  const char *path;
+  int regex;
+  param_match_t *paramMatch;
+  requestHandler handler;
+} route_handler_t;
+
+typedef struct middleware_t
+{
+  const char *path;
+  middlewareHandler handler;
+} middleware_t;
+
 typedef struct router_t // TODO: implement router_t
 {
   void (^get)(const char *path, requestHandler);
@@ -161,6 +176,10 @@ typedef struct router_t // TODO: implement router_t
   void (^use)(middlewareHandler);
   void (^useRouter)(const char *path, struct router_t *router);
   void (^param)(const char *param, paramHandler);
+  route_handler_t *routeHandlers;
+  int routeHandlerCount;
+  middleware_t *middlewares;
+  int middlewareCount;
 } router_t;
 
 typedef struct server_t
@@ -182,9 +201,9 @@ typedef struct app_t
   void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);
+  void (^closeServer)(int status);
 } app_t;
 
-void closeServer(int status);
 app_t express();
 router_t expressRouter(); // TODO: implement expressRouter
 

@@ -26,7 +26,7 @@ static char *errorHTML = "<!DOCTYPE html>\n"
                          "</body>\n"
                          "</html>\n";
 
-void runTests(int runAndExit)
+void runTests(int runAndExit, app_t app)
 {
   tape_t *t = tape();
 
@@ -101,7 +101,7 @@ void runTests(int runAndExit)
 
   if (runAndExit)
   {
-    closeServer(testStatus);
+    app.closeServer(testStatus);
   }
 }
 
@@ -284,7 +284,7 @@ int main()
   app.listen(port, ^{
     for (int i = 0; i < runXTimes; i++)
     {
-      runTests(runXTimes == 1);
+      runTests(runXTimes == 1, app);
     }
     if (runXTimes > 1)
       exit(0);

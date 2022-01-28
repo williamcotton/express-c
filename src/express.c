@@ -25,21 +25,6 @@
 
 // #define CLIENT_NET_DEBUG
 
-typedef struct route_handler_t
-{
-  const char *method;
-  const char *path;
-  int regex;
-  param_match_t *paramMatch;
-  requestHandler handler;
-} route_handler_t;
-
-typedef struct middleware_t
-{
-  const char *path;
-  middlewareHandler handler;
-} middleware_t;
-
 static route_handler_t *routeHandlers = NULL;
 static int routeHandlerCount = 0;
 static middleware_t *middlewares = NULL;
@@ -1014,20 +999,6 @@ static void freeRouteHandlers()
   free(routeHandlers);
 }
 
-void closeServer(int status)
-{
-  printf("\nClosing server...\n");
-  freeRouteHandlers();
-  freeMiddlewares();
-  close(servSock);
-  dispatch_release(serverQueue);
-  for (int i = 0; i < appCleanupCount; i++)
-  {
-    appCleanupBlocks[i]();
-  }
-  exit(status);
-}
-
 static void initServerListen(int port)
 {
   struct sockaddr_in servAddr;
@@ -1041,7 +1012,7 @@ static void initServerListen(int port)
   if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
     printf("bind() failed\n");
-    closeServer(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   // Make the socket non-blocking
@@ -1050,13 +1021,13 @@ static void initServerListen(int port)
     shutdown(servSock, SHUT_RDWR);
     close(servSock);
     perror("fcntl() failed");
-    closeServer(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   if (listen(servSock, 10000) < 0)
   {
     printf("listen() failed");
-    closeServer(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 };
 
@@ -1774,6 +1745,11 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
   });
 }
 
+router_t Router()
+{
+  return (router_t){0};
+}
+
 app_t express()
 {
   initMiddlewareHandlers();
@@ -1782,19 +1758,7 @@ app_t express()
   initServerQueue();
   initServerSocket();
 
-  if (signal(SIGINT, closeServer) == SIG_ERR)
-    ;
-
   app_t app;
-
-  app.listen = ^(int port, void (^handler)()) {
-    initServerListen(port);
-    dispatch_async(serverQueue, ^{
-      initClientAcceptEventHandler();
-    });
-    handler();
-    dispatch_main();
-  };
 
   app.get = ^(const char *path, requestHandler handler) {
     addRouteHandler("GET", path, handler);
@@ -1822,6 +1786,28 @@ app_t express()
 
   app.cleanup = ^(appCleanupHandler handler) {
     addCleanupHandler(handler);
+  };
+
+  app.closeServer = ^(int status) {
+    printf("\nClosing server...\n");
+    freeRouteHandlers();
+    freeMiddlewares();
+    close(servSock);
+    dispatch_release(serverQueue);
+    for (int i = 0; i < appCleanupCount; i++)
+    {
+      appCleanupBlocks[i]();
+    }
+    exit(status);
+  };
+
+  app.listen = ^(int port, void (^handler)()) {
+    initServerListen(port);
+    dispatch_async(serverQueue, ^{
+      initClientAcceptEventHandler();
+    });
+    handler();
+    dispatch_main();
   };
 
   return app;
