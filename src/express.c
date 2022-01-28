@@ -45,8 +45,6 @@
 #endif
 #include "express.h"
 
-// #define CLIENT_NET_DEBUG
-
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
                          "<head>\n"
@@ -890,17 +888,11 @@ static client_t acceptClientConnection(int serverSocket)
   int clntSock = -1;
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
-#ifdef CLIENT_NET_DEBUG
-  printf("\nAccepting client...\n");
-#endif // CLIENT_NET_DEBUG
   if ((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) < 0)
   {
     // perror("accept() failed");
     return (client_t){.socket = -1, .ip = NULL};
   }
-#ifdef CLIENT_NET_DEBUG
-  printf("Client accepted\n");
-#endif // CLIENT_NET_DEBUG
 
   // Make the socket non-blocking
   if (fcntl(clntSock, F_SETFL, O_NONBLOCK) < 0)
@@ -911,10 +903,6 @@ static client_t acceptClientConnection(int serverSocket)
   }
 
   char *client_ip = inet_ntoa(echoClntAddr.sin_addr);
-
-#ifdef CLIENT_NET_DEBUG
-  printf("Client connected from %s\n", client_ip);
-#endif // CLIENT_NET_DEBUG
 
   return (client_t){.socket = clntSock, .ip = client_ip};
 }
@@ -1023,14 +1011,8 @@ static request_t parseRequest(client_t client, int middlewareCount, route_handle
   // TODO: timeout support
   while (1)
   {
-#ifdef CLIENT_NET_DEBUG
-    printf("\nWaiting for request...\n");
-#endif // CLIENT_NET_DEBUG
     while ((readBytes = read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
       ;
-#ifdef CLIENT_NET_DEBUG
-    printf("\nRequest received\n");
-#endif // CLIENT_NET_DEBUG
     if (readBytes <= 0)
       return req;
     prevBufferLen = bufferLen;
@@ -1201,9 +1183,6 @@ static void freeResponse(response_t res)
 
 static void closeClientConnection(client_t client)
 {
-#ifdef CLIENT_NET_DEBUG
-  printf("\nClosing client connection...\n");
-#endif // CLIENT_NET_DEBUG
   shutdown(client.socket, SHUT_RDWR);
   close(client.socket);
 }
@@ -1300,10 +1279,6 @@ void *clientAcceptEventHandler(void *args)
             }
           }
 
-#ifdef CLIENT_NET_DEBUG
-          printf("\nRead event on serverSocket\n");
-#endif // CLIENT_NET_DEBUG
-
           ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
 
           http_status_t *status = malloc(sizeof(http_status_t));
@@ -1325,10 +1300,6 @@ void *clientAcceptEventHandler(void *args)
         http_status_t *status = (http_status_t *)events[n].data.ptr;
         if (status->reqStatus == READING)
         {
-#ifdef CLIENT_NET_DEBUG
-          printf("\nGot client read\n");
-#endif // CLIENT_NET_DEBUG
-
           ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
           ev.data.ptr = status;
 
@@ -1424,14 +1395,6 @@ static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue
       exit(EXIT_FAILURE);
     }
   }
-
-#ifdef CLIENT_NET_DEBUG
-  printf("\nWaiting for client reads...\n");
-#endif // CLIENT_NET_DEBUG
-
-#ifdef CLIENT_NET_DEBUG
-  printf("\nWaiting for client connections...\n");
-#endif // CLIENT_NET_DEBUG
   clientAcceptEventHandler(&threadArgs);
 }
 /*
@@ -1457,9 +1420,6 @@ UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED d
 
   struct timeval waitd = {0, 1};
 
-#ifdef CLIENT_NET_DEBUG
-  printf("\nWaiting for client connections...\n");
-#endif // CLIENT_NET_DEBUG
   while (1)
   {
     FD_ZERO(&readFdSet);
@@ -1479,9 +1439,6 @@ UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED d
 
     if (FD_ISSET(serverSocket, &readFdSet))
     {
-#ifdef CLIENT_NET_DEBUG
-      printf("\nRead event on serverSocket\n");
-#endif // CLIENT_NET_DEBUG
       client_t client = acceptClientConnection(serverSocket);
       if (client.socket < 0)
         continue;
@@ -1549,9 +1506,6 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, serverSocket, 0, serverQueue);
 
   dispatch_source_set_event_handler(acceptSource, ^{
-#ifdef CLIENT_NET_DEBUG
-    printf("\nRead event on serverSocket\n");
-#endif // CLIENT_NET_DEBUG
     const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++)
     {
@@ -1561,9 +1515,6 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
 
       dispatch_source_t readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, client.socket, 0, serverQueue);
       dispatch_source_set_event_handler(readSource, ^{
-#ifdef CLIENT_NET_DEBUG
-        printf("\nGot client read\n");
-#endif // CLIENT_NET_DEBUG
         request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
 
         if (req.method == NULL)
@@ -1598,16 +1549,9 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
         dispatch_source_cancel(readSource);
         dispatch_release(readSource);
       });
-#ifdef CLIENT_NET_DEBUG
-      printf("\nWaiting for client reads...\n");
-#endif // CLIENT_NET_DEBUG
       dispatch_resume(readSource);
     }
   });
-
-#ifdef CLIENT_NET_DEBUG
-  printf("\nWaiting for client connections...\n");
-#endif // CLIENT_NET_DEBUG
   dispatch_resume(acceptSource);
 }
 #endif
