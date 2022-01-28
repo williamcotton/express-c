@@ -38,6 +38,11 @@ test:
 	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
+test-coverage:
+	mkdir -p $(BUILD_DIR)
+	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-arcs -ftest-coverage
+	$(BUILD_DIR)/$@
+
 clean:
 	rm -rf $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)
