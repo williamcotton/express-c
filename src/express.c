@@ -1237,20 +1237,19 @@ typedef struct client_thread_args_t
 
 void *clientAcceptEventHandler(void *args)
 {
-  struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
-  if (events == NULL)
-  {
-    perror("malloc() failed");
-  }
-  struct epoll_event ev;
-  int epollFd = ((client_thread_args_t *)args)->epollFd;
-  int serverSocket = ((client_thread_args_t *)args)->serverSocket;
-  middleware_t *middlewares = ((client_thread_args_t *)args)->middlewares;
-  int middlewareCount = ((client_thread_args_t *)args)->middlewareCount;
-  route_handler_t *routeHandlers = ((client_thread_args_t *)args)->routeHandlers;
-  int routeHandlerCount = ((client_thread_args_t *)args)->routeHandlerCount;
+  client_thread_args_t *clientThreadArgs = (client_thread_args_t *)args;
 
+  int epollFd = clientThreadArgs->epollFd;
+  int serverSocket = clientThreadArgs->serverSocket;
+  middleware_t *middlewares = clientThreadArgs->middlewares;
+  int middlewareCount = clientThreadArgs->middlewareCount;
+  route_handler_t *routeHandlers = clientThreadArgs->routeHandlers;
+  int routeHandlerCount = clientThreadArgs->routeHandlerCount;
+
+  struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
+  struct epoll_event ev;
   int nfds;
+
   while (1)
   {
     nfds = epoll_wait(epollFd, events, MAX_EVENTS, -1);
