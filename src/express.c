@@ -691,7 +691,7 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts)
   if (opts.secure)
   {
     strncpy(cookieOptsString + i, "; Secure", 8);
-    i += strlen("; HttpOnly; Secure");
+    i += strlen("; Secure");
   }
   if (opts.maxAge != 0)
   {
