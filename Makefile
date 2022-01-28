@@ -15,10 +15,10 @@ PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
 ifeq ($(PLATFORM),LINUX)
 	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
-	PROD_CFLAGS = -O1
+	PROD_CFLAGS = -Ofast
 else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined
-	PROD_CFLAGS = -O1
+	PROD_CFLAGS = -Ofast
 endif
 
 all: $(TARGETS)

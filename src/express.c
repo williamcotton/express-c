@@ -1022,7 +1022,7 @@ static request_t parseRequest(client_t client, int middlewareCount, route_handle
                                    &minorVersion, req.headers, &req.numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
-      req.get = ^(const char *headerKey) {
+      req.get = Block_copy(^(const char *headerKey) {
         for (size_t i = 0; i != req.numHeaders; ++i)
         {
           if (strncmp(req.headers[i].name, headerKey, req.headers[i].name_len) == 0)
@@ -1033,7 +1033,7 @@ static request_t parseRequest(client_t client, int middlewareCount, route_handle
           }
         }
         return (char *)NULL;
-      };
+      });
       char *contentLength = (char *)req.get("Content-Length");
       if (contentLength != NULL && parseBytes == readBytes && contentLength[0] != '0')
       {
@@ -1157,6 +1157,7 @@ static void freeRequest(request_t req)
   {
     Block_release(req.blockCopies[i].ptr);
   }
+  Block_release(req.get);
   Block_release(req.query);
   Block_release(req.params);
   Block_release(req.body);
