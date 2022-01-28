@@ -25,15 +25,6 @@
 
 // #define CLIENT_NET_DEBUG
 
-static route_handler_t *routeHandlers = NULL;
-static int routeHandlerCount = 0;
-static middleware_t *middlewares = NULL;
-static int middlewareCount = 0;
-static int appCleanupCount = 0;
-appCleanupHandler *appCleanupBlocks = NULL;
-static int servSock = -1;
-static dispatch_queue_t serverQueue = NULL;
-
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
                          "<head>\n"
@@ -404,7 +395,7 @@ void routeMatch(const char *path, const char *regexRoute, key_value_t *paramKeyV
   regfree(&regexCompiled);
 }
 
-static getBlock reqParamsFactory(request_t *req)
+static getBlock reqParamsFactory(request_t *req, route_handler_t *routeHandlers, int routeHandlerCount)
 {
   req->pathMatch = "";
   for (int i = 0; i < routeHandlerCount; i++)
@@ -569,16 +560,17 @@ static char *buildResponseString(const char *body, response_t *res)
   memset(customHeaders, 0, 4096);
 
   // TODO: replace with writing directly from res.headersString
-  hash_each((hash_t *)res->headersHash, {
-    size_t headersLen = strlen(key) + strlen(val) + 4;
-    strncpy(customHeaders + customHeadersLen, key, strlen(key));
-    customHeaders[customHeadersLen + strlen(key)] = ':';
-    customHeaders[customHeadersLen + strlen(key) + 1] = ' ';
-    strncpy(customHeaders + customHeadersLen + strlen(key) + 2, val, strlen(val));
-    customHeaders[customHeadersLen + strlen(key) + strlen(val) + 2] = '\r';
-    customHeaders[customHeadersLen + strlen(key) + strlen(val) + 3] = '\n';
-    customHeadersLen += headersLen;
-  });
+  hash_each((hash_t *)res->headersHash,
+            {
+              size_t headersLen = strlen(key) + strlen(val) + 4;
+              strncpy(customHeaders + customHeadersLen, key, strlen(key));
+              customHeaders[customHeadersLen + strlen(key)] = ':';
+              customHeaders[customHeadersLen + strlen(key) + 1] = ' ';
+              strncpy(customHeaders + customHeadersLen + strlen(key) + 2, val, strlen(val));
+              customHeaders[customHeadersLen + strlen(key) + strlen(val) + 2] = '\r';
+              customHeaders[customHeadersLen + strlen(key) + strlen(val) + 3] = '\n';
+              customHeadersLen += headersLen;
+            });
 
   char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + customHeadersLen + res->cookieHeadersLength + 1));
   sprintf(headers, "HTTP/1.1 %s\r\n%s%s\r\n", status, customHeaders, res->cookieHeaders);
@@ -851,48 +843,7 @@ char *matchFilepath(request_t *req, const char *path)
   }
 }
 
-static void initRouteHandlers()
-{
-  routeHandlers = malloc(sizeof(route_handler_t));
-}
-
-static void addRouteHandler(const char *method, const char *path, requestHandler handler)
-{
-  int regex = strchr(path, ':') != NULL;
-  routeHandlers = realloc(routeHandlers, sizeof(route_handler_t) * (routeHandlerCount + 1));
-  route_handler_t routeHandler = {
-      .method = method,
-      .path = path,
-      .regex = regex,
-      .paramMatch = regex ? paramMatch(path) : NULL,
-      .handler = handler,
-  };
-  routeHandlers[routeHandlerCount++] = routeHandler;
-}
-
-static void initAppCleanupBlocks()
-{
-  appCleanupBlocks = malloc(sizeof(appCleanupHandler));
-}
-
-static void initMiddlewareHandlers()
-{
-  middlewares = malloc(sizeof(middleware_t));
-}
-
-static void addMiddlewareHandler(middlewareHandler handler)
-{
-  middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
-  middlewares[middlewareCount++] = (middleware_t){.handler = handler};
-}
-
-static void addCleanupHandler(appCleanupHandler handler)
-{
-  appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) * (appCleanupCount + 1));
-  appCleanupBlocks[appCleanupCount++] = handler;
-}
-
-static void runMiddleware(int index, request_t *req, response_t *res, void (^next)())
+static void runMiddleware(int index, request_t *req, response_t *res, void (^next)(), middleware_t *middlewares, int middlewareCount)
 {
   if (index < middlewareCount)
   {
@@ -902,7 +853,7 @@ static void runMiddleware(int index, request_t *req, response_t *res, void (^nex
     };
     middlewares[index].handler(
         req, res, ^{
-          runMiddleware(index + 1, req, res, next);
+          runMiddleware(index + 1, req, res, next, middlewares, middlewareCount);
         },
         cleanup);
   }
@@ -912,12 +863,7 @@ static void runMiddleware(int index, request_t *req, response_t *res, void (^nex
   }
 }
 
-static void initServerQueue()
-{
-  serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
-}
-
-static client_t acceptClientConnection()
+static client_t acceptClientConnection(int serverSocket)
 {
   int clntSock = -1;
   struct sockaddr_in echoClntAddr;
@@ -925,7 +871,7 @@ static client_t acceptClientConnection()
 #ifdef CLIENT_NET_DEBUG
   printf("\nAccepting client...\n");
 #endif // CLIENT_NET_DEBUG
-  if ((clntSock = accept(servSock, (struct sockaddr *)&echoClntAddr, &clntLen)) < 0)
+  if ((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) < 0)
   {
     // perror("accept() failed");
     return (client_t){.socket = -1, .ip = NULL};
@@ -951,21 +897,21 @@ static client_t acceptClientConnection()
   return (client_t){.socket = clntSock, .ip = client_ip};
 }
 
-static void initServerSocket()
+static void initServerSocket(int *serverSocket)
 {
-  if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+  if ((*serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
   {
     perror("socket() failed");
   }
 
   int flag = 1;
-  if (-1 == setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)))
+  if (-1 == setsockopt(*serverSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)))
   {
     perror("setsockopt() failed");
   }
 }
 
-static void freeMiddlewares()
+static void freeMiddlewares(middleware_t *middlewares, int middlewareCount)
 {
   for (int i = 0; i < middlewareCount; i++)
   {
@@ -985,7 +931,7 @@ static void paramMatchFree(param_match_t *paramMatch)
   free(paramMatch->regexRoute);
 }
 
-static void freeRouteHandlers()
+static void freeRouteHandlers(route_handler_t *routeHandlers, int routeHandlerCount)
 {
   for (int i = 0; i < routeHandlerCount; i++)
   {
@@ -999,7 +945,7 @@ static void freeRouteHandlers()
   free(routeHandlers);
 }
 
-static void initServerListen(int port)
+static void initServerListen(int port, int *serverSocket)
 {
   struct sockaddr_in servAddr;
   memset(&servAddr, 0, sizeof(servAddr));
@@ -1009,29 +955,29 @@ static void initServerListen(int port)
 
   // TODO: TLS/SSL support
 
-  if (bind(servSock, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
+  if (bind(*serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
     printf("bind() failed\n");
     exit(EXIT_FAILURE);
   }
 
   // Make the socket non-blocking
-  if (fcntl(servSock, F_SETFL, O_NONBLOCK) < 0)
+  if (fcntl(*serverSocket, F_SETFL, O_NONBLOCK) < 0)
   {
-    shutdown(servSock, SHUT_RDWR);
-    close(servSock);
+    shutdown(*serverSocket, SHUT_RDWR);
+    close(*serverSocket);
     perror("fcntl() failed");
     exit(EXIT_FAILURE);
   }
 
-  if (listen(servSock, 10000) < 0)
+  if (listen(*serverSocket, 10000) < 0)
   {
     printf("listen() failed");
     exit(EXIT_FAILURE);
   }
 };
 
-static request_t parseRequest(client_t client)
+static request_t parseRequest(client_t client, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
 
@@ -1128,7 +1074,7 @@ static request_t parseRequest(client_t client)
   req.path = malloc(sizeof(char) * pathLen);
   snprintf((char *)req.path, pathLen, "%s", path);
 
-  req.params = reqParamsFactory(&req);
+  req.params = reqParamsFactory(&req, routeHandlers, routeHandlerCount);
   req.query = reqQueryFactory(&req);
   req.body = reqBodyFactory(&req);
   req.session = reqSessionFactory(&req);
@@ -1152,7 +1098,7 @@ static request_t parseRequest(client_t client)
   return req;
 }
 
-static route_handler_t matchRouteHandler(request_t *req)
+static route_handler_t matchRouteHandler(request_t *req, route_handler_t *routeHandlers, int routeHandlerCount)
 {
   for (int i = 0; i < routeHandlerCount; i++)
   {
@@ -1279,11 +1225,15 @@ typedef struct http_status_t
 
 typedef struct client_thread_args_t
 {
-  int serverFd;
+  int serverSocket;
   int epollFd;
+  middleware_t *middlewares;
+  int middlewareCount;
+  route_handler_t *routeHandlers;
+  int routeHandlerCount;
 } client_thread_args_t;
 
-void *thread(void *args)
+void *clientAcceptEventHandler(void *args)
 {
   struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
   if (events == NULL)
@@ -1292,7 +1242,11 @@ void *thread(void *args)
   }
   struct epoll_event ev;
   int epollFd = ((client_thread_args_t *)args)->epollFd;
-  int serverFd = ((client_thread_args_t *)args)->serverFd;
+  int serverSocket = ((client_thread_args_t *)args)->serverSocket;
+  middleware_t *middlewares = ((client_thread_args_t *)args)->middlewares;
+  int middlewareCount = ((client_thread_args_t *)args)->middlewareCount;
+  route_handler_t *routeHandlers = ((client_thread_args_t *)args)->routeHandlers;
+  int routeHandlerCount = ((client_thread_args_t *)args)->routeHandlerCount;
 
   int nfds;
   while (1)
@@ -1306,11 +1260,11 @@ void *thread(void *args)
     }
     for (int n = 0; n < nfds; ++n)
     {
-      if (events[n].data.fd == serverFd)
+      if (events[n].data.fd == serverSocket)
       {
         while (1)
         {
-          client_t client = acceptClientConnection();
+          client_t client = acceptClientConnection(serverSocket);
           if (client.socket < 0)
           {
             if (errno == EAGAIN | errno == EWOULDBLOCK)
@@ -1325,7 +1279,7 @@ void *thread(void *args)
           }
 
 #ifdef CLIENT_NET_DEBUG
-          printf("\nRead event on servSock\n");
+          printf("\nRead event on serverSocket\n");
 #endif // CLIENT_NET_DEBUG
 
           ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
@@ -1339,6 +1293,7 @@ void *thread(void *args)
           if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client.socket, &ev) < 0)
           {
             // perror("epoll_ctl() failed");
+            free(status);
             continue;
           }
         }
@@ -1357,7 +1312,7 @@ void *thread(void *args)
 
           client_t client = status->client;
 
-          request_t req = parseRequest(client);
+          request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
 
           if (req.method == NULL)
           {
@@ -1368,18 +1323,20 @@ void *thread(void *args)
 
           __block response_t res = buildResponse(client, &req);
 
-          runMiddleware(0, &req, &res, ^{
-            route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
-            if (routeHandler.handler == NULL)
-            {
-              res.status = 404;
-              res.sendf(errorHTML, req.path);
-            }
-            else
-            {
-              routeHandler.handler((request_t *)&req, (response_t *)&res);
-            }
-          });
+          runMiddleware(
+              0, &req, &res, ^{
+                route_handler_t routeHandler = matchRouteHandler((request_t *)&req, routeHandlers, routeHandlerCount);
+                if (routeHandler.handler == NULL)
+                {
+                  res.status = 404;
+                  res.sendf(errorHTML, req.path);
+                }
+                else
+                {
+                  routeHandler.handler((request_t *)&req, (response_t *)&res);
+                }
+              },
+              middlewares, middlewareCount);
 
           status->reqStatus = ENDED;
 
@@ -1407,7 +1364,7 @@ void *thread(void *args)
   free(events);
 }
 
-static void initClientAcceptEventHandler()
+static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_t serverQueue, middleware_t *middlewares, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
 {
 
   pthread_t threads[THREAD_NUM];
@@ -1416,29 +1373,33 @@ static void initClientAcceptEventHandler()
   if (epollFd < 0)
   {
     fprintf(stderr, "error while creating epoll fd\n");
-    closeServer(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   client_thread_args_t threadArgs;
   threadArgs.epollFd = epollFd;
-  threadArgs.serverFd = servSock;
+  threadArgs.serverSocket = serverSocket;
+  threadArgs.middlewares = middlewares;
+  threadArgs.middlewareCount = middlewareCount;
+  threadArgs.routeHandlers = routeHandlers;
+  threadArgs.routeHandlerCount = routeHandlerCount;
 
   struct epoll_event epollEvent;
   epollEvent.events = EPOLLIN | EPOLLET;
-  epollEvent.data.fd = servSock;
+  epollEvent.data.fd = serverSocket;
 
-  if (epoll_ctl(epollFd, EPOLL_CTL_ADD, servSock, &epollEvent) < 0)
+  if (epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSocket, &epollEvent) < 0)
   {
     fprintf(stderr, "error while adding listen fd to epoll inst\n");
-    closeServer(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   for (int i = 0; i < THREAD_NUM; ++i)
   {
-    if (pthread_create(&threads[i], NULL, thread, &threadArgs) < 0)
+    if (pthread_create(&threads[i], NULL, clientAcceptEventHandler, &threadArgs) < 0)
     {
       fprintf(stderr, "error while creating %d thread\n", i);
-      closeServer(EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -1449,7 +1410,7 @@ static void initClientAcceptEventHandler()
 #ifdef CLIENT_NET_DEBUG
   printf("\nWaiting for client connections...\n");
 #endif // CLIENT_NET_DEBUG
-  thread(&threadArgs);
+  clientAcceptEventHandler(&threadArgs);
 }
 /*
 
@@ -1458,7 +1419,7 @@ An synchronous, single-threaded implementation of the client handler that uses s
 Keeping around for reference.
 
 */
-UNUSED static void initClientAcceptEventHandlerPoll()
+UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED dispatch_queue_t serverQueue, middleware_t *middlewares, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
 {
   fd_set readFdSet;
   int maxClients = 30;
@@ -1480,8 +1441,8 @@ UNUSED static void initClientAcceptEventHandlerPoll()
   while (1)
   {
     FD_ZERO(&readFdSet);
-    FD_SET(servSock, &readFdSet);
-    int maxSocket = servSock;
+    FD_SET(serverSocket, &readFdSet);
+    int maxSocket = serverSocket;
 
     for (int i = 0; i < maxClients; i++)
     {
@@ -1494,12 +1455,12 @@ UNUSED static void initClientAcceptEventHandlerPoll()
 
     activity = select(maxSocket + 1, &readFdSet, NULL, NULL, &waitd);
 
-    if (FD_ISSET(servSock, &readFdSet))
+    if (FD_ISSET(serverSocket, &readFdSet))
     {
 #ifdef CLIENT_NET_DEBUG
-      printf("\nRead event on servSock\n");
+      printf("\nRead event on serverSocket\n");
 #endif // CLIENT_NET_DEBUG
-      client_t client = acceptClientConnection();
+      client_t client = acceptClientConnection(serverSocket);
       if (client.socket < 0)
         continue;
 
@@ -1519,7 +1480,7 @@ UNUSED static void initClientAcceptEventHandlerPoll()
 
       if (FD_ISSET(client.socket, &readFdSet))
       {
-        request_t req = parseRequest(client);
+        request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
 
         if (req.method == NULL)
         {
@@ -1530,18 +1491,20 @@ UNUSED static void initClientAcceptEventHandlerPoll()
 
         __block response_t res = buildResponse(client, &req);
 
-        runMiddleware(0, &req, &res, ^{
-          route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
-          if (routeHandler.handler == NULL)
-          {
-            res.status = 404;
-            res.sendf(errorHTML, req.path);
-          }
-          else
-          {
-            routeHandler.handler((request_t *)&req, (response_t *)&res);
-          }
-        });
+        runMiddleware(
+            0, &req, &res, ^{
+              route_handler_t routeHandler = matchRouteHandler((request_t *)&req, routeHandlers, routeHandlerCount);
+              if (routeHandler.handler == NULL)
+              {
+                res.status = 404;
+                res.sendf(errorHTML, req.path);
+              }
+              else
+              {
+                routeHandler.handler((request_t *)&req, (response_t *)&res);
+              }
+            },
+            middlewares, middlewareCount);
 
         closeClientConnection(client);
         freeRequest(req);
@@ -1559,18 +1522,18 @@ A concurrent, multi-threaded implementation of the client handler that uses disp
 For an unknown reason this implementation is not working on linux.
 
 */
-static void initClientAcceptEventHandler()
+static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serverQueue, middleware_t *middlewares, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
 {
-  dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, servSock, 0, serverQueue);
+  dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, serverSocket, 0, serverQueue);
 
   dispatch_source_set_event_handler(acceptSource, ^{
 #ifdef CLIENT_NET_DEBUG
-    printf("\nRead event on servSock\n");
+    printf("\nRead event on serverSocket\n");
 #endif // CLIENT_NET_DEBUG
     const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++)
     {
-      client_t client = acceptClientConnection();
+      client_t client = acceptClientConnection(serverSocket);
       if (client.socket < 0)
         continue;
 
@@ -1579,7 +1542,7 @@ static void initClientAcceptEventHandler()
 #ifdef CLIENT_NET_DEBUG
         printf("\nGot client read\n");
 #endif // CLIENT_NET_DEBUG
-        request_t req = parseRequest(client);
+        request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
 
         if (req.method == NULL)
         {
@@ -1592,18 +1555,20 @@ static void initClientAcceptEventHandler()
 
         __block response_t res = buildResponse(client, &req);
 
-        runMiddleware(0, &req, &res, ^{
-          route_handler_t routeHandler = matchRouteHandler((request_t *)&req);
-          if (routeHandler.handler == NULL)
-          {
-            res.status = 404;
-            res.sendf(errorHTML, req.path);
-          }
-          else
-          {
-            routeHandler.handler((request_t *)&req, (response_t *)&res);
-          }
-        });
+        runMiddleware(
+            0, &req, &res, ^{
+              route_handler_t routeHandler = matchRouteHandler((request_t *)&req, routeHandlers, routeHandlerCount);
+              if (routeHandler.handler == NULL)
+              {
+                res.status = 404;
+                res.sendf(errorHTML, req.path);
+              }
+              else
+              {
+                routeHandler.handler((request_t *)&req, (response_t *)&res);
+              }
+            },
+            middlewares, middlewareCount);
 
         closeClientConnection(client);
         freeRequest(req);
@@ -1752,63 +1717,83 @@ router_t Router()
 
 app_t express()
 {
-  initMiddlewareHandlers();
-  initRouteHandlers();
-  initAppCleanupBlocks();
-  initServerQueue();
-  initServerSocket();
+  __block route_handler_t *routeHandlers = malloc(sizeof(route_handler_t));
+  __block int routeHandlerCount = 0;
+  __block middleware_t *middlewares = malloc(sizeof(middleware_t));
+  __block int middlewareCount = 0;
+  __block int appCleanupCount = 0;
+  __block appCleanupHandler *appCleanupBlocks = malloc(sizeof(appCleanupHandler));
+  __block int serverSocket = -1;
+  __block dispatch_queue_t serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
+
+  initServerSocket(&serverSocket);
+
+  void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(const char *method, const char *path, requestHandler handler) {
+    int regex = strchr(path, ':') != NULL;
+    routeHandlers = realloc(routeHandlers, sizeof(route_handler_t) * (routeHandlerCount + 1));
+    route_handler_t routeHandler = {
+        .method = method,
+        .path = path,
+        .regex = regex,
+        .paramMatch = regex ? paramMatch(path) : NULL,
+        .handler = handler,
+    };
+    routeHandlers[routeHandlerCount++] = routeHandler;
+  };
 
   app_t app;
 
-  app.get = ^(const char *path, requestHandler handler) {
+  app.get = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("GET", path, handler);
-  };
+  });
 
-  app.post = ^(const char *path, requestHandler handler) {
+  app.post = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("POST", path, handler);
-  };
+  });
 
-  app.put = ^(const char *path, requestHandler handler) {
+  app.put = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("PUT", path, handler);
-  };
+  });
 
-  app.patch = ^(const char *path, requestHandler handler) {
+  app.patch = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("PATCH", path, handler);
-  };
+  });
 
-  app.delete = ^(const char *path, requestHandler handler) {
+  app.delete = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("DELETE", path, handler);
-  };
+  });
 
-  app.use = ^(middlewareHandler handler) {
-    addMiddlewareHandler(handler);
-  };
+  app.use = Block_copy(^(middlewareHandler handler) {
+    middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
+    middlewares[middlewareCount++] = (middleware_t){.handler = handler};
+  });
 
-  app.cleanup = ^(appCleanupHandler handler) {
-    addCleanupHandler(handler);
-  };
+  app.cleanup = Block_copy(^(appCleanupHandler handler) {
+    appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) * (appCleanupCount + 1));
+    appCleanupBlocks[appCleanupCount++] = handler;
+  });
 
-  app.closeServer = ^(int status) {
+  app.closeServer = Block_copy(^(int status) {
     printf("\nClosing server...\n");
-    freeRouteHandlers();
-    freeMiddlewares();
-    close(servSock);
+    freeRouteHandlers(routeHandlers, routeHandlerCount);
+    freeMiddlewares(middlewares, middlewareCount);
+    close(serverSocket);
     dispatch_release(serverQueue);
     for (int i = 0; i < appCleanupCount; i++)
     {
       appCleanupBlocks[i]();
     }
     exit(status);
-  };
+  });
 
-  app.listen = ^(int port, void (^handler)()) {
-    initServerListen(port);
+  app.listen = Block_copy(^(int port, void (^handler)()) {
+    initServerListen(port, &serverSocket);
     dispatch_async(serverQueue, ^{
-      initClientAcceptEventHandler();
+      initClientAcceptEventHandler(serverSocket, serverQueue, middlewares, middlewareCount, routeHandlers, routeHandlerCount);
     });
     handler();
     dispatch_main();
-  };
+  });
 
   return app;
 };

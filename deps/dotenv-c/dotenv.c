@@ -131,6 +131,7 @@ int env_load(const char *base_path, bool overwrite)
 
         if (!file)
         {
+            free(path);
             return -1;
         }
     }
