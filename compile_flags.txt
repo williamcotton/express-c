@@ -1,3 +1,4 @@
+-std=gnu2x
 -Ideps
 -lcurl
 -fno-common
