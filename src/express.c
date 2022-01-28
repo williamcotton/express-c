@@ -1108,6 +1108,8 @@ static route_handler_t matchRouteHandler(request_t *req, route_handler_t *routeH
   {
     size_t methodLen = strlen(routeHandlers[i].method);
 
+    // printf("%s %s => %s %s\n", req->method, req->path, routeHandlers[i].method, routeHandlers[i].path);
+
     if (strncmp(routeHandlers[i].method, req->method, methodLen) != 0)
       continue;
 
@@ -1676,17 +1678,59 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
   });
 }
 
-router_t Router()
+router_t *Router(char *basePath)
 {
-  return (router_t){0};
+  __block router_t *router = malloc(sizeof(router_t));
+
+  router->routeHandlers = malloc(sizeof(route_handler_t));
+  router->routeHandlerCount = 0;
+  router->middlewares = malloc(sizeof(middleware_t));
+  router->middlewareCount = 0;
+
+  void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(const char *method, const char *path, requestHandler handler) {
+    int regex = strchr(path, ':') != NULL;
+    router->routeHandlers = realloc(router->routeHandlers, sizeof(route_handler_t) * (router->routeHandlerCount + 1));
+    route_handler_t routeHandler = {
+        .basePath = basePath,
+        .method = method,
+        .path = path,
+        .regex = regex,
+        .paramMatch = regex ? paramMatch(path) : NULL,
+        .handler = handler,
+    };
+    router->routeHandlers[router->routeHandlerCount++] = routeHandler;
+  };
+
+  router->get = Block_copy(^(const char *path, requestHandler handler) {
+    addRouteHandler("GET", path, handler);
+  });
+
+  router->post = Block_copy(^(const char *path, requestHandler handler) {
+    addRouteHandler("POST", path, handler);
+  });
+
+  router->put = Block_copy(^(const char *path, requestHandler handler) {
+    addRouteHandler("PUT", path, handler);
+  });
+
+  router->patch = Block_copy(^(const char *path, requestHandler handler) {
+    addRouteHandler("PATCH", path, handler);
+  });
+
+  router->delete = Block_copy(^(const char *path, requestHandler handler) {
+    addRouteHandler("DELETE", path, handler);
+  });
+
+  router->use = Block_copy(^(middlewareHandler handler) {
+    router->middlewares = realloc(router->middlewares, sizeof(middleware_t) * (router->middlewareCount + 1));
+    router->middlewares[router->middlewareCount++] = (middleware_t){.handler = handler};
+  });
+
+  return router;
 }
 
 app_t express()
 {
-  __block route_handler_t *routeHandlers = malloc(sizeof(route_handler_t));
-  __block int routeHandlerCount = 0;
-  __block middleware_t *middlewares = malloc(sizeof(middleware_t));
-  __block int middlewareCount = 0;
   __block int appCleanupCount = 0;
   __block appCleanupHandler *appCleanupBlocks = malloc(sizeof(appCleanupHandler));
   __block int serverSocket = -1;
@@ -1694,44 +1738,31 @@ app_t express()
 
   initServerSocket(&serverSocket);
 
-  void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(const char *method, const char *path, requestHandler handler) {
-    int regex = strchr(path, ':') != NULL;
-    routeHandlers = realloc(routeHandlers, sizeof(route_handler_t) * (routeHandlerCount + 1));
-    route_handler_t routeHandler = {
-        .method = method,
-        .path = path,
-        .regex = regex,
-        .paramMatch = regex ? paramMatch(path) : NULL,
-        .handler = handler,
-    };
-    routeHandlers[routeHandlerCount++] = routeHandler;
-  };
-
   app_t app;
+  __block router_t *router = Router("");
 
   app.get = Block_copy(^(const char *path, requestHandler handler) {
-    addRouteHandler("GET", path, handler);
+    router->get(path, handler);
   });
 
   app.post = Block_copy(^(const char *path, requestHandler handler) {
-    addRouteHandler("POST", path, handler);
+    router->post(path, handler);
   });
 
   app.put = Block_copy(^(const char *path, requestHandler handler) {
-    addRouteHandler("PUT", path, handler);
+    router->put(path, handler);
   });
 
   app.patch = Block_copy(^(const char *path, requestHandler handler) {
-    addRouteHandler("PATCH", path, handler);
+    router->patch(path, handler);
   });
 
   app.delete = Block_copy(^(const char *path, requestHandler handler) {
-    addRouteHandler("DELETE", path, handler);
+    router->delete (path, handler);
   });
 
   app.use = Block_copy(^(middlewareHandler handler) {
-    middlewares = realloc(middlewares, sizeof(middleware_t) * (middlewareCount + 1));
-    middlewares[middlewareCount++] = (middleware_t){.handler = handler};
+    router->use(handler);
   });
 
   app.cleanup = Block_copy(^(appCleanupHandler handler) {
@@ -1741,8 +1772,8 @@ app_t express()
 
   app.closeServer = Block_copy(^(int status) {
     printf("\nClosing server...\n");
-    freeRouteHandlers(routeHandlers, routeHandlerCount);
-    freeMiddlewares(middlewares, middlewareCount);
+    freeRouteHandlers(router->routeHandlers, router->routeHandlerCount);
+    freeMiddlewares(router->middlewares, router->middlewareCount);
     close(serverSocket);
     dispatch_release(serverQueue);
     for (int i = 0; i < appCleanupCount; i++)
@@ -1755,7 +1786,7 @@ app_t express()
   app.listen = Block_copy(^(int port, void (^handler)()) {
     initServerListen(port, &serverSocket);
     dispatch_async(serverQueue, ^{
-      initClientAcceptEventHandler(serverSocket, serverQueue, middlewares, middlewareCount, routeHandlers, routeHandlerCount);
+      initClientAcceptEventHandler(serverSocket, serverQueue, router->middlewares, router->middlewareCount, router->routeHandlers, router->routeHandlerCount);
     });
     handler();
     dispatch_main();

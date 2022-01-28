@@ -174,6 +174,7 @@ typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), co
 
 typedef struct route_handler_t
 {
+  char *basePath;
   const char *method;
   const char *path;
   int regex;

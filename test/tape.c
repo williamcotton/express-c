@@ -58,7 +58,7 @@ testHandler testHandlerFactory(tape_t *root, int level)
       if (!result)
       {
         printf("\nExpected: \033[32m\n\n%s\n\n\033[0m", str2);
-        printf("Received: \n\n\033[31m%s\033[0m", str1);
+        printf("Received: \n\n\033[31m%s\033[0m\n", str1);
       }
       free(str1);
       return result;
