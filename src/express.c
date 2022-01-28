@@ -347,13 +347,13 @@ static getBlock reqQueryFactory(request_t *req)
     for (size_t i = 0; i != req->queryKeyValueCount; ++i)
     {
       size_t keyLen = strlen(key);
-      char *decodedKey = curl_easy_unescape(req->curl, req->queryKeyValues[i].key, req->queryKeyValues[i].keyLen, NULL); // curl_free ??
+      char *decodedKey = curl_easy_unescape(req->curl, req->queryKeyValues[i].key, req->queryKeyValues[i].keyLen, NULL);
       if (strncmp(decodedKey, key, keyLen) == 0)
       {
         curl_free(decodedKey);
         char *value = malloc(sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
         strlcpy(value, req->queryKeyValues[i].value, req->queryKeyValues[i].valueLen + 1);
-        char *decodedValue = curl_easy_unescape(req->curl, value, req->queryKeyValues[i].valueLen, NULL); // curl_free ??
+        char *decodedValue = curl_easy_unescape(req->curl, value, req->queryKeyValues[i].valueLen, NULL);
         free(value);
         return decodedValue;
       }
@@ -537,7 +537,7 @@ static getBlock reqBodyFactory(request_t *req)
     for (size_t i = 0; i != req->bodyKeyValueCount; ++i)
     {
       size_t keyLen = strlen(key);
-      char *decodedKey = curl_easy_unescape(req->curl, req->bodyKeyValues[i].key, req->bodyKeyValues[i].keyLen, NULL); // curl_free ??
+      char *decodedKey = curl_easy_unescape(req->curl, req->bodyKeyValues[i].key, req->bodyKeyValues[i].keyLen, NULL);
       if (strncmp(decodedKey, key, keyLen) == 0)
       {
         char *value = malloc(sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
@@ -549,7 +549,7 @@ static getBlock reqBodyFactory(request_t *req)
             value[j] = ' ';
           j++;
         }
-        char *decodedValue = curl_easy_unescape(req->curl, value, req->bodyKeyValues[i].valueLen, NULL); // curl_free ??
+        char *decodedValue = curl_easy_unescape(req->curl, value, req->bodyKeyValues[i].valueLen, NULL);
         free(value);
         curl_free(decodedKey);
         return decodedValue;
@@ -1561,7 +1561,7 @@ char *cwdFullPath(const char *path)
   char cwd[PATH_MAX];
   getcwd(cwd, sizeof(cwd));
   size_t fullPathLen = strlen(cwd) + strlen(path) + 2;
-  char *fullPath = malloc(sizeof(char) * fullPathLen); // leak
+  char *fullPath = malloc(sizeof(char) * fullPathLen);
   snprintf(fullPath, fullPathLen, "%s/%s", cwd, path);
   return fullPath;
 }
@@ -1655,7 +1655,7 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
     }
     else
     {
-      req->session->store = hash_new(); // is not being freed
+      req->session->store = hash_new();
       dispatch_sync(memSessionQueue, ^{
         hash_set(memSessionStore, (char *)req->session->uuid, req->session->store);
       });
