@@ -20,13 +20,19 @@
   THE SOFTWARE.
 */
 
+#ifndef EXPRESS_H
+#define EXPRESS_H
+
 #include <picohttpparser/picohttpparser.h>
 #include <dispatch/dispatch.h>
 #include <hash/hash.h>
 #include <curl/curl.h>
 
-#ifndef EXPRESS_H
-#define EXPRESS_H
+/* Helpers */
+
+#define UNUSED __attribute__((unused))
+
+/* Primitives */
 
 typedef struct embedded_files_data_t
 {
@@ -35,11 +41,6 @@ typedef struct embedded_files_data_t
   char **names;
   int count;
 } embedded_files_data_t;
-
-#define UNUSED __attribute__((unused))
-
-char *generateUuid();
-int writePid(char *pidFile);
 
 typedef struct session_t
 {
@@ -84,6 +85,14 @@ typedef struct req_block_copy_t
   void *ptr;
 } req_block_copy_t;
 
+typedef struct error_t
+{
+  int status;
+  char *message;
+} error_t;
+
+/* Request */
+
 typedef struct request_t
 {
   const char *path;
@@ -116,7 +125,7 @@ typedef struct request_t
   size_t bodyKeyValueCount;
   const char *bodyString;
   char * (^body)(const char *bodyKey);
-  int middlewareStackIndex;
+  int middlewareStackCount;
   void *middlewareHash;
   void * (^m)(const char *middlewareKey);
   void (^mSet)(const char *middlewareKey, void *middleware);
@@ -136,6 +145,8 @@ typedef struct request_t
   CURL *curl;
   void **middlewareCleanupBlocks;
 } request_t;
+
+/* Response */
 
 typedef struct response_t
 {
@@ -157,13 +168,10 @@ typedef struct response_t
   void (^sendStatus)(int);                      // TODO: add res.sendStatus
   void (^download)(const char *, const char *); // TODO: add res.download
   int status;
+  int didSend;
 } response_t;
 
-typedef struct error_t
-{
-  int status;
-  char *message;
-} error_t;
+/* Handlers */
 
 typedef void (^cleanupHandler)(request_t *finishedReq);
 typedef void (^appCleanupHandler)();
@@ -171,6 +179,20 @@ typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler));
 typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());            // TODO: add errorHandler
 typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), const char *paramValue); // TODO: add paramHandler
+
+/* Public functions */
+
+char *generateUuid();
+int writePid(char *pidFile);
+char *cwdFullPath(const char *path);
+char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles);
+
+/* Public middleware */
+
+middlewareHandler expressStatic(const char *path, const char *fullPath, embedded_files_data_t embeddedFiles);
+middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue);
+
+/* expressRouter */
 
 typedef struct route_handler_t
 {
@@ -188,27 +210,30 @@ typedef struct middleware_t
   middlewareHandler handler;
 } middleware_t;
 
-typedef struct router_t // TODO: implement router_t
+typedef struct router_t
 {
+  const char *basePath;
   void (^get)(const char *path, requestHandler);
   void (^post)(const char *path, requestHandler);
   void (^put)(const char *path, requestHandler);
   void (^patch)(const char *path, requestHandler);
   void (^delete)(const char *path, requestHandler);
-  void (^all)(const char *path, requestHandler);
+  void (^all)(const char *path, requestHandler); // TODO: add router.all
   void (^use)(middlewareHandler);
-  void (^useRouter)(const char *path, struct router_t *router);
+  void (^useRouter)(struct router_t *router);
   void (^param)(const char *param, paramHandler);
+  void (^handler)(request_t *req, response_t *res);
   route_handler_t *routeHandlers;
   int routeHandlerCount;
   middleware_t *middlewares;
   int middlewareCount;
+  struct router_t **routers;
+  int routerCount;
 } router_t;
 
-typedef struct server_t
-{
-  void (^close)();
-} server_t;
+router_t *expressRouter();
+
+/* express */
 
 typedef struct app_t
 {
@@ -218,9 +243,9 @@ typedef struct app_t
   void (^patch)(const char *path, requestHandler);
   void (^delete)(const char *path, requestHandler);
   void (^all)(const char *path, requestHandler); // TODO: add app.all
-  void (^listen)(int port, void (^handler)());
+  void (^listen)(int port, void (^callback)());
   void (^use)(middlewareHandler);
-  void (^useRouter)(const char *path, router_t *router); // TODO: add app.useRouter
+  void (^useRouter)(router_t *router);
   void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);
@@ -228,12 +253,5 @@ typedef struct app_t
 } app_t;
 
 app_t express();
-router_t expressRouter(); // TODO: implement expressRouter
-
-char *cwdFullPath(const char *path);
-char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles);
-
-middlewareHandler expressStatic(const char *path, const char *fullPath, embedded_files_data_t embeddedFiles);
-middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue);
 
 #endif // EXPRESS_H

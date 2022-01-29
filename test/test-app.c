@@ -15,16 +15,16 @@
 #define true 1
 #define false 0
 
-static char *errorHTML = "<!DOCTYPE html>\n"
-                         "<html lang=\"en\">\n"
-                         "<head>\n"
-                         "<meta charset=\"utf-8\">\n"
-                         "<title>Error</title>\n"
-                         "</head>\n"
-                         "<body>\n"
-                         "<pre>Cannot GET %s</pre>\n"
-                         "</body>\n"
-                         "</html>\n";
+UNUSED static char *errorHTML = "<!DOCTYPE html>\n"
+                                "<html lang=\"en\">\n"
+                                "<head>\n"
+                                "<meta charset=\"utf-8\">\n"
+                                "<title>Error</title>\n"
+                                "</head>\n"
+                                "<body>\n"
+                                "<pre>Cannot GET %s</pre>\n"
+                                "</body>\n"
+                                "</html>\n";
 
 void runTests(int runAndExit, app_t app)
 {
@@ -93,6 +93,20 @@ void runTests(int runAndExit, app_t app)
       char error[1024];
       sprintf(error, errorHTML, "/error");
       t->strEqual("error", curlGet("/error"), error);
+    });
+
+    t->test("Router", ^(tape_t *t) {
+      t->strEqual("root", curlGet("/base"), "Hello Router!");
+      t->strEqual("basic route", curlGet("/base/test"), "Testing Router!");
+      t->strEqual("route params", curlGet("/base/one/123/two/345/567.jpg"), "<h1>Base Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
+      t->strEqual("custom request middleware", curlGet("/base/m"), "super-router test");
+
+      t->test("Nested router", ^(tape_t *t) {
+        t->strEqual("root", curlGet("/base/nested"), "Hello Nested Router!");
+        t->strEqual("basic route", curlGet("/base/nested/test"), "Testing Nested Router!");
+        t->strEqual("route params", curlGet("/base/nested/one/123/two/345/567.jpg"), "<h1>Nested Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
+        t->strEqual("custom request middleware", curlGet("/base/nested/m"), "super-nested-router test");
+      });
     });
   });
 
@@ -280,6 +294,82 @@ int main()
     hash_free(memSessionStore);
     dispatch_release(memSessionQueue);
   });
+
+  router_t *router = expressRouter("/base");
+
+  router->use(^(request_t *req, UNUSED response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+    super_t *super = malloc(sizeof(super_t));
+    super->uuid = "super-router test";
+    req->mSet("super-router", super);
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+      super_t *s = finishedReq->m("super-router");
+      free(s);
+    }));
+    next();
+  });
+
+  router->get("/", ^(UNUSED request_t *req, response_t *res) {
+    res->send("Hello Router!");
+  });
+
+  router->get("/test", ^(UNUSED request_t *req, response_t *res) {
+    res->send("Testing Router!");
+  });
+
+  router->get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
+    char *one = req->params("one");
+    char *two = req->params("two");
+    char *three = req->params("three");
+    res->sendf("<h1>Base Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", one, two, three);
+    free(one);
+    free(two);
+    free(three);
+  });
+
+  router->get("/m", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-router");
+    res->send(super->uuid);
+  });
+
+  router_t *nestedRouter = expressRouter("/nested");
+
+  nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+    super_t *super = malloc(sizeof(super_t));
+    super->uuid = "super-nested-router test";
+    req->mSet("super-nested-router", super);
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+      super_t *s = finishedReq->m("super-nested-router");
+      free(s);
+    }));
+    next();
+  });
+
+  nestedRouter->get("/", ^(UNUSED request_t *req, response_t *res) {
+    res->send("Hello Nested Router!");
+  });
+
+  nestedRouter->get("/test", ^(UNUSED request_t *req, response_t *res) {
+    res->send("Testing Nested Router!");
+  });
+
+  nestedRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
+    char *one = req->params("one");
+    char *two = req->params("two");
+    char *three = req->params("three");
+    res->sendf("<h1>Nested Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", one, two, three);
+    free(one);
+    free(two);
+    free(three);
+  });
+
+  nestedRouter->get("/m", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-nested-router");
+    res->send(super->uuid);
+  });
+
+  router->useRouter(nestedRouter);
+
+  app.useRouter(router);
 
   app.listen(port, ^{
     for (int i = 0; i < runXTimes; i++)

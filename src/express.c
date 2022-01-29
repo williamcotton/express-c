@@ -45,6 +45,8 @@
 #endif
 #include "express.h"
 
+/* Private */
+
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
                          "<head>\n"
@@ -191,7 +193,7 @@ static char *getStatusMessage(int status)
   }
 }
 
-size_t fileSize(const char *filePath)
+static size_t fileSize(const char *filePath)
 {
   struct stat st;
   stat(filePath, &st);
@@ -250,13 +252,14 @@ typedef struct client_t
   char *ip;
 } client_t;
 
-param_match_t *paramMatch(const char *route)
+static param_match_t *paramMatch(UNUSED const char *basePath, const char *route)
 {
   param_match_t *pm = malloc(sizeof(param_match_t));
   pm->keys = malloc(sizeof(char *));
   pm->count = 0;
   char regexRoute[4096];
   regexRoute[0] = '\0';
+  sprintf(regexRoute + strlen(regexRoute), "%s", basePath);
   const char *source = route;
   char *regexString = ":([A-Za-z0-9_]*)";
   size_t maxMatches = 100;
@@ -311,9 +314,9 @@ param_match_t *paramMatch(const char *route)
 
   regfree(&regexCompiled);
 
-  size_t regexLen = strlen(regexRoute) + 1;
-  pm->regexRoute = malloc(sizeof(char) * regexLen);
-  strncpy(pm->regexRoute, regexRoute, regexLen);
+  size_t regesRouteLen = strlen(regexRoute) + 2;
+  pm->regexRoute = malloc(sizeof(char) * (regesRouteLen));
+  snprintf(pm->regexRoute, regesRouteLen, "^%s", regexRoute);
 
   return pm;
 }
@@ -369,7 +372,7 @@ static session_t *reqSessionFactory(UNUSED request_t *req)
   return session;
 }
 
-void routeMatch(const char *path, const char *regexRoute, key_value_t *paramKeyValues, int *match)
+static void routeMatch(const char *path, const char *regexRoute, key_value_t *paramKeyValues, int *match)
 {
   size_t maxMatches = 100;
   size_t maxGroups = 100;
@@ -415,26 +418,43 @@ void routeMatch(const char *path, const char *regexRoute, key_value_t *paramKeyV
   regfree(&regexCompiled);
 }
 
-static getBlock reqParamsFactory(request_t *req, route_handler_t *routeHandlers, int routeHandlerCount)
+static void collectRegexRouteHandlers(router_t *router, route_handler_t *regExRouteHandlers, int *regExRouteHandlerCount)
 {
-  req->pathMatch = "";
-  for (int i = 0; i < routeHandlerCount; i++)
+  for (int i = 0; i < router->routeHandlerCount; i++)
   {
-    if (routeHandlers[i].paramMatch != NULL)
+    if (router->routeHandlers[i].paramMatch != NULL)
     {
-      int match = 0;
-      routeMatch(req->path, routeHandlers[i].paramMatch->regexRoute, req->paramKeyValues, &match);
-      if (match)
+      regExRouteHandlers[*regExRouteHandlerCount] = router->routeHandlers[i];
+      (*regExRouteHandlerCount)++;
+    }
+  }
+
+  for (int i = 0; i < router->routerCount; ++i)
+    collectRegexRouteHandlers(router->routers[i], regExRouteHandlers, regExRouteHandlerCount);
+}
+
+static getBlock reqParamsFactory(request_t *req, router_t *baseRouter)
+{
+  route_handler_t regExRouteHandlers[4096];
+  int regExRouteHandlerCount = 0;
+  collectRegexRouteHandlers(baseRouter, regExRouteHandlers, &regExRouteHandlerCount);
+  req->pathMatch = "";
+  for (int i = 0; i < regExRouteHandlerCount; i++)
+  {
+    int match = 0;
+    routeMatch(req->path, regExRouteHandlers[i].paramMatch->regexRoute, req->paramKeyValues, &match);
+    if (match)
+    {
+      int pathMatchLen = strlen(regExRouteHandlers[i].basePath) + strlen(regExRouteHandlers[i].path) + 1;
+      req->pathMatch = malloc(sizeof(char) * pathMatchLen);
+      snprintf((char *)req->pathMatch, pathMatchLen, "%s%s", regExRouteHandlers[i].basePath, regExRouteHandlers[i].path);
+      req->paramKeyValueCount = regExRouteHandlers[i].paramMatch->count;
+      for (int j = 0; j < regExRouteHandlers[i].paramMatch->count; j++)
       {
-        req->pathMatch = routeHandlers[i].path;
-        req->paramKeyValueCount = routeHandlers[i].paramMatch->count;
-        for (int j = 0; j < routeHandlers[i].paramMatch->count; j++)
-        {
-          req->paramKeyValues[j].key = routeHandlers[i].paramMatch->keys[j];
-          req->paramKeyValues[j].keyLen = strlen(routeHandlers[i].paramMatch->keys[j]);
-        }
-        break;
+        req->paramKeyValues[j].key = regExRouteHandlers[i].paramMatch->keys[j];
+        req->paramKeyValues[j].keyLen = strlen(regExRouteHandlers[i].paramMatch->keys[j]);
       }
+      break;
     }
   }
   return Block_copy(^(const char *key) {
@@ -611,6 +631,7 @@ static sendBlock sendFactory(client_t client, response_t *res)
 {
   return Block_copy(^(const char *body) {
     char *response = buildResponseString(body, res);
+    res->didSend = 1;
     write(client.socket, response, strlen(response));
     free(response);
   });
@@ -645,6 +666,7 @@ static sendBlock sendFileFactory(client_t client, request_t *req, response_t *re
     char *response = malloc(sizeof(char) * (strlen(mimetype) + strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: \r\nContent-Length: \r\n\r\n") + 20));
     // TODO: use res.set() and refactor header building
     sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %zu\r\n\r\n", mimetype, fileSize(path));
+    res->didSend = 1;
     write(client.socket, response, strlen(response));
     // TODO: use sendfile
     char *buffer = malloc(4096);
@@ -794,36 +816,7 @@ static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
   });
 }
 
-char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles)
-{
-  size_t pathLen = strlen(path);
-  for (int i = 0; i < embeddedFiles.count; i++)
-  {
-    int match = 1;
-    size_t nameLen = strlen(embeddedFiles.names[i]);
-    if (pathLen != nameLen)
-    {
-      continue;
-    }
-    for (size_t j = 0; j < nameLen; j++)
-    {
-      if (embeddedFiles.names[i][j] != path[j] && embeddedFiles.names[i][j] != '_')
-      {
-        match = 0;
-      }
-    }
-    if (match)
-    {
-      char *data = malloc(sizeof(char) * (embeddedFiles.lengths[i] + 1));
-      memcpy(data, embeddedFiles.data[i], embeddedFiles.lengths[i]);
-      data[embeddedFiles.lengths[i]] = '\0';
-      return data;
-    }
-  }
-  return (char *)NULL;
-};
-
-char *matchFilepath(request_t *req, const char *path)
+static char *matchFilepath(request_t *req, const char *path)
 {
   regex_t regex;
   int reti;
@@ -863,17 +856,17 @@ char *matchFilepath(request_t *req, const char *path)
   }
 }
 
-static void runMiddleware(int index, request_t *req, response_t *res, void (^next)(), middleware_t *middlewares, int middlewareCount)
+static void runMiddleware(int index, request_t *req, response_t *res, router_t *router, void (^next)())
 {
-  if (index < middlewareCount)
+  if (index < router->middlewareCount)
   {
-    req->middlewareStackIndex = index;
-    void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
-      req->middlewareCleanupBlocks[index] = (void *)cleanupBlock;
+    void (^cleanup)(cleanupHandler) = ^(UNUSED cleanupHandler cleanupBlock) {
+      req->middlewareCleanupBlocks = realloc(req->middlewareCleanupBlocks, sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
+      req->middlewareCleanupBlocks[req->middlewareStackCount++] = (void *)cleanupBlock;
     };
-    middlewares[index].handler(
+    router->middlewares[index].handler(
         req, res, ^{
-          runMiddleware(index + 1, req, res, next, middlewares, middlewareCount);
+          runMiddleware(index + 1, req, res, router, next);
         },
         cleanup);
   }
@@ -987,19 +980,14 @@ static void initServerListen(int port, int *serverSocket)
   }
 };
 
-static request_t parseRequest(client_t client, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
+static request_t buildRequest(client_t client, router_t *baseRouter)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
 
   req.malloc = reqMallocFactory(&req);
   req.blockCopy = reqBlockCopyFactory(&req);
 
-  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *) * (middlewareCount + 1));
-  for (int i = 0; i < req.middlewareStackIndex; i++)
-  {
-    req.middlewareCleanupBlocks[i] = ^(UNUSED request_t *finishedReq) {
-    };
-  }
+  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
 
   char buffer[4096];
   memset(buffer, 0, sizeof(buffer));
@@ -1078,7 +1066,7 @@ static request_t parseRequest(client_t client, int middlewareCount, route_handle
   req.path = malloc(sizeof(char) * pathLen);
   snprintf((char *)req.path, pathLen, "%s", path);
 
-  req.params = reqParamsFactory(&req, routeHandlers, routeHandlerCount);
+  req.params = reqParamsFactory(&req, baseRouter);
   req.query = reqQueryFactory(&req);
   req.body = reqBodyFactory(&req);
   req.session = reqSessionFactory(&req);
@@ -1086,7 +1074,7 @@ static request_t parseRequest(client_t client, int middlewareCount, route_handle
   req.m = reqMiddlewareFactory(&req);
   req.mSet = reqMiddlewareSetFactory(&req);
 
-  req.middlewareStackIndex = 0;
+  req.middlewareStackCount = 0;
 
   req._method = req.body("_method");
   if (req._method)
@@ -1102,22 +1090,45 @@ static request_t parseRequest(client_t client, int middlewareCount, route_handle
   return req;
 }
 
-static route_handler_t matchRouteHandler(request_t *req, route_handler_t *routeHandlers, int routeHandlerCount)
+static route_handler_t matchRouteHandler(request_t *req, router_t *router)
 {
-  for (int i = 0; i < routeHandlerCount; i++)
+  for (int i = 0; i < router->routeHandlerCount; i++)
   {
-    size_t methodLen = strlen(routeHandlers[i].method);
+    size_t methodLen = strlen(router->routeHandlers[i].method);
+    size_t pathLen = strlen(router->routeHandlers[i].path);
+    size_t basePathLen = strlen(router->basePath);
 
-    // printf("%s %s => %s %s\n", req->method, req->path, routeHandlers[i].method, routeHandlers[i].path);
+    char *routeHandlerFullPath;
+    if (basePathLen && pathLen == 1 && router->routeHandlers[i].path[0] == '/')
+    {
+      routeHandlerFullPath = malloc(sizeof(char) * (basePathLen + 1));
+      strlcpy(routeHandlerFullPath, router->basePath, basePathLen + 1);
+    }
+    else
+    {
+      routeHandlerFullPath = malloc(sizeof(char) * (basePathLen + pathLen + 1));
+      snprintf(routeHandlerFullPath, basePathLen + pathLen + 1, "%s%s", router->basePath, router->routeHandlers[i].path);
+    }
 
-    if (strncmp(routeHandlers[i].method, req->method, methodLen) != 0)
+    if (strncmp(router->routeHandlers[i].method, req->method, methodLen) != 0)
+    {
+      free(routeHandlerFullPath);
       continue;
+    }
 
-    if (strcmp(routeHandlers[i].path, req->pathMatch) == 0)
-      return routeHandlers[i];
+    if (strcmp(routeHandlerFullPath, req->pathMatch) == 0)
+    {
+      free(routeHandlerFullPath);
+      return router->routeHandlers[i];
+    }
 
-    if (strcmp(routeHandlers[i].path, req->path) == 0)
-      return routeHandlers[i];
+    if (strcmp(routeHandlerFullPath, req->path) == 0)
+    {
+      free(routeHandlerFullPath);
+      return router->routeHandlers[i];
+    }
+
+    free(routeHandlerFullPath);
   }
   return (route_handler_t){.method = NULL, .path = NULL, .handler = NULL};
 }
@@ -1125,7 +1136,7 @@ static route_handler_t matchRouteHandler(request_t *req, route_handler_t *routeH
 static void freeRequest(request_t req)
 {
   cleanupHandler *middlewareCleanupBlocks = (void (^*)(request_t *))req.middlewareCleanupBlocks;
-  for (int i = 1; i <= req.middlewareStackIndex; i++)
+  for (int i = 0; i < req.middlewareStackCount; i++)
   {
     middlewareCleanupBlocks[i](&req);
   }
@@ -1144,6 +1155,8 @@ static void freeRequest(request_t req)
       free(req.paramMatch->keys[i]);
     }
   }
+  if (strlen(req.pathMatch) > 0)
+    free((void *)req.pathMatch);
   free(req.paramMatch);
   free((void *)req.cookiesString);
   free((void *)req.rawRequestBody);
@@ -1202,6 +1215,7 @@ static response_t buildResponse(client_t client, request_t *req)
   res.cookie = cookieFactory(&res);
   res.location = locationFactory(req, &res);
   res.redirect = redirectFactory(req, &res);
+  res.didSend = 0;
   return res;
 }
 
@@ -1231,10 +1245,7 @@ typedef struct client_thread_args_t
 {
   int serverSocket;
   int epollFd;
-  middleware_t *middlewares;
-  int middlewareCount;
-  route_handler_t *routeHandlers;
-  int routeHandlerCount;
+  router_t *baseRouter;
 } client_thread_args_t;
 
 void *clientAcceptEventHandler(void *args)
@@ -1243,10 +1254,7 @@ void *clientAcceptEventHandler(void *args)
 
   int epollFd = clientThreadArgs->epollFd;
   int serverSocket = clientThreadArgs->serverSocket;
-  middleware_t *middlewares = clientThreadArgs->middlewares;
-  int middlewareCount = clientThreadArgs->middlewareCount;
-  route_handler_t *routeHandlers = clientThreadArgs->routeHandlers;
-  int routeHandlerCount = clientThreadArgs->routeHandlerCount;
+  router_t *baseRouter = clientThreadArgs->baseRouter;
 
   struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
   struct epoll_event ev;
@@ -1307,7 +1315,7 @@ void *clientAcceptEventHandler(void *args)
 
           client_t client = status->client;
 
-          request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
+          request_t req = buildRequest(client, baseRouter);
 
           if (req.method == NULL)
           {
@@ -1318,20 +1326,7 @@ void *clientAcceptEventHandler(void *args)
 
           __block response_t res = buildResponse(client, &req);
 
-          runMiddleware(
-              0, &req, &res, ^{
-                route_handler_t routeHandler = matchRouteHandler((request_t *)&req, routeHandlers, routeHandlerCount);
-                if (routeHandler.handler == NULL)
-                {
-                  res.status = 404;
-                  res.sendf(errorHTML, req.path);
-                }
-                else
-                {
-                  routeHandler.handler((request_t *)&req, (response_t *)&res);
-                }
-              },
-              middlewares, middlewareCount);
+          baseRouter->handler(&req, &res);
 
           status->reqStatus = ENDED;
 
@@ -1359,7 +1354,7 @@ void *clientAcceptEventHandler(void *args)
   free(events);
 }
 
-static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_t serverQueue, middleware_t *middlewares, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
+static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_t serverQueue, router_t *baseRouter)
 {
 
   pthread_t threads[THREAD_NUM];
@@ -1374,10 +1369,7 @@ static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue
   client_thread_args_t threadArgs;
   threadArgs.epollFd = epollFd;
   threadArgs.serverSocket = serverSocket;
-  threadArgs.middlewares = middlewares;
-  threadArgs.middlewareCount = middlewareCount;
-  threadArgs.routeHandlers = routeHandlers;
-  threadArgs.routeHandlerCount = routeHandlerCount;
+  threadArgs.baseRouter = baseRouter;
 
   struct epoll_event epollEvent;
   epollEvent.events = EPOLLIN | EPOLLET;
@@ -1406,7 +1398,7 @@ An synchronous, single-threaded implementation of the client handler that uses s
 Keeping around for reference.
 
 */
-UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED dispatch_queue_t serverQueue, middleware_t *middlewares, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
+UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED dispatch_queue_t serverQueue, router_t *baseRouter)
 {
   fd_set readFdSet;
   int maxClients = 30;
@@ -1461,7 +1453,7 @@ UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED d
 
       if (FD_ISSET(client.socket, &readFdSet))
       {
-        request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
+        request_t req = buildRequest(client, baseRouter);
 
         if (req.method == NULL)
         {
@@ -1472,20 +1464,7 @@ UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED d
 
         __block response_t res = buildResponse(client, &req);
 
-        runMiddleware(
-            0, &req, &res, ^{
-              route_handler_t routeHandler = matchRouteHandler((request_t *)&req, routeHandlers, routeHandlerCount);
-              if (routeHandler.handler == NULL)
-              {
-                res.status = 404;
-                res.sendf(errorHTML, req.path);
-              }
-              else
-              {
-                routeHandler.handler((request_t *)&req, (response_t *)&res);
-              }
-            },
-            middlewares, middlewareCount);
+        baseRouter->handler(&req, &res);
 
         closeClientConnection(client);
         freeRequest(req);
@@ -1503,7 +1482,7 @@ A concurrent, multi-threaded implementation of the client handler that uses disp
 For an unknown reason this implementation is not working on linux.
 
 */
-static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serverQueue, middleware_t *middlewares, int middlewareCount, route_handler_t *routeHandlers, int routeHandlerCount)
+static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serverQueue, router_t *baseRouter)
 {
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, serverSocket, 0, serverQueue);
 
@@ -1517,7 +1496,7 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
 
       dispatch_source_t readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, client.socket, 0, serverQueue);
       dispatch_source_set_event_handler(readSource, ^{
-        request_t req = parseRequest(client, middlewareCount, routeHandlers, routeHandlerCount);
+        request_t req = buildRequest(client, baseRouter);
 
         if (req.method == NULL)
         {
@@ -1530,20 +1509,7 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
 
         __block response_t res = buildResponse(client, &req);
 
-        runMiddleware(
-            0, &req, &res, ^{
-              route_handler_t routeHandler = matchRouteHandler((request_t *)&req, routeHandlers, routeHandlerCount);
-              if (routeHandler.handler == NULL)
-              {
-                res.status = 404;
-                res.sendf(errorHTML, req.path);
-              }
-              else
-              {
-                routeHandler.handler((request_t *)&req, (response_t *)&res);
-              }
-            },
-            middlewares, middlewareCount);
+        baseRouter->handler(&req, &res);
 
         closeClientConnection(client);
         freeRequest(req);
@@ -1558,6 +1524,37 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
 }
 #endif
 
+/* Public functions */
+
+char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles)
+{
+  size_t pathLen = strlen(path);
+  for (int i = 0; i < embeddedFiles.count; i++)
+  {
+    int match = 1;
+    size_t nameLen = strlen(embeddedFiles.names[i]);
+    if (pathLen != nameLen)
+    {
+      continue;
+    }
+    for (size_t j = 0; j < nameLen; j++)
+    {
+      if (embeddedFiles.names[i][j] != path[j] && embeddedFiles.names[i][j] != '_')
+      {
+        match = 0;
+      }
+    }
+    if (match)
+    {
+      char *data = malloc(sizeof(char) * (embeddedFiles.lengths[i] + 1));
+      memcpy(data, embeddedFiles.data[i], embeddedFiles.lengths[i]);
+      data[embeddedFiles.lengths[i]] = '\0';
+      return data;
+    }
+  }
+  return (char *)NULL;
+};
+
 char *cwdFullPath(const char *path)
 {
   char cwd[PATH_MAX];
@@ -1567,6 +1564,29 @@ char *cwdFullPath(const char *path)
   snprintf(fullPath, fullPathLen, "%s/%s", cwd, path);
   return fullPath;
 }
+
+int writePid(char *pidFile)
+{
+  char buf[100];
+  int fd = open(pidFile, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  snprintf(buf, 100, "%ld\n", (long)getpid());
+  return (unsigned long)write(fd, buf, strlen(buf)) == (unsigned long)strlen;
+}
+
+char *generateUuid()
+{
+  char *guid = malloc(sizeof(char) * 37);
+  if (guid == NULL)
+  {
+    return NULL;
+  }
+  uuid_t uuid;
+  uuid_generate(uuid);
+  uuid_unparse(uuid, guid);
+  return guid;
+}
+
+/* Public middleware */
 
 middlewareHandler expressStatic(const char *path, const char *fullPath, UNUSED embedded_files_data_t embeddedFiles)
 {
@@ -1619,27 +1639,6 @@ middlewareHandler expressStatic(const char *path, const char *fullPath, UNUSED e
   });
 }
 
-int writePid(char *pidFile)
-{
-  char buf[100];
-  int fd = open(pidFile, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-  snprintf(buf, 100, "%ld\n", (long)getpid());
-  return (unsigned long)write(fd, buf, strlen(buf)) == (unsigned long)strlen;
-}
-
-char *generateUuid()
-{
-  char *guid = malloc(sizeof(char) * 37);
-  if (guid == NULL)
-  {
-    return NULL;
-  }
-  uuid_t uuid;
-  uuid_generate(uuid);
-  uuid_unparse(uuid, guid);
-  return guid;
-}
-
 middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue)
 {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
@@ -1678,26 +1677,35 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
   });
 }
 
-router_t *Router(char *basePath)
+/* expressRouter */
+
+router_t *expressRouter(char *basePath)
 {
   __block router_t *router = malloc(sizeof(router_t));
-
+  router->basePath = basePath;
   router->routeHandlers = malloc(sizeof(route_handler_t));
   router->routeHandlerCount = 0;
   router->middlewares = malloc(sizeof(middleware_t));
   router->middlewareCount = 0;
+  router->routers = malloc(sizeof(router_t));
+  router->routerCount = 0;
 
   void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(const char *method, const char *path, requestHandler handler) {
     int regex = strchr(path, ':') != NULL;
     router->routeHandlers = realloc(router->routeHandlers, sizeof(route_handler_t) * (router->routeHandlerCount + 1));
     route_handler_t routeHandler = {
-        .basePath = basePath,
+        // .basePath = (char *)router->basePath,
         .method = method,
         .path = path,
         .regex = regex,
-        .paramMatch = regex ? paramMatch(path) : NULL,
+        // .paramMatch = regex ? paramMatch(router->basePath, path) : NULL,
         .handler = handler,
     };
+    if (strlen(router->basePath) == 0)
+    {
+      routeHandler.basePath = (char *)router->basePath;
+      routeHandler.paramMatch = regex ? paramMatch(router->basePath, path) : NULL;
+    }
     router->routeHandlers[router->routeHandlerCount++] = routeHandler;
   };
 
@@ -1726,8 +1734,50 @@ router_t *Router(char *basePath)
     router->middlewares[router->middlewareCount++] = (middleware_t){.handler = handler};
   });
 
+  router->useRouter = Block_copy(^(router_t *_router) {
+    char *_basePath = (char *)_router->basePath;
+    size_t basePathLen = strlen(router->basePath) + strlen(_basePath) + 1;
+    _router->basePath = malloc(basePathLen);
+    snprintf((char *)_router->basePath, basePathLen, "%s%s", router->basePath, _basePath);
+    router->routers = realloc(router->routers, sizeof(router_t) * (router->routerCount + 1));
+    router->routers[router->routerCount++] = _router;
+
+    for (int i = 0; i < _router->routeHandlerCount; i++)
+    {
+      _router->routeHandlers[i].basePath = (char *)_router->basePath;
+      if (_router->routeHandlers[i].regex)
+      {
+        _router->routeHandlers[i].paramMatch = paramMatch(_router->basePath, _router->routeHandlers[i].path);
+      }
+    }
+  });
+
+  router->handler = Block_copy(^(UNUSED request_t *req, UNUSED response_t *res) {
+    runMiddleware(0, req, res, router, ^{
+      route_handler_t routeHandler = matchRouteHandler(req, router);
+      if (routeHandler.handler != NULL)
+      {
+        routeHandler.handler(req, res);
+        return;
+      }
+    });
+
+    for (int i = 0; i < router->routerCount; i++)
+    {
+      router->routers[i]->handler(req, res);
+    }
+
+    if (res->didSend == 0)
+    {
+      res->status = 404;
+      res->sendf(errorHTML, req->path);
+    }
+  });
+
   return router;
 }
+
+/* express */
 
 app_t express()
 {
@@ -1739,30 +1789,34 @@ app_t express()
   initServerSocket(&serverSocket);
 
   app_t app;
-  __block router_t *router = Router("");
+  __block router_t *baseRouter = expressRouter("");
 
   app.get = Block_copy(^(const char *path, requestHandler handler) {
-    router->get(path, handler);
+    baseRouter->get(path, handler);
   });
 
   app.post = Block_copy(^(const char *path, requestHandler handler) {
-    router->post(path, handler);
+    baseRouter->post(path, handler);
   });
 
   app.put = Block_copy(^(const char *path, requestHandler handler) {
-    router->put(path, handler);
+    baseRouter->put(path, handler);
   });
 
   app.patch = Block_copy(^(const char *path, requestHandler handler) {
-    router->patch(path, handler);
+    baseRouter->patch(path, handler);
   });
 
   app.delete = Block_copy(^(const char *path, requestHandler handler) {
-    router->delete (path, handler);
+    baseRouter->delete (path, handler);
   });
 
   app.use = Block_copy(^(middlewareHandler handler) {
-    router->use(handler);
+    baseRouter->use(handler);
+  });
+
+  app.useRouter = Block_copy(^(router_t *router) {
+    baseRouter->useRouter(router);
   });
 
   app.cleanup = Block_copy(^(appCleanupHandler handler) {
@@ -1772,8 +1826,8 @@ app_t express()
 
   app.closeServer = Block_copy(^(int status) {
     printf("\nClosing server...\n");
-    freeRouteHandlers(router->routeHandlers, router->routeHandlerCount);
-    freeMiddlewares(router->middlewares, router->middlewareCount);
+    freeRouteHandlers(baseRouter->routeHandlers, baseRouter->routeHandlerCount);
+    freeMiddlewares(baseRouter->middlewares, baseRouter->middlewareCount);
     close(serverSocket);
     dispatch_release(serverQueue);
     for (int i = 0; i < appCleanupCount; i++)
@@ -1783,12 +1837,12 @@ app_t express()
     exit(status);
   });
 
-  app.listen = Block_copy(^(int port, void (^handler)()) {
+  app.listen = Block_copy(^(int port, void (^callback)()) {
     initServerListen(port, &serverSocket);
     dispatch_async(serverQueue, ^{
-      initClientAcceptEventHandler(serverSocket, serverQueue, router->middlewares, router->middlewareCount, router->routeHandlers, router->routeHandlerCount);
+      initClientAcceptEventHandler(serverSocket, serverQueue, baseRouter);
     });
-    handler();
+    callback();
     dispatch_main();
   });
 

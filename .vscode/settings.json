@@ -59,7 +59,9 @@
     "ios": "c",
     "embeddedFiles.h": "c",
     "curl.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "set": "c",
+    "*.tcc": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
