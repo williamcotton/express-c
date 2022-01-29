@@ -35,12 +35,12 @@ $(TARGETS)-prod: demo/embeddedFiles.h
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
+	clang -o $(BUILD_DIR)/$@ test/test.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
 test-coverage:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-arcs -ftest-coverage
+	clang -o $(BUILD_DIR)/$@ test/test.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-arcs -ftest-coverage
 	$(BUILD_DIR)/$@
 
 clean:
@@ -62,7 +62,7 @@ test-watch:
 
 build-test-trace:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/test test/test-app.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) -g -O0
+	clang -o $(BUILD_DIR)/test test/test.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) -g -O0
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/test
 endif
