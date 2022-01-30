@@ -991,9 +991,9 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
 
   char buffer[4096];
   memset(buffer, 0, sizeof(buffer));
-  char *method, *url;
+  char *method, *originalUrl;
   int parseBytes, minorVersion;
-  size_t bufferLen = 0, prevBufferLen = 0, methodLen, urlLen;
+  size_t bufferLen = 0, prevBufferLen = 0, methodLen, originalUrlLen;
   ssize_t readBytes;
 
   // TODO: timeout support
@@ -1006,7 +1006,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
     prevBufferLen = bufferLen;
     bufferLen += readBytes;
     req.numHeaders = sizeof(req.headers) / sizeof(req.headers[0]);
-    parseBytes = phr_parse_request(buffer, bufferLen, (const char **)&method, &methodLen, (const char **)&url, &urlLen,
+    parseBytes = phr_parse_request(buffer, bufferLen, (const char **)&method, &methodLen, (const char **)&originalUrl, &originalUrlLen,
                                    &minorVersion, req.headers, &req.numHeaders, prevBufferLen);
     if (parseBytes > 0)
     {
@@ -1045,10 +1045,11 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   req.method = malloc(sizeof(char) * (methodLen + 1));
   strlcpy((char *)req.method, method, methodLen + 1);
 
-  req.url = malloc(sizeof(char) * (urlLen + 1));
-  strlcpy((char *)req.url, url, urlLen + 1);
+  req.originalUrl = malloc(sizeof(char) * (originalUrlLen + 1));
+  strlcpy((char *)req.originalUrl, originalUrl, originalUrlLen + 1);
+  req.url = (char *)req.originalUrl;
 
-  char *path = (char *)req.url;
+  char *path = (char *)req.originalUrl;
   char *queryStringStart = strchr(path, '?');
 
   if (queryStringStart)
@@ -1073,6 +1074,13 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   req.cookie = reqCookieFactory(&req);
   req.m = reqMiddlewareFactory(&req);
   req.mSet = reqMiddlewareSetFactory(&req);
+
+  req.hostname = req.get("Host");
+  req.ip = client.ip;
+  req.protocol = "http"; // TODO: TLS/SSL support
+  req.secure = strcmp(req.protocol, "https") == 0;
+  char *XRequestedWith = req.get("X-Requested-With");
+  req.xhr = XRequestedWith && strcmp(XRequestedWith, "XMLHttpRequest") == 0;
 
   req.middlewareStackCount = 0;
 
@@ -1158,6 +1166,7 @@ static void freeRequest(request_t req)
   if (strlen(req.pathMatch) > 0)
     free((void *)req.pathMatch);
   free(req.paramMatch);
+  free((void *)req.hostname);
   free((void *)req.cookiesString);
   free((void *)req.rawRequestBody);
   if (strlen(req.queryString) > 0)
@@ -1694,11 +1703,9 @@ router_t *expressRouter(char *basePath)
     int regex = strchr(path, ':') != NULL;
     router->routeHandlers = realloc(router->routeHandlers, sizeof(route_handler_t) * (router->routeHandlerCount + 1));
     route_handler_t routeHandler = {
-        // .basePath = (char *)router->basePath,
         .method = method,
         .path = path,
         .regex = regex,
-        // .paramMatch = regex ? paramMatch(router->basePath, path) : NULL,
         .handler = handler,
     };
     if (strlen(router->basePath) == 0)
@@ -1757,6 +1764,8 @@ router_t *expressRouter(char *basePath)
       route_handler_t routeHandler = matchRouteHandler(req, router);
       if (routeHandler.handler != NULL)
       {
+        req->baseUrl = routeHandler.basePath;
+        req->route = (void *)&routeHandler;
         routeHandler.handler(req, res);
         return;
       }

@@ -98,16 +98,16 @@ typedef struct request_t
   const char *path;
   const char *method;
   const char *_method;
-  const char *url;         // TODO: replace req.url with req.baseUrl and req.originalUrl
-  const char *baseUrl;     // TODO: add req.baseUrl
-  const char *originalUrl; // TODO: add req.originalUrl
-  const char *hostname;    // TODO: add req.hostname
-  const char *ip;          // TODO: add req.ip
-  const char **ips;        // TODO: add req.ips
-  const char *protocol;    // TODO: add req.protocol
-  int secure;              // TODO: add req.secure
-  void *route;             // TODO: add req.route
-  int xhr;                 // TODO: add req.xhr
+  char *url;
+  const char *baseUrl;
+  const char *originalUrl;
+  const char *hostname;
+  const char *ip;
+  const char **ips; // TODO: add req.ips
+  const char *protocol;
+  int secure;
+  void *route;
+  int xhr;
   const char **subdomains; // TODO: add req.subdomains
   key_value_t queryKeyValues[100];
   size_t queryKeyValueCount;
