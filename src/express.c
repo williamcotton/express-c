@@ -1656,29 +1656,30 @@ char *generateUuid()
 
 /* Public middleware */
 
-middlewareHandler expressStatic(const char *path, const char *fullPath, UNUSED embedded_files_data_t embeddedFiles)
+middlewareHandler expressStatic(const char *path, const char *fullPath, embedded_files_data_t embeddedFiles)
 {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));
 
-#ifdef EMBEDDED_FILES
-    const char *reqPath = req->path;
-    reqPath++;
-    char *data = matchEmbeddedFile(reqPath, embeddedFiles);
-    const char *mimetype = getMegaMimeType(req->path);
-    res->set("Content-Type", mimetype);
-    if (data != NULL)
+    if (embeddedFiles.count > 0)
     {
-      res->send(data);
-      free(data);
+      const char *reqPath = req->path;
+      reqPath++;
+      char *data = matchEmbeddedFile(reqPath, embeddedFiles);
+      const char *mimetype = getMegaMimeType(req->path);
+      res->set("Content-Type", mimetype);
+      if (data != NULL)
+      {
+        res->send(data);
+        free(data);
+      }
+      else
+      {
+        next();
+      }
+      return;
     }
-    else
-    {
-      next();
-    }
-    return;
-#endif // EMBEDED_FILES
 
     char *filePath = matchFilepath(req, path);
 

@@ -60,16 +60,17 @@ static char *mustacheErrorMessage(int result)
   }
 }
 
-middlewareHandler cJSONMustacheMiddleware(char *viewsPath, UNUSED embedded_files_data_t embeddedFiles)
+middlewareHandler cJSONMustacheMiddleware(char *viewsPath, embedded_files_data_t embeddedFiles)
 {
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;
     char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);
     sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
-#ifdef EMBEDDED_FILES
-    template = matchEmbeddedFile(templatePath, embeddedFiles);
-    return template;
-#else
+    if (embeddedFiles.count > 0)
+    {
+      template = matchEmbeddedFile(templatePath, embeddedFiles);
+      return template;
+    }
     FILE *templateFd = fopen(templatePath, "r");
     if (templateFd)
     {
@@ -83,37 +84,38 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath, UNUSED embedded_files
     }
     free(templatePath);
     return template;
-#endif // EMBEDED_FILES
   };
 
   void (^loadPartials)(cJSON *data, char *templateFile) = ^(cJSON *data, char *templateFile) {
-#ifdef EMBEDDED_FILES
-    char *templateName = strtok(templateFile, ".");
-    for (int i = 0; i < embeddedFiles.count; i++)
+    if (embeddedFiles.count > 0)
     {
-      if (strstr(embeddedFiles.names[i], "mustache"))
+      char *templateName = strtok(templateFile, ".");
+      for (int i = 0; i < embeddedFiles.count; i++)
       {
-        char *partialName = embeddedFiles.names[i];
-        char *partial = (char *)embeddedFiles.data[i];
-
-        char *token = strdup(partialName);
-        char *extention = token;
-        char *name = token;
-        strtok(token, "_");
-        while ((token = strtok(NULL, "_")) != NULL)
+        if (strstr(embeddedFiles.names[i], "mustache"))
         {
-          name = extention;
-          extention = token;
+          char *partialName = embeddedFiles.names[i];
+          char *partial = (char *)embeddedFiles.data[i];
+
+          char *token = strdup(partialName);
+          char *extention = token;
+          char *name = token;
+          strtok(token, "_");
+          while ((token = strtok(NULL, "_")) != NULL)
+          {
+            name = extention;
+            extention = token;
+          }
+
+          if (strcmp(name, templateName) == 0)
+            continue;
+
+          cJSON_AddStringToObject(data, name, partial);
+          free(token);
         }
-
-        if (strcmp(name, templateName) == 0)
-          continue;
-
-        cJSON_AddStringToObject(data, name, partial);
-        free(token);
       }
+      return;
     }
-#else
     UNUSED struct dirent *de;
     DIR *dr = opendir(viewsPath);
     while ((de = readdir(dr)) != NULL)
@@ -129,7 +131,6 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath, UNUSED embedded_files
       }
     }
     closedir(dr);
-#endif // EMBEDED_FILES
   };
 
   return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
