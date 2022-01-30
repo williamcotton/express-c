@@ -15,16 +15,16 @@
 #define true 1
 #define false 0
 
-UNUSED static char *errorHTML = "<!DOCTYPE html>\n"
-                                "<html lang=\"en\">\n"
-                                "<head>\n"
-                                "<meta charset=\"utf-8\">\n"
-                                "<title>Error</title>\n"
-                                "</head>\n"
-                                "<body>\n"
-                                "<pre>Cannot GET %s</pre>\n"
-                                "</body>\n"
-                                "</html>\n";
+static char *errorHTML = "<!DOCTYPE html>\n"
+                         "<html lang=\"en\">\n"
+                         "<head>\n"
+                         "<meta charset=\"utf-8\">\n"
+                         "<title>Error</title>\n"
+                         "</head>\n"
+                         "<body>\n"
+                         "<pre>Cannot GET %s</pre>\n"
+                         "</body>\n"
+                         "</html>\n";
 
 void runTests(int runAndExit, app_t app)
 {
@@ -36,6 +36,7 @@ void runTests(int runAndExit, app_t app)
     t->test("GET", ^(tape_t *t) {
       t->strEqual("root", curlGet("/"), "Hello World!");
       t->strEqual("basic route", curlGet("/test"), "Testing, testing!");
+      t->strEqual("send status", curlGet("/status"), "I'm a teapot");
       t->strEqual("query string", curlGet("/qs\?value1=123\\&value2=34%205"), "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
       t->strEqual("route params", curlGet("/one/123/two/345/567.jpg"), "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
       t->strEqual("send file", curlGet("/file"), "hello, world!\n");
@@ -146,11 +147,11 @@ int main()
     char *uuid;
   } super_t;
 
-  app.use(^(request_t *req, UNUSED response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+  app.use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super test";
     req->mSet("super", super);
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+    cleanup(Block_copy(^(request_t *finishedReq) {
       super_t *s = finishedReq->m("super");
       free(s);
     }));
@@ -164,6 +165,10 @@ int main()
   app.get("/test", ^(UNUSED request_t *req, response_t *res) {
     res->status = 201;
     res->send("Testing, testing!");
+  });
+
+  app.get("/status", ^(UNUSED request_t *req, response_t *res) {
+    res->sendStatus(418);
   });
 
   app.get("/qs", ^(request_t *req, response_t *res) {
@@ -225,7 +230,7 @@ int main()
     curl_free(param1);
   });
 
-  app.put("/put/:form", ^(UNUSED request_t *req, response_t *res) {
+  app.put("/put/:form", ^(request_t *req, response_t *res) {
     char *param1 = req->body("param1");
     char *param2 = req->body("param2");
     res->status = 201;
@@ -234,7 +239,7 @@ int main()
     curl_free(param2);
   });
 
-  app.patch("/patch/:form", ^(UNUSED request_t *req, response_t *res) {
+  app.patch("/patch/:form", ^(request_t *req, response_t *res) {
     char *param1 = req->body("param1");
     char *param2 = req->body("param2");
     res->status = 201;
@@ -243,7 +248,7 @@ int main()
     curl_free(param2);
   });
 
-  app.delete("/delete/:id", ^(UNUSED request_t *req, response_t *res) {
+  app.delete("/delete/:id", ^(request_t *req, response_t *res) {
     char *id = req->params("id");
     res->sendf("<h1>Delete</h1><p>ID: %s</p>", id);
     free(id);
@@ -260,7 +265,7 @@ int main()
     res->send("ok");
   });
 
-  app.get("/set_cookie", ^(UNUSED request_t *req, response_t *res) {
+  app.get("/set_cookie", ^(request_t *req, response_t *res) {
     char *session = req->query("session");
     char *user = req->query("user");
     res->cookie("session", session, (cookie_opts_t){});
@@ -270,7 +275,7 @@ int main()
     curl_free(user);
   });
 
-  app.get("/get_cookie", ^(UNUSED request_t *req, response_t *res) {
+  app.get("/get_cookie", ^(request_t *req, response_t *res) {
     const char *session = req->cookie("session");
     const char *user = req->cookie("user");
     res->sendf("session: %s - user: %s", session, user);
@@ -297,11 +302,11 @@ int main()
 
   router_t *router = expressRouter("/base");
 
-  router->use(^(request_t *req, UNUSED response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+  router->use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super-router test";
     req->mSet("super-router", super);
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+    cleanup(Block_copy(^(request_t *finishedReq) {
       super_t *s = finishedReq->m("super-router");
       free(s);
     }));
@@ -333,11 +338,11 @@ int main()
 
   router_t *nestedRouter = expressRouter("/nested");
 
-  nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+  nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super-nested-router test";
     req->mSet("super-nested-router", super);
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+    cleanup(Block_copy(^(request_t *finishedReq) {
       super_t *s = finishedReq->m("super-nested-router");
       free(s);
     }));
