@@ -30,6 +30,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MAX_REQUEST_SIZE 4096
+#define READ_TIMEOUT_SECS 30
+#define ACCEPT_TIMEOUT_SECS 30
+
 /* Helpers */
 
 #define UNUSED __attribute__((unused))
@@ -158,6 +162,8 @@ typedef struct request_t {
   int xhr;
   int subdomainsCount;
   const char **subdomains;
+  char rawRequest[MAX_REQUEST_SIZE];
+  size_t rawRequestSize;
   key_value_t queryKeyValues[100];
   size_t queryKeyValueCount;
   const char *queryString;
@@ -165,7 +171,6 @@ typedef struct request_t {
   struct phr_header headers[100];
   size_t numHeaders;
   char * (^get)(const char *headerKey);
-  param_match_t *paramMatch;
   const char *pathMatch;
   key_value_t paramKeyValues[100];
   size_t paramKeyValueCount;
@@ -180,7 +185,6 @@ typedef struct request_t {
   void * (^m)(const char *middlewareKey);
   void (^mSet)(const char *middlewareKey, void *middleware);
   long long contentLength;
-  const char *rawRequest;
   session_t *session;
   const char *cookiesString;
   const char *cookies[4096];
@@ -195,6 +199,8 @@ typedef struct request_t {
   void * (^blockCopy)(void *);
   CURL *curl;
   void **middlewareCleanupBlocks;
+  char *XRequestedWith;
+  char *XForwardedFor;
 } request_t;
 
 /* Response */

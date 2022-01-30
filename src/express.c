@@ -47,10 +47,6 @@
 
 /* Private */
 
-#define MAX_REQUEST_SIZE 4096
-#define READ_TIMEOUT_SECS 30
-#define ACCEPT_TIMEOUT_SECS 30
-
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
                          "<head>\n"
@@ -460,6 +456,21 @@ static void collectRegexRouteHandlers(router_t *router,
                               regExRouteHandlerCount);
 }
 
+static getBlock reqGetFactory(request_t *req) {
+  return Block_copy(^(const char *headerKey) {
+    for (size_t i = 0; i != req->numHeaders; ++i) {
+      if (strncmp(req->headers[i].name, headerKey, req->headers[i].name_len) ==
+          0) {
+        char *value = malloc(sizeof(char) * (req->headers[i].value_len + 1));
+        sprintf(value, "%.*s", (int)req->headers[i].value_len,
+                req->headers[i].value);
+        return value;
+      }
+    }
+    return (char *)NULL;
+  });
+}
+
 static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
   route_handler_t regExRouteHandlers[4096];
   int regExRouteHandlerCount = 0;
@@ -502,7 +513,9 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
 }
 
 static getBlock reqCookieFactory(request_t *req) {
+  req->cookiesKeyValueCount = 0;
   req->cookiesString = (char *)req->get("Cookie");
+  memset(req->cookies, 0, sizeof(req->cookies));
   char *cookies = (char *)req->cookiesString;
   if (req->cookiesString != NULL) {
     char *cookie = strtok(cookies, ";");
@@ -557,6 +570,7 @@ static getMiddlewareBlock reqMiddlewareFactory(request_t *req) {
 
 typedef void (^getMiddlewareSetBlock)(const char *key, void *middleware);
 static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req) {
+  req->middlewareKeyValueCount = 0;
   return Block_copy(^(const char *key, void *middleware) {
     req->middlewareKeyValues[req->middlewareKeyValueCount].key = key;
     req->middlewareKeyValues[req->middlewareKeyValueCount].value = middleware;
@@ -565,6 +579,7 @@ static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req) {
 }
 
 static getBlock reqBodyFactory(request_t *req) {
+  req->bodyKeyValueCount = 0;
   if (strncmp(req->method, "POST", 4) == 0 ||
       strncmp(req->method, "PATCH", 5) == 0 ||
       strncmp(req->method, "PUT", 3) == 0) {
@@ -579,7 +594,6 @@ static getBlock reqBodyFactory(request_t *req) {
       char *contentType = (char *)req->get("Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0) {
         size_t bodyStringLen = strlen(req->bodyString);
-        req->bodyKeyValueCount = 0;
         parseQueryString(req->bodyString, req->bodyString + bodyStringLen,
                          req->bodyKeyValues, &req->bodyKeyValueCount,
                          sizeof(req->bodyKeyValues) /
@@ -941,12 +955,11 @@ static char *matchFilepath(request_t *req, const char *path) {
     free(buffer);
     free(pattern);
     return filePath;
-  } else {
-    regfree(&regex);
-    free(buffer);
-    free(pattern);
-    return NULL;
   }
+  regfree(&regex);
+  free(buffer);
+  free(pattern);
+  return NULL;
 }
 
 static void runMiddleware(int index, request_t *req, response_t *res,
@@ -1033,17 +1046,13 @@ error:
   return -1;
 };
 
-static request_t buildRequest(client_t client, router_t *baseRouter) {
-  request_t req = {.url = NULL,
-                   .queryString = "",
-                   .path = NULL,
-                   .method = NULL,
-                   .rawRequest = NULL};
-
-  char buffer[MAX_REQUEST_SIZE] = {0};
+static void buildRequest(request_t *req, client_t client,
+                         router_t *baseRouter) {
+  memset(req->rawRequest, 0, sizeof(req->rawRequest));
+  req->rawRequestSize = 0;
   char *method, *originalUrl;
-  int parseBytes, minorVersion;
-  size_t bufferLen = 0, prevBufferLen = 0, methodLen, originalUrlLen;
+  int parseBytes = 0, minorVersion;
+  size_t prevBufferLen = 0, methodLen, originalUrlLen;
   ssize_t readBytes;
 
   time_t start;
@@ -1051,127 +1060,120 @@ static request_t buildRequest(client_t client, router_t *baseRouter) {
   time_t current;
 
   while (1) {
-    while ((readBytes = read(client.socket, buffer + bufferLen,
-                             sizeof(buffer) - bufferLen)) == -1) {
+    while ((readBytes =
+                read(client.socket, req->rawRequest + req->rawRequestSize,
+                     sizeof(req->rawRequest) - req->rawRequestSize)) == -1) {
       time(&current);
       time_t difference = difftime(current, start);
       check(difference < READ_TIMEOUT_SECS, "request timeout");
     }
     check_silent(readBytes > 0, "read() failed");
-    prevBufferLen = bufferLen;
-    bufferLen += readBytes;
-    req.numHeaders = sizeof(req.headers) / sizeof(req.headers[0]);
-    parseBytes = phr_parse_request(buffer, bufferLen, (const char **)&method,
-                                   &methodLen, (const char **)&originalUrl,
-                                   &originalUrlLen, &minorVersion, req.headers,
-                                   &req.numHeaders, prevBufferLen);
+    prevBufferLen = req->rawRequestSize;
+    req->rawRequestSize += readBytes;
+    req->numHeaders = sizeof(req->headers) / sizeof(req->headers[0]);
+    parseBytes = phr_parse_request(
+        req->rawRequest, req->rawRequestSize, (const char **)&method,
+        &methodLen, (const char **)&originalUrl, &originalUrlLen, &minorVersion,
+        req->headers, &req->numHeaders, prevBufferLen);
     if (parseBytes > 0) {
-      req.get = Block_copy(^(const char *headerKey) {
-        for (size_t i = 0; i != req.numHeaders; ++i) {
-          if (strncmp(req.headers[i].name, headerKey,
-                      req.headers[i].name_len) == 0) {
-            char *value = malloc(sizeof(char) * (req.headers[i].value_len + 1));
-            sprintf(value, "%.*s", (int)req.headers[i].value_len,
-                    req.headers[i].value);
-            return value;
-          }
-        }
-        return (char *)NULL;
-      });
-      char *contentLength = (char *)req.get("Content-Length");
-      req.contentLength =
+      req->get = reqGetFactory(req);
+      char *contentLength = (char *)req->get("Content-Length");
+      req->contentLength =
           contentLength != NULL ? strtoll(contentLength, NULL, 10) : 0;
-      if (req.contentLength != 0 && parseBytes == readBytes)
-        while ((read(client.socket, buffer + bufferLen,
-                     sizeof(buffer) - bufferLen)) == -1)
+      if (req->contentLength != 0 && parseBytes == readBytes)
+        while ((read(client.socket, req->rawRequest + req->rawRequestSize,
+                     sizeof(req->rawRequest) - req->rawRequestSize)) == -1)
           ;
       free(contentLength);
       break;
     } else if (parseBytes == -1)
       sentinel("Parse error");
     assert(parseBytes == -2);
-    if (bufferLen == sizeof(buffer))
+    if (req->rawRequestSize == sizeof(req->rawRequest))
       sentinel("Request is too long");
   }
 
   long long maxBodyLen = (MAX_REQUEST_SIZE)-parseBytes;
-  check(req.contentLength <= maxBodyLen, "Request body too large");
+  check(req->contentLength <= maxBodyLen, "Request body too large");
 
-  req.malloc = reqMallocFactory(&req);
-  req.blockCopy = reqBlockCopyFactory(&req);
-  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
-  req.curl = curl_easy_init(); // TODO: move to global scope
-  req.rawRequest = buffer;
+  req->malloc = reqMallocFactory(req);
+  req->blockCopy = reqBlockCopyFactory(req);
+  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
+  req->curl = curl_easy_init(); // TODO: move to global scope
 
-  req.method = malloc(sizeof(char) * (methodLen + 1));
-  strlcpy((char *)req.method, method, methodLen + 1);
+  req->method = malloc(sizeof(char) * (methodLen + 1));
+  strlcpy((char *)req->method, method, methodLen + 1);
 
-  req.originalUrl = malloc(sizeof(char) * (originalUrlLen + 1));
-  strlcpy((char *)req.originalUrl, originalUrl, originalUrlLen + 1);
-  req.url = (char *)req.originalUrl;
+  req->originalUrl = malloc(sizeof(char) * (originalUrlLen + 1));
+  strlcpy((char *)req->originalUrl, originalUrl, originalUrlLen + 1);
+  req->url = (char *)req->originalUrl;
 
-  char *path = (char *)req.originalUrl;
+  char *path = (char *)req->originalUrl;
   char *queryStringStart = strchr(path, '?');
 
+  req->queryString = NULL;
   if (queryStringStart) {
     size_t queryStringLen = strlen(queryStringStart + 1);
-    req.queryString = req.malloc(sizeof(char) * (queryStringLen + 1));
-    strlcpy((char *)req.queryString, queryStringStart + 1, queryStringLen + 1);
+    req->queryString = malloc(sizeof(char) * (queryStringLen + 1));
+    strlcpy((char *)req->queryString, queryStringStart + 1, queryStringLen + 1);
     *queryStringStart = '\0';
-    req.queryKeyValueCount = 0;
-    parseQueryString(req.queryString, req.queryString + queryStringLen,
-                     req.queryKeyValues, &req.queryKeyValueCount,
-                     sizeof(req.queryKeyValues) /
-                         sizeof(req.queryKeyValues[0]));
+    req->queryKeyValueCount = 0;
+    parseQueryString(req->queryString, req->queryString + queryStringLen,
+                     req->queryKeyValues, &req->queryKeyValueCount,
+                     sizeof(req->queryKeyValues) /
+                         sizeof(req->queryKeyValues[0]));
   }
 
   size_t pathLen = strlen(path) + 1;
-  req.path = req.malloc(sizeof(char) * pathLen);
-  snprintf((char *)req.path, pathLen, "%s", path);
+  req->path = malloc(sizeof(char) * pathLen);
+  snprintf((char *)req->path, pathLen, "%s", path);
 
-  req.params = reqParamsFactory(&req, baseRouter);
-  req.query = reqQueryFactory(&req);
-  req.body = reqBodyFactory(&req);
-  req.session = reqSessionFactory(&req);
-  req.cookie = reqCookieFactory(&req);
-  req.m = reqMiddlewareFactory(&req);
-  req.mSet = reqMiddlewareSetFactory(&req);
+  req->params = reqParamsFactory(req, baseRouter);
+  req->query = reqQueryFactory(req);
+  req->body = reqBodyFactory(req);
+  req->session = reqSessionFactory(req);
+  req->cookie = reqCookieFactory(req);
+  req->m = reqMiddlewareFactory(req);
+  req->mSet = reqMiddlewareSetFactory(req);
 
-  req.hostname = req.get("Host");
-  req.ip = client.ip;
-  req.protocol = "http"; // TODO: TLS/SSL support
-  req.secure = strcmp(req.protocol, "https") == 0;
-  char *XRequestedWith = req.get("X-Requested-With");
-  req.xhr = XRequestedWith && strcmp(XRequestedWith, "XMLHttpRequest") == 0;
-  char *XForwardedFor = req.get("X-Forwarded-For");
-  req.ipsCount = 0;
-  req.ips = XForwardedFor ? split(XForwardedFor, ",", &req.ipsCount)
-                          : (const char **)NULL;
-  req.subdomainsCount = 0;
-  req.subdomains = req.hostname
-                       ? split((char *)req.hostname, ".", &req.subdomainsCount)
-                       : (const char **)NULL;
-  if (req.subdomainsCount > 2) {
-    req.subdomainsCount -= 2;
+  req->hostname = req->get("Host");
+  req->ip = client.ip;
+  req->protocol = "http"; // TODO: TLS/SSL support
+  req->secure = strcmp(req->protocol, "https") == 0;
+  req->XRequestedWith = req->get("X-Requested-With");
+  req->xhr =
+      req->XRequestedWith && strcmp(req->XRequestedWith, "XMLHttpRequest") == 0;
+  req->XForwardedFor = req->get("X-Forwarded-For");
+  req->ipsCount = 0;
+  req->ips = req->XForwardedFor ? split(req->XForwardedFor, ",", &req->ipsCount)
+                                : (const char **)NULL;
+  req->subdomainsCount = 0;
+  req->subdomains =
+      req->hostname ? split((char *)req->hostname, ".", &req->subdomainsCount)
+                    : (const char **)NULL;
+  if (req->subdomainsCount > 2) {
+    req->subdomainsCount -= 2;
   }
 
-  req.middlewareStackCount = 0;
+  req->middlewareStackCount = 0;
 
-  req._method = req.body("_method");
-  if (req._method) {
-    toUpper((char *)req._method);
-    if (strcmp(req._method, "PUT") == 0 || strcmp(req._method, "DELETE") == 0 ||
-        strcmp(req._method, "PATCH") == 0) {
-      free((void *)req.method);
-      req.method = req._method;
+  req->_method = req->body("_method");
+  if (req->_method) {
+    toUpper((char *)req->_method);
+    if (strcmp(req->_method, "PUT") == 0 ||
+        strcmp(req->_method, "DELETE") == 0 ||
+        strcmp(req->_method, "PATCH") == 0) {
+      free((void *)req->method);
+      req->method = req->_method;
     }
   }
 
-  return req;
+  return;
 error:
-  if (req.contentLength != 0)
-    Block_release(req.get);
-  return req;
+  req->method = NULL;
+  if (parseBytes > 0)
+    Block_release(req->get);
+  return;
 }
 
 static route_handler_t matchRouteHandler(request_t *req, router_t *router) {
@@ -1211,63 +1213,63 @@ static route_handler_t matchRouteHandler(request_t *req, router_t *router) {
   return (route_handler_t){.method = NULL, .path = NULL, .handler = NULL};
 }
 
-static void freeRequest(request_t req) {
+UNUSED static void freeRequest(request_t *req) {
   cleanupHandler *middlewareCleanupBlocks =
-      (void (^*)(request_t *))req.middlewareCleanupBlocks;
-  for (int i = 0; i < req.middlewareStackCount; i++) {
-    middlewareCleanupBlocks[i](&req);
+      (void (^*)(request_t *))req->middlewareCleanupBlocks;
+  for (int i = 0; i < req->middlewareStackCount; i++) {
+    middlewareCleanupBlocks[i](req);
     Block_release(middlewareCleanupBlocks[i]);
   }
-  free(req.middlewareCleanupBlocks);
-  if (req._method != NULL)
-    curl_free((void *)req._method);
+  free(req->middlewareCleanupBlocks);
+  if (req->_method != NULL)
+    curl_free((void *)req->_method);
   else
-    free((void *)req.method);
-  free((void *)req.url);
-  free(req.session);
-  if (req.paramMatch != NULL) {
-    for (int i = 0; i < req.paramMatch->count; i++) {
-      free(req.paramMatch->keys[i]);
-    }
+    free((void *)req->method);
+  free((void *)req->url);
+  free(req->session);
+  if (strlen(req->pathMatch) > 0)
+    free((void *)req->pathMatch);
+  free((void *)req->hostname);
+  free((void *)req->cookiesString);
+  free((void *)req->XRequestedWith);
+  free((void *)req->XForwardedFor);
+  free((void *)req->ips);
+  free((void *)req->subdomains);
+  for (int i = 0; i < req->mallocCount; i++) {
+    free(req->mallocs[i].ptr);
   }
-  if (strlen(req.pathMatch) > 0)
-    free((void *)req.pathMatch);
-  free(req.paramMatch);
-  free((void *)req.hostname);
-  free((void *)req.cookiesString);
-  free((void *)req.ips);
-  free((void *)req.subdomains);
-  for (int i = 0; i < req.mallocCount; i++) {
-    free(req.mallocs[i].ptr);
+  for (int i = 0; i < req->blockCopyCount; i++) {
+    Block_release(req->blockCopies[i].ptr);
   }
-  for (int i = 0; i < req.blockCopyCount; i++) {
-    Block_release(req.blockCopies[i].ptr);
-  }
-  Block_release(req.get);
-  Block_release(req.query);
-  Block_release(req.params);
-  Block_release(req.body);
-  Block_release(req.cookie);
-  Block_release(req.m);
-  Block_release(req.mSet);
-  Block_release(req.malloc);
-  Block_release(req.blockCopy);
-  curl_easy_cleanup(req.curl);
+  free((void *)req->path);
+  Block_release(req->get);
+  Block_release(req->query);
+  Block_release(req->params);
+  Block_release(req->body);
+  Block_release(req->cookie);
+  Block_release(req->m);
+  Block_release(req->mSet);
+  Block_release(req->malloc);
+  Block_release(req->blockCopy);
+  curl_easy_cleanup(req->curl);
+  free((void *)req->queryString);
+  free(req);
 }
 
-static void freeResponse(response_t res) {
-  Block_release(res.send);
-  Block_release(res.sendFile);
-  Block_release(res.sendf);
-  Block_release(res.sendStatus);
-  Block_release(res.set);
-  Block_release(res.get);
-  Block_release(res.cookie);
-  Block_release(res.location);
-  Block_release(res.redirect);
-  Block_release(res.download);
-  Block_release(res.type);
-  Block_release(res.json);
+static void freeResponse(response_t *res) {
+  Block_release(res->send);
+  Block_release(res->sendFile);
+  Block_release(res->sendf);
+  Block_release(res->sendStatus);
+  Block_release(res->set);
+  Block_release(res->get);
+  Block_release(res->cookie);
+  Block_release(res->location);
+  Block_release(res->redirect);
+  Block_release(res->download);
+  Block_release(res->type);
+  Block_release(res->json);
+  free(res);
 }
 
 static void closeClientConnection(client_t client) {
@@ -1275,23 +1277,21 @@ static void closeClientConnection(client_t client) {
   close(client.socket);
 }
 
-static response_t buildResponse(client_t client, request_t *req) {
-  response_t res;
-  res.status = 200;
-  res.send = resSendFactory(client, &res);
-  res.sendf = resSendfFactory(&res);
-  res.sendFile = resSendFileFactory(client, req, &res);
-  res.sendStatus = resSendStatusFactory(&res);
-  res.set = resSetFactory(&res);
-  res.get = resGetFactory(&res);
-  res.cookie = resCookieFactory(&res);
-  res.location = resLocationFactory(req, &res);
-  res.redirect = resRedirectFactory(req, &res);
-  res.type = resTypeFactory(&res);
-  res.json = resJsonFactory(&res);
-  res.download = resDownloadFactory(&res);
-  res.didSend = 0;
-  return res;
+static void buildResponse(client_t client, request_t *req, response_t *res) {
+  res->status = 200;
+  res->send = resSendFactory(client, res);
+  res->sendf = resSendfFactory(res);
+  res->sendFile = resSendFileFactory(client, req, res);
+  res->sendStatus = resSendStatusFactory(res);
+  res->set = resSetFactory(res);
+  res->get = resGetFactory(res);
+  res->cookie = resCookieFactory(res);
+  res->location = resLocationFactory(req, res);
+  res->redirect = resRedirectFactory(req, res);
+  res->type = resTypeFactory(res);
+  res->json = resJsonFactory(res);
+  res->download = resDownloadFactory(res);
+  res->didSend = 0;
 }
 
 #ifdef __linux__
@@ -1392,30 +1392,33 @@ void *clientAcceptEventHandler(void *args) {
 
           client_t client = status->client;
 
-          request_t req = buildRequest(client, baseRouter);
+          request_t *req = malloc(sizeof(request_t));
+          buildRequest(req, client, baseRouter);
 
-          if (req.method == NULL) {
+          if (req->method == NULL) {
             free(status);
+            free(req);
             closeClientConnection(client);
             continue;
           }
 
-          __block response_t res = buildResponse(client, &req);
+          response_t *res = malloc(sizeof(response_t));
+          buildResponse(client, req, res);
 
-          baseRouter->handler(&req, &res);
+          baseRouter->handler(req, res);
 
           status->reqStatus = ENDED;
 
           if (epoll_ctl(epollFd, EPOLL_CTL_MOD, client.socket, &ev) < 0) {
             log_err("epoll_ctl() failed");
-            freeRequest(req);
             freeResponse(res);
+            freeRequest(req);
             closeClientConnection(client);
             continue;
           }
 
-          freeRequest(req);
           freeResponse(res);
+          freeRequest(req);
           closeClientConnection(client);
         } else if (status->reqStatus == ENDED) {
           free(status);
@@ -1501,22 +1504,25 @@ static int initClientAcceptEventHandler(server_t *server,
         dispatch_source_cancel(timerSource);
         dispatch_release(timerSource);
 
-        request_t req = buildRequest(client, baseRouter);
+        request_t *req = malloc(sizeof(request_t));
+        buildRequest(req, client, baseRouter);
 
-        if (req.method == NULL) {
+        if (req->method == NULL) {
+          free(req);
           closeClientConnection(client);
           dispatch_source_cancel(readSource);
           dispatch_release(readSource);
           return;
         }
 
-        __block response_t res = buildResponse(client, &req);
+        response_t *res = malloc(sizeof(response_t));
+        buildResponse(client, req, res);
 
-        baseRouter->handler(&req, &res);
+        baseRouter->handler(req, res);
 
         closeClientConnection(client);
-        freeRequest(req);
         freeResponse(res);
+        freeRequest(req);
         dispatch_source_cancel(readSource);
         dispatch_release(readSource);
       });
