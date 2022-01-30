@@ -193,11 +193,21 @@ static char *getStatusMessage(int status)
   }
 }
 
-static size_t fileSize(const char *filePath)
+static size_t getFileSize(const char *filePath)
 {
   struct stat st;
   stat(filePath, &st);
   return st.st_size;
+}
+
+static char *getFileName(const char *filePath)
+{
+  char *fileName = strrchr(filePath, '/');
+  if (fileName)
+  {
+    return fileName + 1;
+  }
+  return (char *)filePath;
 }
 
 static void toUpper(char *givenStr)
@@ -627,7 +637,7 @@ static char *buildResponseString(const char *body, response_t *res)
 }
 
 typedef void (^sendBlock)(const char *body);
-static sendBlock sendFactory(client_t client, response_t *res)
+static sendBlock resSendFactory(client_t client, response_t *res)
 {
   return Block_copy(^(const char *body) {
     char *response = buildResponseString(body, res);
@@ -638,7 +648,7 @@ static sendBlock sendFactory(client_t client, response_t *res)
 }
 
 typedef void (^sendfBlock)(const char *format, ...);
-static sendfBlock sendfFactory(response_t *res)
+static sendfBlock resSendfFactory(response_t *res)
 {
   return Block_copy(^(const char *format, ...) {
     char body[65536];
@@ -652,7 +662,7 @@ static sendfBlock sendfFactory(response_t *res)
   });
 }
 
-static sendBlock sendFileFactory(client_t client, request_t *req, response_t *res)
+static sendBlock resSendFileFactory(client_t client, request_t *req, response_t *res)
 {
   return Block_copy(^(const char *path) {
     FILE *file = fopen(path, "r");
@@ -665,7 +675,7 @@ static sendBlock sendFileFactory(client_t client, request_t *req, response_t *re
     char *mimetype = (char *)getMegaMimeType((const char *)path);
     char *response = malloc(sizeof(char) * (strlen(mimetype) + strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: \r\nContent-Length: \r\n\r\n") + 20));
     // TODO: use res.set() and refactor header building
-    sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %zu\r\n\r\n", mimetype, fileSize(path));
+    sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %zu\r\n\r\n", mimetype, getFileSize(path));
     res->didSend = 1;
     write(client.socket, response, strlen(response));
     // TODO: use sendfile
@@ -682,8 +692,49 @@ static sendBlock sendFileFactory(client_t client, request_t *req, response_t *re
   });
 }
 
+typedef void (^sendStatusBlock)(int status);
+static sendStatusBlock resSendStatusFactory(response_t *res)
+{
+  return Block_copy(^(int status) {
+    res->status = status;
+    res->send(getStatusMessage(status));
+  });
+}
+
+typedef void (^typeBlock)(const char *type);
+static typeBlock resTypeFactory(response_t *res)
+{
+  return Block_copy(^(const char *type) {
+    const char *mimetype = getMegaMimeType(type);
+    res->set("Content-Type", mimetype);
+  });
+}
+
+typedef void (^jsonBlock)(const char *json);
+static jsonBlock resJsonFactory(response_t *res)
+{
+  return Block_copy(^(const char *json) {
+    res->set("Content-Type", "application/json");
+    res->send(json);
+  });
+}
+
+typedef void (^downloadBlock)(const char *filePath, const char *name);
+static downloadBlock resDownloadFactory(response_t *res)
+{
+  return Block_copy(^(const char *filePath, const char *fileName) {
+    if (fileName == NULL)
+      fileName = (char *)getFileName(filePath);
+
+    char *contentDisposition = malloc(sizeof(char) * (strlen("Content-Disposition: attachment; filename=\"\"\r\n") + strlen(fileName) + 1));
+    sprintf(contentDisposition, "Content-Disposition: attachment; filename=\"%s\"\r\n", fileName);
+    res->set("Content-Disposition", contentDisposition);
+    res->sendFile(filePath);
+  });
+}
+
 typedef void (^setBlock)(const char *headerKey, const char *headerValue);
-static setBlock setFactory(response_t *res)
+static setBlock resSetFactory(response_t *res)
 {
   // TODO: replace hash with writing directly to res.headersString
   res->headersHash = hash_new();
@@ -692,7 +743,7 @@ static setBlock setFactory(response_t *res)
   });
 }
 
-static getBlock getFactory(response_t *res)
+static getBlock resGetFactory(response_t *res)
 {
   // TODO: replace hash with reading directly from res.headersString (pointer offsets and lengths)
   return Block_copy(^(const char *headerKey) {
@@ -754,7 +805,7 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts)
 }
 
 typedef void (^setCookie)(const char *cookieKey, const char *cookieValue, cookie_opts_t opts);
-static setCookie cookieFactory(response_t *res)
+static setCookie resCookieFactory(response_t *res)
 {
   memset(res->cookieHeaders, 0, sizeof(res->cookieHeaders));
   res->cookieHeadersLength = 0;
@@ -784,7 +835,7 @@ static setCookie cookieFactory(response_t *res)
 }
 
 typedef void (^urlBlock)(const char *url);
-static urlBlock locationFactory(request_t *req, response_t *res)
+static urlBlock resLocationFactory(request_t *req, response_t *res)
 {
   return Block_copy(^(const char *url) {
     if (strncmp(url, "back", 4) == 0)
@@ -806,7 +857,7 @@ static urlBlock locationFactory(request_t *req, response_t *res)
   });
 }
 
-static urlBlock redirectFactory(UNUSED request_t *req, response_t *res)
+static urlBlock resRedirectFactory(UNUSED request_t *req, response_t *res)
 {
   return Block_copy(^(const char *url) {
     res->status = 302;
@@ -1199,11 +1250,15 @@ static void freeResponse(response_t res)
   Block_release(res.send);
   Block_release(res.sendFile);
   Block_release(res.sendf);
+  Block_release(res.sendStatus);
   Block_release(res.set);
   Block_release(res.get);
   Block_release(res.cookie);
   Block_release(res.location);
   Block_release(res.redirect);
+  Block_release(res.download);
+  Block_release(res.type);
+  Block_release(res.json);
 }
 
 static void closeClientConnection(client_t client)
@@ -1216,14 +1271,18 @@ static response_t buildResponse(client_t client, request_t *req)
 {
   response_t res;
   res.status = 200;
-  res.send = sendFactory(client, &res);
-  res.sendf = sendfFactory(&res);
-  res.sendFile = sendFileFactory(client, req, &res);
-  res.set = setFactory(&res);
-  res.get = getFactory(&res);
-  res.cookie = cookieFactory(&res);
-  res.location = locationFactory(req, &res);
-  res.redirect = redirectFactory(req, &res);
+  res.send = resSendFactory(client, &res);
+  res.sendf = resSendfFactory(&res);
+  res.sendFile = resSendFileFactory(client, req, &res);
+  res.sendStatus = resSendStatusFactory(&res);
+  res.set = resSetFactory(&res);
+  res.get = resGetFactory(&res);
+  res.cookie = resCookieFactory(&res);
+  res.location = resLocationFactory(req, &res);
+  res.redirect = resRedirectFactory(req, &res);
+  res.type = resTypeFactory(&res);
+  res.json = resJsonFactory(&res);
+  res.download = resDownloadFactory(&res);
   res.didSend = 0;
   return res;
 }

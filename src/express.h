@@ -162,11 +162,12 @@ typedef struct response_t
   char cookieHeaders[4096];
   void (^cookie)(const char *, const char *, cookie_opts_t);
   void (^clearCookie)(const char *, cookie_opts_t); // TODO: add res.clearCookie
-  void (^json)(const char *, ...);                  // TODO: add res.json
+  void (^json)(const char *);
   void (^location)(const char *);
   void (^redirect)(const char *);
-  void (^sendStatus)(int);                      // TODO: add res.sendStatus
-  void (^download)(const char *, const char *); // TODO: add res.download
+  void (^sendStatus)(int);
+  void (^type)(const char *);
+  void (^download)(const char *, const char *);
   int status;
   int didSend;
 } response_t;
@@ -177,8 +178,8 @@ typedef void (^cleanupHandler)(request_t *finishedReq);
 typedef void (^appCleanupHandler)();
 typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler));
-typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());            // TODO: add errorHandler
-typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), const char *paramValue); // TODO: add paramHandler
+typedef void (^errorHandler)(error_t err, request_t *req, response_t *res, void (^next)());
+typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(), const char *paramValue);
 
 /* Public functions */
 
@@ -221,7 +222,7 @@ typedef struct router_t
   void (^all)(const char *path, requestHandler); // TODO: add router.all
   void (^use)(middlewareHandler);
   void (^useRouter)(struct router_t *router);
-  void (^param)(const char *param, paramHandler);
+  void (^param)(const char *param, paramHandler); // TODO: add router.param
   void (^handler)(request_t *req, response_t *res);
   route_handler_t *routeHandlers;
   int routeHandlerCount;

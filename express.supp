@@ -31,13 +31,13 @@
 {
    req.location
    Memcheck:Addr8
-   fun:__locationFactory_block_invoke*
+   fun:__resLocationFactory_block_invoke*
 }
 {
    req.location
    Memcheck:Addr8
    fun:__parseRequest_block_invoke*
-   fun:__locationFactory_block_invoke
+   fun:__resLocationFactory_block_invoke
 }
 {
    dispatch queue
