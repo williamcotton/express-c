@@ -40,7 +40,7 @@ test:
 
 test-coverage:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-arcs -ftest-coverage
+	clang -o $(BUILD_DIR)/$@ test/test.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) --coverage
 	$(BUILD_DIR)/$@
 
 clean:
