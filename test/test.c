@@ -116,7 +116,8 @@ void runTests(int runAndExit, app_t app)
 
   if (runAndExit)
   {
-    app.closeServer(testStatus);
+    app.closeServer();
+    exit(testStatus);
   }
 }
 

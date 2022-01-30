@@ -26,7 +26,8 @@ int main()
 
   dispatch_source_t sig_src = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
   dispatch_source_set_event_handler(sig_src, ^{
-    app.closeServer(0);
+    app.closeServer();
+    exit(0);
   });
   dispatch_resume(sig_src);
 

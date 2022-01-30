@@ -883,7 +883,7 @@ static char *matchFilepath(request_t *req, const char *path)
   if (reti)
   {
     fprintf(stderr, "Could not compile regex\n");
-    exit(6);
+    return NULL;
   }
   reti = regexec(&regex, buffer, nmatch, pmatch, 0);
   if (reti == 0)
@@ -999,7 +999,7 @@ static void freeRouteHandlers(route_handler_t *routeHandlers, int routeHandlerCo
   free(routeHandlers);
 }
 
-static void initServerListen(int port, int *serverSocket)
+static int initServerListen(int port, int *serverSocket)
 {
   struct sockaddr_in servAddr;
   memset(&servAddr, 0, sizeof(servAddr));
@@ -1012,7 +1012,7 @@ static void initServerListen(int port, int *serverSocket)
   if (bind(*serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
   {
     printf("bind() failed\n");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   // Make the socket non-blocking
@@ -1021,14 +1021,16 @@ static void initServerListen(int port, int *serverSocket)
     shutdown(*serverSocket, SHUT_RDWR);
     close(*serverSocket);
     perror("fcntl() failed");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (listen(*serverSocket, 10000) < 0)
   {
     printf("listen() failed");
-    exit(EXIT_FAILURE);
+    return -1;
   }
+
+  return 0;
 };
 
 static request_t buildRequest(client_t client, router_t *baseRouter)
@@ -1422,7 +1424,7 @@ void *clientAcceptEventHandler(void *args)
   free(events);
 }
 
-static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_t serverQueue, router_t *baseRouter)
+static int initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_t serverQueue, router_t *baseRouter)
 {
 
   pthread_t threads[THREAD_NUM];
@@ -1431,7 +1433,7 @@ static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue
   if (epollFd < 0)
   {
     fprintf(stderr, "error while creating epoll fd\n");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   client_thread_args_t threadArgs;
@@ -1446,7 +1448,7 @@ static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue
   if (epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSocket, &epollEvent) < 0)
   {
     fprintf(stderr, "error while adding listen fd to epoll inst\n");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   for (int i = 0; i < THREAD_NUM; ++i)
@@ -1454,10 +1456,12 @@ static void initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue
     if (pthread_create(&threads[i], NULL, clientAcceptEventHandler, &threadArgs) < 0)
     {
       fprintf(stderr, "error while creating %d thread\n", i);
-      exit(EXIT_FAILURE);
+      return -1;
     }
   }
   clientAcceptEventHandler(&threadArgs);
+
+  return 0;
 }
 /*
 
@@ -1893,7 +1897,7 @@ app_t express()
     appCleanupBlocks[appCleanupCount++] = handler;
   });
 
-  app.closeServer = Block_copy(^(int status) {
+  app.closeServer = Block_copy(^() {
     printf("\nClosing server...\n");
     freeRouteHandlers(baseRouter->routeHandlers, baseRouter->routeHandlerCount);
     freeMiddlewares(baseRouter->middlewares, baseRouter->middlewareCount);
@@ -1903,7 +1907,6 @@ app_t express()
     {
       appCleanupBlocks[i]();
     }
-    exit(status);
   });
 
   app.listen = Block_copy(^(int port, void (^callback)()) {

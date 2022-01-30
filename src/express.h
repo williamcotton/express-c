@@ -250,7 +250,7 @@ typedef struct app_t
   void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);
-  void (^closeServer)(int status);
+  void (^closeServer)();
 } app_t;
 
 app_t express();
