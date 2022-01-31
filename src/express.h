@@ -165,12 +165,13 @@ typedef struct request_t
   char * (^params)(const char *paramKey);
   key_value_t bodyKeyValues[100];
   size_t bodyKeyValueCount;
-  const char *bodyString;
+  char *bodyString;
   char * (^body)(const char *bodyKey);
   int middlewareStackCount;
   void *middlewareHash;
   void * (^m)(const char *middlewareKey);
   void (^mSet)(const char *middlewareKey, void *middleware);
+  long long contentLength;
   const char *rawRequest;
   const char *rawRequestBody;
   session_t *session;

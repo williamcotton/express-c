@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 char *curl(char *cmd)
 {
@@ -50,6 +52,32 @@ char *curlPut(char *url, char *data)
   char cmd[1024];
   sprintf(cmd, "curl -X PUT -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
   return curl(cmd);
+}
+
+void sendData(char *data)
+{
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  struct sockaddr_in serv_addr;
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(3032);
+  inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+  connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+  send(sock, data, strlen(data), 0);
+}
+
+void randomString(char *str, size_t size)
+{
+  const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK...";
+  if (size)
+  {
+    --size;
+    for (size_t n = 0; n < size; n++)
+    {
+      int key = arc4random() % (int)(sizeof charset - 1);
+      str[n] = charset[key];
+    }
+    str[size] = '\0';
+  }
 }
 
 void clearState()

@@ -104,3 +104,10 @@
    fun:epoll_ctl
    fun:initClientAcceptEventHandler
 }
+{
+   test harness
+   Memcheck:Cond
+   fun:strlen
+   fun:sendData
+   fun:__runTests_block_invoke*
+}

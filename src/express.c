@@ -47,6 +47,8 @@
 
 /* Private */
 
+#define MAX_REQUEST_SIZE 4096
+
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
                          "<head>\n"
@@ -284,7 +286,7 @@ static param_match_t *paramMatch(UNUSED const char *basePath, const char *route)
 
   if (regcomp(&regexCompiled, regexString, REG_EXTENDED))
   {
-    printf("Could not compile regular expression.\n");
+    log_err("regcomp() failed");
     free(pm);
     return NULL;
   };
@@ -540,11 +542,15 @@ static getBlock reqBodyFactory(request_t *req)
 {
   if (strncmp(req->method, "POST", 4) == 0 || strncmp(req->method, "PATCH", 5) == 0 || strncmp(req->method, "PUT", 3) == 0)
   {
-    req->rawRequestBody = strdup(req->rawRequest);
-    req->bodyString = strstr(req->rawRequestBody, "\r\n\r\n");
-    if (req->bodyString && strlen(req->bodyString) > 4)
+    char *rawRequest = (char *)req->rawRequest;
+    char *body = strstr(rawRequest, "\r\n\r\n");
+    body += 4;
+
+    req->bodyString = malloc(sizeof(char) * req->contentLength + 1);
+    memcpy((char *)req->bodyString, body, req->contentLength);
+    req->bodyString[req->contentLength] = '\0';
+    if (req->bodyString && strlen(req->bodyString) > 0)
     {
-      req->bodyString += 4;
       char *contentType = (char *)req->get("Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0)
       {
@@ -555,17 +561,17 @@ static getBlock reqBodyFactory(request_t *req)
       }
       else if (strncmp(contentType, "application/json", 16) == 0)
       {
-        printf("application/json: %s\n", req->bodyString);
+        // printf("application/json: %s\n", req->bodyString);
       }
       else if (strncmp(contentType, "multipart/form-data", 20) == 0)
       {
-        printf("multipart/form-data: %s\n", req->bodyString);
+        // printf("multipart/form-data: %s\n", req->bodyString);
       }
       free(contentType);
     }
     else
     {
-      req->bodyString = "";
+      req->bodyString[0] = '\0';
     }
   }
   return Block_copy(^(const char *key) {
@@ -1031,7 +1037,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
 
-  char buffer[4096] = {0};
+  char buffer[MAX_REQUEST_SIZE] = {0};
   char *method, *originalUrl;
   int parseBytes, minorVersion;
   size_t bufferLen = 0, prevBufferLen = 0, methodLen, originalUrlLen;
@@ -1042,8 +1048,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   {
     while ((readBytes = read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
       ;
-    if (readBytes <= 0)
-      return req;
+    check(readBytes > 0, "read() failed");
     prevBufferLen = bufferLen;
     bufferLen += readBytes;
     req.numHeaders = sizeof(req.headers) / sizeof(req.headers[0]);
@@ -1064,7 +1069,8 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
         return (char *)NULL;
       });
       char *contentLength = (char *)req.get("Content-Length");
-      if (contentLength != NULL && parseBytes == readBytes && contentLength[0] != '0')
+      req.contentLength = contentLength != NULL ? strtoll(contentLength, NULL, 10) : 0;
+      if (req.contentLength != 0 && parseBytes == readBytes)
       {
         while ((read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
           ;
@@ -1073,11 +1079,14 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
       break;
     }
     else if (parseBytes == -1)
-      return req;
+      sentinel("Parse error");
     assert(parseBytes == -2);
     if (bufferLen == sizeof(buffer))
-      return req;
+      sentinel("Request is too long");
   }
+
+  long long maxBodyLen = (MAX_REQUEST_SIZE)-parseBytes;
+  check(req.contentLength <= maxBodyLen, "Request body too large");
 
   req.malloc = reqMallocFactory(&req);
   req.blockCopy = reqBlockCopyFactory(&req);
@@ -1138,6 +1147,10 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
     }
   }
 
+  return req;
+error:
+  if (req.contentLength != 0)
+    Block_release(req.get);
   return req;
 }
 
@@ -1202,6 +1215,7 @@ static void freeRequest(request_t req)
   free(req.paramMatch);
   free((void *)req.hostname);
   free((void *)req.cookiesString);
+  free((void *)req.bodyString);
   free((void *)req.rawRequestBody);
   if (strlen(req.queryString) > 0)
     free((void *)req.queryString);
@@ -1523,7 +1537,7 @@ A concurrent, multi-threaded implementation of the client handler that uses disp
 For an unknown reason this implementation is not working on linux.
 
 */
-static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serverQueue, router_t *baseRouter)
+static int initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serverQueue, router_t *baseRouter)
 {
   dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, serverSocket, 0, serverQueue);
 
@@ -1561,6 +1575,8 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
     }
   });
   dispatch_resume(acceptSource);
+
+  return 0;
 }
 #endif
 
@@ -1813,7 +1829,7 @@ router_t *expressRouter(char *basePath)
       router->routers[i]->handler(req, res);
     }
 
-    if (isBaseRouter)
+    if (isBaseRouter && res->didSend == 0)
     {
       res->status = 404;
       res->sendf(errorHTML, req->path);

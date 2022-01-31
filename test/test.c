@@ -35,6 +35,45 @@ void runTests(int runAndExit, app_t app)
   int testStatus = t->test("express", ^(tape_t *t) {
     clearState();
 
+    t->test("send garbage", ^(tape_t *t) {
+      sendData("garbage\r\n\r\n");
+      sendData("GET / HTTP1.1\r\n\r\n");
+      sendData("GETSDFDFDF / HTTP/1.1\r\n\r\n");
+      sendData("GET HTTP/1.1\r\n\r\n");
+      sendData("GET --- HTTP/1.1\r\n\r\n");
+      sendData("\r\n\r\n");
+      sendData("\r\n");
+      sendData("");
+      sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\ngarbage");
+      sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
+      sendData("POST / HTTP/1.1\r\n\r\ngarbage");
+
+      t->test("send lots of garbage", ^(tape_t *t) {
+        size_t longStringLen = 1024 * 32;
+        char *longString = malloc(longStringLen);
+
+        randomString(longString, longStringLen);
+        sendData(longString);
+
+        memcpy(longString, "GET / HTTP/1.1\r\n", 16);
+        sendData(longString);
+
+        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
+        sendData(longString);
+
+        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
+        sendData(longString);
+
+        memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\n", 71);
+        sendData(longString);
+
+        memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 16384\r\n\r\n", 74);
+        sendData(longString);
+
+        free(longString);
+      });
+    });
+
     t->test("GET", ^(tape_t *t) {
       t->strEqual("root", curlGet("/"), "Hello World!");
       t->strEqual("basic route", curlGet("/test"), "Testing, testing!");
