@@ -63,6 +63,8 @@ void sendData(char *data)
   inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
   connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   send(sock, data, strlen(data), 0);
+  shutdown(sock, SHUT_RDWR);
+  close(sock);
 }
 
 void randomString(char *str, size_t size)
@@ -73,7 +75,7 @@ void randomString(char *str, size_t size)
     --size;
     for (size_t n = 0; n < size; n++)
     {
-      int key = arc4random() % (int)(sizeof charset - 1);
+      int key = rand() % (int)(sizeof charset - 1);
       str[n] = charset[key];
     }
     str[size] = '\0';

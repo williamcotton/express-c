@@ -111,3 +111,10 @@
    fun:sendData
    fun:__runTests_block_invoke*
 }
+{
+   TODO: flaky test-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:clientAcceptEventHandler
+}

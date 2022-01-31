@@ -1091,7 +1091,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   req.malloc = reqMallocFactory(&req);
   req.blockCopy = reqBlockCopyFactory(&req);
   req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
-  req.curl = curl_easy_init();
+  req.curl = curl_easy_init(); // TODO: move to global scope
   req.rawRequest = buffer;
 
   req.method = malloc(sizeof(char) * (methodLen + 1));
@@ -1384,6 +1384,7 @@ void *clientAcceptEventHandler(void *args)
 
           if (req.method == NULL)
           {
+            free(status);
             closeClientConnection(client);
             continue;
           }
