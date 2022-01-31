@@ -1,10 +1,16 @@
 name: test
 on: [push]
 jobs:
-  test:
+  test-linux:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/williamcotton/express-c:release
+    steps:
+      - uses: actions/checkout@v2
+      - run: make test-leaks
+      - run: make test
+  test-mac:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - run: make test-leaks

@@ -112,7 +112,7 @@
    fun:__runTests_block_invoke*
 }
 {
-   TODO: flaky test-leaks
+   TODO: fix flaky test-leaks on linux
    Memcheck:Leak
    match-leak-kinds: definite
    fun:malloc
