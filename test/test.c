@@ -11,6 +11,8 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wunused-variable"
 
 #define true 1
 #define false 0
@@ -36,9 +38,9 @@ void runTests(int runAndExit, app_t app)
     t->test("GET", ^(tape_t *t) {
       t->strEqual("root", curlGet("/"), "Hello World!");
       t->strEqual("basic route", curlGet("/test"), "Testing, testing!");
+      t->strEqual("route params", curlGet("/one/123/two/345/567.jpg"), "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
       t->strEqual("send status", curlGet("/status"), "I'm a teapot");
       t->strEqual("query string", curlGet("/qs\?value1=123\\&value2=34%205"), "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
-      t->strEqual("route params", curlGet("/one/123/two/345/567.jpg"), "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
       t->strEqual("send file", curlGet("/file"), "hello, world!\n");
     });
 
@@ -107,6 +109,13 @@ void runTests(int runAndExit, app_t app)
         t->strEqual("basic route", curlGet("/base/nested/test"), "Testing Nested Router!");
         t->strEqual("route params", curlGet("/base/nested/one/123/two/345/567.jpg"), "<h1>Nested Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
         t->strEqual("custom request middleware", curlGet("/base/nested/m"), "super-nested-router test");
+      });
+
+      t->test("Params router", ^(tape_t *t) {
+        t->strEqual("basic route", curlGet("/base/params/blip/test"), "Testing Nested blip Router!");
+        t->strEqual("route params", curlGet("/base/params/blip/one/123/two/345/567.jpg"), "<h1>Nested Params blip</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
+        t->strEqual("root", curlGet("/base/params/blip"), "Hello Params blip Router!");
+        t->strEqual("custom request middleware", curlGet("/base/params/blip/m"), "super-nested-router test blip");
       });
     });
   });
@@ -374,6 +383,52 @@ int main()
   });
 
   router->useRouter(nestedRouter);
+
+  router_t *paramsRouter = expressRouter("/params/:id");
+
+  paramsRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
+    super_t *super = malloc(sizeof(super_t));
+    super->uuid = "super-params-router test";
+    req->mSet("super-params-router", super);
+    cleanup(Block_copy(^(request_t *finishedReq) {
+      super_t *s = finishedReq->m("super-params-router");
+      free(s);
+    }));
+    next();
+  });
+
+  paramsRouter->get("/", ^(UNUSED request_t *req, response_t *res) {
+    char *id = req->params("id");
+    res->sendf("Hello Params %s Router!", id);
+    free(id);
+  });
+
+  paramsRouter->get("/test", ^(UNUSED request_t *req, response_t *res) {
+    char *id = req->params("id");
+    res->sendf("Testing Nested %s Router!", id);
+    free(id);
+  });
+
+  paramsRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
+    char *id = req->params("id");
+    char *one = req->params("one");
+    char *two = req->params("two");
+    char *three = req->params("three");
+    res->sendf("<h1>Nested Params %s</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", id, one, two, three);
+    free(id);
+    free(one);
+    free(two);
+    free(three);
+  });
+
+  paramsRouter->get("/m", ^(request_t *req, response_t *res) {
+    char *id = req->params("id");
+    super_t *super = req->m("super-nested-router");
+    res->sendf("%s %s", super->uuid, id);
+    free(id);
+  });
+
+  router->useRouter(paramsRouter);
 
   app.useRouter(router);
 

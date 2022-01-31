@@ -269,8 +269,10 @@ static param_match_t *paramMatch(UNUSED const char *basePath, const char *route)
   pm->count = 0;
   char regexRoute[4096];
   regexRoute[0] = '\0';
-  sprintf(regexRoute + strlen(regexRoute), "%s", basePath);
-  const char *source = route;
+  size_t basePathRouteLen = strlen(basePath) + strlen(route) + 1;
+  char *basePathRoute = malloc(basePathRouteLen);
+  snprintf(basePathRoute, basePathRouteLen, "%s%s", basePath, route);
+  const char *source = basePathRoute;
   char *regexString = ":([A-Za-z0-9_]*)";
   size_t maxMatches = 100;
   size_t maxGroups = 100;
@@ -306,7 +308,7 @@ static param_match_t *paramMatch(UNUSED const char *basePath, const char *route)
       if (g == 0)
       {
         offset = groupArray[g].rm_eo;
-        sprintf(regexRoute + strlen(regexRoute), "%.*s(.*)", (int)groupArray[g].rm_so, cursorCopy);
+        sprintf(regexRoute + strlen(regexRoute), "%.*s([^\\/\\s]*)", (int)groupArray[g].rm_so, cursorCopy);
       }
       else
       {
@@ -324,9 +326,11 @@ static param_match_t *paramMatch(UNUSED const char *basePath, const char *route)
 
   regfree(&regexCompiled);
 
-  size_t regesRouteLen = strlen(regexRoute) + 2;
+  size_t regesRouteLen = strlen(regexRoute) + 3;
   pm->regexRoute = malloc(sizeof(char) * (regesRouteLen));
-  snprintf(pm->regexRoute, regesRouteLen, "^%s", regexRoute);
+  snprintf(pm->regexRoute, regesRouteLen, "^%s$", regexRoute);
+
+  free(basePathRoute);
 
   return pm;
 }
@@ -452,6 +456,7 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter)
   for (int i = 0; i < regExRouteHandlerCount; i++)
   {
     int match = 0;
+
     routeMatch(req->path, regExRouteHandlers[i].paramMatch->regexRoute, req->paramKeyValues, &match);
     if (match)
     {
@@ -640,6 +645,8 @@ typedef void (^sendBlock)(const char *body);
 static sendBlock resSendFactory(client_t client, response_t *res)
 {
   return Block_copy(^(const char *body) {
+    if (res->didSend == 1)
+      return;
     char *response = buildResponseString(body, res);
     res->didSend = 1;
     write(client.socket, response, strlen(response));
@@ -665,6 +672,8 @@ static sendfBlock resSendfFactory(response_t *res)
 static sendBlock resSendFileFactory(client_t client, request_t *req, response_t *res)
 {
   return Block_copy(^(const char *path) {
+    if (res->didSend == 1)
+      return;
     FILE *file = fopen(path, "r");
     if (file == NULL)
     {
@@ -1022,8 +1031,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
 
-  char buffer[4096];
-  memset(buffer, 0, sizeof(buffer));
+  char buffer[4096] = {0};
   char *method, *originalUrl;
   int parseBytes, minorVersion;
   size_t bufferLen = 0, prevBufferLen = 0, methodLen, originalUrlLen;
@@ -1141,17 +1149,8 @@ static route_handler_t matchRouteHandler(request_t *req, router_t *router)
     size_t pathLen = strlen(router->routeHandlers[i].path);
     size_t basePathLen = strlen(router->basePath);
 
-    char *routeHandlerFullPath;
-    if (basePathLen && pathLen == 1 && router->routeHandlers[i].path[0] == '/')
-    {
-      routeHandlerFullPath = malloc(sizeof(char) * (basePathLen + 1));
-      strlcpy(routeHandlerFullPath, router->basePath, basePathLen + 1);
-    }
-    else
-    {
-      routeHandlerFullPath = malloc(sizeof(char) * (basePathLen + pathLen + 1));
-      snprintf(routeHandlerFullPath, basePathLen + pathLen + 1, "%s%s", router->basePath, router->routeHandlers[i].path);
-    }
+    char *routeHandlerFullPath = malloc(sizeof(char) * (basePathLen + pathLen + 1));
+    snprintf(routeHandlerFullPath, basePathLen + pathLen + 1, "%s%s", router->basePath, router->routeHandlers[i].path);
 
     if (strncmp(router->routeHandlers[i].method, req->method, methodLen) != 0)
     {
@@ -1732,16 +1731,21 @@ router_t *expressRouter(char *basePath)
   router->routers = malloc(sizeof(router_t *));
   router->routerCount = 0;
 
+  int isBaseRouter = strlen(router->basePath) == 0;
+
   void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(const char *method, const char *path, requestHandler handler) {
-    int regex = strchr(path, ':') != NULL;
+    int regex = strchr(path, ':') != NULL || strchr(router->basePath, ':') != NULL;
     router->routeHandlers = realloc(router->routeHandlers, sizeof(route_handler_t) * (router->routeHandlerCount + 1));
+    size_t basePathLen = strlen(router->basePath);
+    size_t pathLen = strlen(path);
+
     route_handler_t routeHandler = {
         .method = method,
-        .path = path,
+        .path = basePathLen && pathLen == 1 && path[0] == '/' ? "" : path,
         .regex = regex,
         .handler = handler,
     };
-    if (strlen(router->basePath) == 0)
+    if (isBaseRouter)
     {
       routeHandler.basePath = (char *)router->basePath;
       routeHandler.paramMatch = regex ? paramMatch(router->basePath, path) : NULL;
@@ -1809,7 +1813,7 @@ router_t *expressRouter(char *basePath)
       router->routers[i]->handler(req, res);
     }
 
-    if (res->didSend == 0)
+    if (isBaseRouter)
     {
       res->status = 404;
       res->sendf(errorHTML, req->path);
