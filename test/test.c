@@ -45,12 +45,15 @@ void runTests(int runAndExit, app_t app)
       sendData("\r\n");
       sendData("");
       sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\ngarbage");
+      sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 9999999999999999999999999999\r\n\r\ngarbage");
       sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
       sendData("POST / HTTP/1.1\r\n\r\ngarbage");
 
       t->test("send lots of garbage", ^(tape_t *t) {
         size_t longStringLen = 1024 * 32;
         char *longString = malloc(longStringLen);
+
+        const char alphaCharset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK...";
 
         randomString(longString, longStringLen);
         sendData(longString);
@@ -69,6 +72,14 @@ void runTests(int runAndExit, app_t app)
 
         memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 16384\r\n\r\n", 74);
         sendData(longString);
+
+        randomString(longString, longStringLen);
+        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
+        memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
+
+        randomString(longString, longStringLen);
+        memcpy(longString, "GET / HTTP/1.1\r\nCookie: ", 24);
+        memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
 
         free(longString);
       });

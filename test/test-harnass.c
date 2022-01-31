@@ -67,9 +67,9 @@ void sendData(char *data)
   close(sock);
 }
 
-void randomString(char *str, size_t size)
+void randomString(char *str, size_t size, const char)
 {
-  const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK...";
+  const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK=;:!@#$%^&*()_+-=[]{}|/.,<>?0123456789";
   if (size)
   {
     --size;
