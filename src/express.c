@@ -393,7 +393,7 @@ static void routeMatch(const char *path, const char *regexRoute, key_value_t *pa
 
   if (regcomp(&regexCompiled, regexRoute, REG_EXTENDED))
   {
-    printf("Could not compile regular expression.\n");
+    log_err("regcomp() failed");
     return;
   };
 
@@ -882,7 +882,9 @@ static char *matchFilepath(request_t *req, const char *path)
   reti = regcomp(&regex, pattern, REG_EXTENDED);
   if (reti)
   {
-    fprintf(stderr, "Could not compile regex\n");
+    free(pattern);
+    free(buffer);
+    log_err("regcomp() failed");
     return NULL;
   }
   reti = regexec(&regex, buffer, nmatch, pmatch, 0);
@@ -951,18 +953,15 @@ static client_t acceptClientConnection(int serverSocket)
   return (client_t){.socket = clntSock, .ip = client_ip};
 }
 
-static void initServerSocket(int *serverSocket)
+static int initServerSocket(int *serverSocket)
 {
-  if ((*serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-  {
-    perror("socket() failed");
-  }
-
   int flag = 1;
-  if (-1 == setsockopt(*serverSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)))
-  {
-    perror("setsockopt() failed");
-  }
+  check((*serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0, "socket() failed");
+  check(setsockopt(*serverSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) >= 0, "setsockopt() failed");
+
+  return 0;
+error:
+  return -1;
 }
 
 static void freeMiddlewares(middleware_t *middlewares, int middlewareCount)
@@ -1001,46 +1000,27 @@ static void freeRouteHandlers(route_handler_t *routeHandlers, int routeHandlerCo
 
 static int initServerListen(int port, int *serverSocket)
 {
+  // TODO: TLS/SSL support
   struct sockaddr_in servAddr;
   memset(&servAddr, 0, sizeof(servAddr));
   servAddr.sin_family = AF_INET;
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
   servAddr.sin_port = htons(port);
 
-  // TODO: TLS/SSL support
-
-  if (bind(*serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0)
-  {
-    printf("bind() failed\n");
-    return -1;
-  }
-
-  // Make the socket non-blocking
-  if (fcntl(*serverSocket, F_SETFL, O_NONBLOCK) < 0)
-  {
-    shutdown(*serverSocket, SHUT_RDWR);
-    close(*serverSocket);
-    perror("fcntl() failed");
-    return -1;
-  }
-
-  if (listen(*serverSocket, 10000) < 0)
-  {
-    printf("listen() failed");
-    return -1;
-  }
+  check(bind(*serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) >= 0, "bind() failed");
+  check(fcntl(*serverSocket, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
+  check(listen(*serverSocket, 10000) >= 0, "listen() failed");
 
   return 0;
+error:
+  shutdown(*serverSocket, SHUT_RDWR);
+  close(*serverSocket);
+  return -1;
 };
 
 static request_t buildRequest(client_t client, router_t *baseRouter)
 {
   request_t req = {.url = NULL, .queryString = "", .path = NULL, .method = NULL, .rawRequest = NULL};
-
-  req.malloc = reqMallocFactory(&req);
-  req.blockCopy = reqBlockCopyFactory(&req);
-
-  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
 
   char buffer[4096];
   memset(buffer, 0, sizeof(buffer));
@@ -1091,8 +1071,10 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
       return req;
   }
 
+  req.malloc = reqMallocFactory(&req);
+  req.blockCopy = reqBlockCopyFactory(&req);
+  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
   req.curl = curl_easy_init();
-
   req.rawRequest = buffer;
 
   req.method = malloc(sizeof(char) * (methodLen + 1));
@@ -1336,7 +1318,7 @@ void *clientAcceptEventHandler(void *args)
 
     if (nfds <= 0)
     {
-      // perror("epoll_wait() failed");
+      log_err("epoll_wait() failed");
       continue;
     }
     for (int n = 0; n < nfds; ++n)
@@ -1354,7 +1336,7 @@ void *clientAcceptEventHandler(void *args)
             }
             else
             {
-              // perror("accept() failed");
+              log_err("accept() failed");
               break;
             }
           }
@@ -1369,7 +1351,7 @@ void *clientAcceptEventHandler(void *args)
 
           if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client.socket, &ev) < 0)
           {
-            // perror("epoll_ctl() failed");
+            log_err("epoll_ctl() failed");
             free(status);
             continue;
           }
@@ -1390,7 +1372,6 @@ void *clientAcceptEventHandler(void *args)
           if (req.method == NULL)
           {
             closeClientConnection(client);
-            freeRequest(req);
             continue;
           }
 
@@ -1402,7 +1383,7 @@ void *clientAcceptEventHandler(void *args)
 
           if (epoll_ctl(epollFd, EPOLL_CTL_MOD, client.socket, &ev) < 0)
           {
-            // perror("epoll_ctl() failed");
+            log_err("epoll_ctl() failed");
             freeRequest(req);
             freeResponse(res);
             closeClientConnection(client);
@@ -1430,11 +1411,7 @@ static int initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_
   pthread_t threads[THREAD_NUM];
 
   int epollFd = epoll_create1(0);
-  if (epollFd < 0)
-  {
-    fprintf(stderr, "error while creating epoll fd\n");
-    return -1;
-  }
+  check(epollFd >= 0, "epoll_create1() failed");
 
   client_thread_args_t threadArgs;
   threadArgs.epollFd = epollFd;
@@ -1445,23 +1422,17 @@ static int initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_
   epollEvent.events = EPOLLIN | EPOLLET;
   epollEvent.data.fd = serverSocket;
 
-  if (epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSocket, &epollEvent) < 0)
-  {
-    fprintf(stderr, "error while adding listen fd to epoll inst\n");
-    return -1;
-  }
+  check(epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSocket, &epollEvent) >= 0, "epoll_ctl() failed");
 
   for (int i = 0; i < THREAD_NUM; ++i)
   {
-    if (pthread_create(&threads[i], NULL, clientAcceptEventHandler, &threadArgs) < 0)
-    {
-      fprintf(stderr, "error while creating %d thread\n", i);
-      return -1;
-    }
+    check(pthread_create(&threads[i], NULL, clientAcceptEventHandler, &threadArgs) >= 0, "pthread_create() failed");
   }
   clientAcceptEventHandler(&threadArgs);
 
   return 0;
+error:
+  return -1;
 }
 /*
 
@@ -1530,7 +1501,6 @@ UNUSED static void initClientAcceptEventHandlerSelect(int serverSocket, UNUSED d
         if (req.method == NULL)
         {
           closeClientConnection(client);
-          freeRequest(req);
           return;
         }
 
@@ -1573,7 +1543,6 @@ static void initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serv
         if (req.method == NULL)
         {
           closeClientConnection(client);
-          freeRequest(req);
           dispatch_source_cancel(readSource);
           dispatch_release(readSource);
           return;
@@ -1760,7 +1729,7 @@ router_t *expressRouter(char *basePath)
   router->routeHandlerCount = 0;
   router->middlewares = malloc(sizeof(middleware_t));
   router->middlewareCount = 0;
-  router->routers = malloc(sizeof(router_t));
+  router->routers = malloc(sizeof(router_t *));
   router->routerCount = 0;
 
   void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(const char *method, const char *path, requestHandler handler) {
@@ -1859,8 +1828,6 @@ app_t express()
   __block int serverSocket = -1;
   __block dispatch_queue_t serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
 
-  initServerSocket(&serverSocket);
-
   app_t app;
   __block router_t *baseRouter = expressRouter("");
 
@@ -1910,12 +1877,15 @@ app_t express()
   });
 
   app.listen = Block_copy(^(int port, void (^callback)()) {
-    initServerListen(port, &serverSocket);
+    check(initServerSocket(&serverSocket) >= 0, "Failed to initialize server socket");
+    check(initServerListen(port, &serverSocket) >= 0, "Failed to listen on port %d", port);
     dispatch_async(serverQueue, ^{
       initClientAcceptEventHandler(serverSocket, serverQueue, baseRouter);
     });
     callback();
     dispatch_main();
+  error:
+    return;
   });
 
   return app;
