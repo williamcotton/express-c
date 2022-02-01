@@ -199,8 +199,10 @@ static char *getStatusMessage(int status)
 static size_t getFileSize(const char *filePath)
 {
   struct stat st;
-  stat(filePath, &st);
+  check(stat(filePath, &st) >= 0, "Could not stat file %s", filePath);
   return st.st_size;
+error:
+  return -1;
 }
 
 static char *getFileName(const char *filePath)
