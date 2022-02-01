@@ -690,7 +690,7 @@ static sendBlock resSendFileFactory(client_t client, request_t *req, response_t 
       res->sendf(errorHTML, req->path);
       return;
     }
-    char *mimetype = (char *)getMegaMimeType((const char *)path);
+    char *mimetype = (char *)getMegaMimeType((const char *)path); // TODO: check for NULL
     char *response = malloc(sizeof(char) * (strlen(mimetype) + strlen("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: \r\nContent-Length: \r\n\r\n") + 20));
     // TODO: use res.set() and refactor header building
     sprintf(response, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: %s\r\nContent-Length: %zu\r\n\r\n", mimetype, getFileSize(path));
@@ -724,7 +724,8 @@ static typeBlock resTypeFactory(response_t *res)
 {
   return Block_copy(^(const char *type) {
     const char *mimetype = getMegaMimeType(type);
-    res->set("Content-Type", mimetype);
+    if (mimetype != NULL)
+      res->set("Content-Type", mimetype);
   });
 }
 
@@ -1667,7 +1668,8 @@ middlewareHandler expressStatic(const char *path, const char *fullPath, embedded
       reqPath++;
       char *data = matchEmbeddedFile(reqPath, embeddedFiles);
       const char *mimetype = getMegaMimeType(req->path);
-      res->set("Content-Type", mimetype);
+      if (mimetype != NULL)
+        res->set("Content-Type", mimetype);
       if (data != NULL)
       {
         res->send(data);
