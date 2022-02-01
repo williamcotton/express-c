@@ -949,13 +949,13 @@ static void runMiddleware(int index, request_t *req, response_t *res, router_t *
   }
 }
 
-static client_t acceptClientConnection(int serverSocket)
+static client_t acceptClientConnection(server_t *server)
 {
   int clientSocket = -1;
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
 
-  check_silent((clientSocket = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
+  check_silent((clientSocket = accept(server->socket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
   check(fcntl(clientSocket, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
 
   char *client_ip = inet_ntoa(echoClntAddr.sin_addr);
@@ -968,11 +968,11 @@ error:
   return (client_t){.socket = -1, .ip = NULL};
 }
 
-static int initServerSocket(int *serverSocket)
+static int initServerSocket(server_t *server)
 {
   int flag = 1;
-  check((*serverSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0, "socket() failed");
-  check(setsockopt(*serverSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) >= 0, "setsockopt() failed");
+  check((server->socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0, "socket() failed");
+  check(setsockopt(server->socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) >= 0, "setsockopt() failed");
 
   return 0;
 error:
@@ -1013,7 +1013,7 @@ static void freeRouteHandlers(route_handler_t *routeHandlers, int routeHandlerCo
   free(routeHandlers);
 }
 
-static int initServerListen(int port, int *serverSocket)
+static int initServerListen(int port, server_t *server)
 {
   // TODO: TLS/SSL support
   struct sockaddr_in servAddr;
@@ -1022,14 +1022,14 @@ static int initServerListen(int port, int *serverSocket)
   servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
   servAddr.sin_port = htons(port);
 
-  check(bind(*serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) >= 0, "bind() failed");
-  check(fcntl(*serverSocket, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
-  check(listen(*serverSocket, 10000) >= 0, "listen() failed");
+  check(bind(server->socket, (struct sockaddr *)&servAddr, sizeof(servAddr)) >= 0, "bind() failed");
+  check(fcntl(server->socket, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
+  check(listen(server->socket, 10000) >= 0, "listen() failed");
 
   return 0;
 error:
-  shutdown(*serverSocket, SHUT_RDWR);
-  close(*serverSocket);
+  shutdown(server->socket, SHUT_RDWR);
+  close(server->socket);
   return -1;
 };
 
@@ -1316,10 +1316,9 @@ typedef struct http_status_t
 
 typedef struct client_thread_args_t
 {
-  int serverSocket;
   int epollFd;
+  server_t *server;
   router_t *baseRouter;
-  dispatch_queue_t serverQueue;
 } client_thread_args_t;
 
 void *clientAcceptEventHandler(void *args)
@@ -1327,9 +1326,8 @@ void *clientAcceptEventHandler(void *args)
   client_thread_args_t *clientThreadArgs = (client_thread_args_t *)args;
 
   int epollFd = clientThreadArgs->epollFd;
-  int serverSocket = clientThreadArgs->serverSocket;
+  server_t *server = clientThreadArgs->server;
   router_t *baseRouter = clientThreadArgs->baseRouter;
-  dispatch_queue_t serverQueue = clientThreadArgs->serverQueue;
 
   struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
   struct epoll_event ev;
@@ -1346,11 +1344,11 @@ void *clientAcceptEventHandler(void *args)
     }
     for (int n = 0; n < nfds; ++n)
     {
-      if (events[n].data.fd == serverSocket)
+      if (events[n].data.fd == server->socket)
       {
         while (1)
         {
-          client_t client = acceptClientConnection(serverSocket);
+          client_t client = acceptClientConnection(server);
 
           if (client.socket < 0)
           {
@@ -1373,7 +1371,7 @@ void *clientAcceptEventHandler(void *args)
 
           ev.data.ptr = status;
 
-          dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, serverQueue);
+          dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, server->serverQueue);
 
           status->timerSource = timerSource;
 
@@ -1448,7 +1446,7 @@ void *clientAcceptEventHandler(void *args)
   free(events);
 }
 
-static int initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_t serverQueue, router_t *baseRouter)
+static int initClientAcceptEventHandler(server_t *server, router_t *baseRouter)
 {
 
   pthread_t threads[THREAD_NUM];
@@ -1458,15 +1456,14 @@ static int initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_
 
   client_thread_args_t threadArgs;
   threadArgs.epollFd = epollFd;
-  threadArgs.serverSocket = serverSocket;
-  threadArgs.serverQueue = serverQueue;
+  threadArgs.server = server;
   threadArgs.baseRouter = baseRouter;
 
   struct epoll_event epollEvent;
   epollEvent.events = EPOLLIN | EPOLLET;
-  epollEvent.data.fd = serverSocket;
+  epollEvent.data.fd = server->socket;
 
-  check(epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSocket, &epollEvent) >= 0, "epoll_ctl() failed");
+  check(epoll_ctl(epollFd, EPOLL_CTL_ADD, server->socket, &epollEvent) >= 0, "epoll_ctl() failed");
 
   for (int i = 0; i < THREAD_NUM; ++i)
   {
@@ -1486,20 +1483,20 @@ A concurrent, multi-threaded implementation of the client handler that uses disp
 For an unknown reason this implementation is not working on linux.
 
 */
-static int initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serverQueue, router_t *baseRouter)
+static int initClientAcceptEventHandler(server_t *server, router_t *baseRouter)
 {
-  dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, serverSocket, 0, serverQueue);
+  dispatch_source_t acceptSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, server->socket, 0, server->serverQueue);
 
   dispatch_source_set_event_handler(acceptSource, ^{
     const unsigned long numPendingConnections = dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++)
     {
-      client_t client = acceptClientConnection(serverSocket);
+      client_t client = acceptClientConnection(server);
       if (client.socket < 0)
         continue;
 
-      dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, serverQueue);
-      dispatch_source_t readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, client.socket, 0, serverQueue);
+      dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, server->serverQueue);
+      dispatch_source_t readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, client.socket, 0, server->serverQueue);
 
       dispatch_time_t delay = dispatch_time(DISPATCH_TIME_NOW, ACCEPT_TIMEOUT_SECS * NSEC_PER_SEC);
       dispatch_source_set_timer(timerSource, delay, delay, 0);
@@ -1808,6 +1805,24 @@ router_t *expressRouter(char *basePath)
   return router;
 }
 
+/* server */
+
+static server_t *expressServer()
+{
+  server_t *server = malloc(sizeof(server_t));
+
+  server->socket = -1;
+  server->serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
+
+  server->close = Block_copy(^() {
+    close(server->socket);
+    dispatch_release(server->serverQueue);
+    Block_release(server->close);
+  });
+
+  return server;
+}
+
 /* express */
 
 app_t express()
@@ -1816,9 +1831,8 @@ app_t express()
 
   __block int appCleanupCount = 0;
   __block appCleanupHandler *appCleanupBlocks = malloc(sizeof(appCleanupHandler));
-  __block int serverSocket = -1;
-  __block dispatch_queue_t serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
 
+  __block server_t *server = expressServer();
   __block router_t *baseRouter = expressRouter("");
 
   app.get = Block_copy(^(const char *path, requestHandler handler) {
@@ -1858,8 +1872,8 @@ app_t express()
     printf("\nClosing server...\n");
     freeRouteHandlers(baseRouter->routeHandlers, baseRouter->routeHandlerCount);
     freeMiddlewares(baseRouter->middlewares, baseRouter->middlewareCount);
-    close(serverSocket);
-    dispatch_release(serverQueue);
+    server->close();
+    free(server);
     for (int i = 0; i < appCleanupCount; i++)
     {
       appCleanupBlocks[i]();
@@ -1867,10 +1881,10 @@ app_t express()
   });
 
   app.listen = Block_copy(^(int port, void (^callback)()) {
-    check(initServerSocket(&serverSocket) >= 0, "Failed to initialize server socket");
-    check(initServerListen(port, &serverSocket) >= 0, "Failed to listen on port %d", port);
-    dispatch_async(serverQueue, ^{
-      initClientAcceptEventHandler(serverSocket, serverQueue, baseRouter);
+    check(initServerSocket(server) >= 0, "Failed to initialize server socket");
+    check(initServerListen(port, server) >= 0, "Failed to listen on port %d", port);
+    dispatch_async(server->serverQueue, ^{
+      initClientAcceptEventHandler(server, baseRouter);
     });
     callback();
     dispatch_main();

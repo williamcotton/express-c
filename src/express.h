@@ -284,6 +284,16 @@ typedef struct router_t
 
 router_t *expressRouter();
 
+/* server */
+
+typedef struct server_t
+{
+  int socket;
+  int port;
+  dispatch_queue_t serverQueue;
+  void (^close)();
+} server_t;
+
 /* express */
 
 typedef struct app_t
