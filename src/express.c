@@ -954,7 +954,7 @@ static client_t acceptClientConnection(int serverSocket)
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
 
-  check((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
+  check_silent((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
   check(fcntl(clntSock, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
 
   char *client_ip = inet_ntoa(echoClntAddr.sin_addr);
@@ -1053,7 +1053,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
       time_t difference = difftime(current, start);
       check(difference < READ_TIMEOUT_SECS, "request timeout");
     }
-    check(readBytes > 0, "read() failed");
+    check_silent(readBytes > 0, "read() failed");
     prevBufferLen = bufferLen;
     bufferLen += readBytes;
     req.numHeaders = sizeof(req.headers) / sizeof(req.headers[0]);

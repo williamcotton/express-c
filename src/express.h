@@ -57,6 +57,13 @@
     goto error;                \
   }
 
+#define check_silent(A, M, ...) \
+  if (!(A))                     \
+  {                             \
+    errno = 0;                  \
+    goto error;                 \
+  }
+
 #define sentinel(M, ...)       \
   {                            \
     log_err(M, ##__VA_ARGS__); \
