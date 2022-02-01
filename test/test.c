@@ -48,40 +48,50 @@ void runTests(int runAndExit, app_t app)
       sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 9999999999999999999999999999\r\n\r\ngarbage");
       sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
       sendData("POST / HTTP/1.1\r\n\r\ngarbage");
+      sendData("GET /qs?g=&a-?-&r&=b=a&ge HTTP1.1\r\n\r\n");
 
       t->test("send lots of garbage", ^(tape_t *t) {
-        size_t longStringLen = 1024 * 32;
-        char *longString = malloc(longStringLen);
+        int multipliers[2] = {1, 64};
 
-        const char alphaCharset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK...";
+        for (int i = 0; i < 2; i++)
+        {
+          size_t longStringLen = 1024 * multipliers[i];
+          log_info("Testing with %zu bytes", longStringLen);
 
-        randomString(longString, longStringLen);
-        sendData(longString);
+          char *longString = malloc(longStringLen);
 
-        memcpy(longString, "GET / HTTP/1.1\r\n", 16);
-        sendData(longString);
+          randomString(longString, longStringLen);
+          sendData(longString);
 
-        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
-        sendData(longString);
+          memcpy(longString, "GET / HTTP/1.1\r\n", 16);
+          sendData(longString);
 
-        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
-        sendData(longString);
+          memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
+          sendData(longString);
 
-        memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\n", 71);
-        sendData(longString);
+          memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
+          sendData(longString);
 
-        memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 16384\r\n\r\n", 74);
-        sendData(longString);
+          memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\n", 71);
+          sendData(longString);
 
-        randomString(longString, longStringLen);
-        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
-        memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
+          memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 16384\r\n\r\n", 74);
+          sendData(longString);
 
-        randomString(longString, longStringLen);
-        memcpy(longString, "GET / HTTP/1.1\r\nCookie: ", 24);
-        memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
+          randomString(longString, longStringLen);
+          memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
+          memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
 
-        free(longString);
+          randomString(longString, longStringLen);
+          memcpy(longString, "GET / HTTP/1.1\r\nCookie: ", 24);
+          memcpy(longString + (longStringLen - 24), "\r\n\r\n", 4);
+
+          randomString(longString, longStringLen);
+          memcpy(longString, "GET /qs?", 8);
+          memcpy(longString + (longStringLen - 26), " HTTP/1.1\r\n\r\n", 13);
+
+          free(longString);
+        }
       });
     });
 
@@ -330,6 +340,7 @@ int main()
     char *user = req->query("user");
     res->cookie("session", session, (cookie_opts_t){});
     res->cookie("user", user, (cookie_opts_t){});
+    res->cookie("all", session, (cookie_opts_t){.secure = 1, .httpOnly = 1, .domain = "test.com", .path = "/test", .expires = "55", .maxAge = 1000});
     res->send("ok");
     curl_free(session);
     curl_free(user);

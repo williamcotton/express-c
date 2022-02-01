@@ -1052,7 +1052,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
       time(&current);
       time_t difference = difftime(current, start);
       check(difference < READ_TIMEOUT_SECS, "request timeout");
-    };
+    }
     check(readBytes > 0, "read() failed");
     prevBufferLen = bufferLen;
     bufferLen += readBytes;
@@ -1746,6 +1746,7 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
 router_t *expressRouter(char *basePath)
 {
   __block router_t *router = malloc(sizeof(router_t));
+
   router->basePath = basePath;
   router->routeHandlers = malloc(sizeof(route_handler_t));
   router->routeHandlerCount = 0;
@@ -1850,12 +1851,13 @@ router_t *expressRouter(char *basePath)
 
 app_t express()
 {
+  app_t app;
+
   __block int appCleanupCount = 0;
   __block appCleanupHandler *appCleanupBlocks = malloc(sizeof(appCleanupHandler));
   __block int serverSocket = -1;
   __block dispatch_queue_t serverQueue = dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
 
-  app_t app;
   __block router_t *baseRouter = expressRouter("");
 
   app.get = Block_copy(^(const char *path, requestHandler handler) {

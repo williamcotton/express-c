@@ -61,7 +61,8 @@
     "curl.h": "c",
     "stdio.h": "c",
     "set": "c",
-    "*.tcc": "c"
+    "*.tcc": "c",
+    "__functional_base_03": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
