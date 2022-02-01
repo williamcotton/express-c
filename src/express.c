@@ -49,6 +49,7 @@
 
 #define MAX_REQUEST_SIZE 4096
 #define READ_TIMEOUT_SECS 10
+#define ACCEPT_TIMEOUT_SECS 10
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -1555,8 +1556,24 @@ static int initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serve
       if (client.socket < 0)
         continue;
 
+      dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, serverQueue);
       dispatch_source_t readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, client.socket, 0, serverQueue);
+
+      dispatch_time_t delay = dispatch_time(DISPATCH_TIME_NOW, ACCEPT_TIMEOUT_SECS * NSEC_PER_SEC);
+      dispatch_source_set_timer(timerSource, delay, delay, 0);
+      dispatch_source_set_event_handler(timerSource, ^{
+        log_err("timeout");
+        dispatch_source_cancel(timerSource);
+        dispatch_release(timerSource);
+        closeClientConnection(client);
+        dispatch_source_cancel(readSource);
+        dispatch_release(readSource);
+      });
+
       dispatch_source_set_event_handler(readSource, ^{
+        dispatch_source_cancel(timerSource);
+        dispatch_release(timerSource);
+
         request_t req = buildRequest(client, baseRouter);
 
         if (req.method == NULL)
@@ -1577,6 +1594,8 @@ static int initClientAcceptEventHandler(int serverSocket, dispatch_queue_t serve
         dispatch_source_cancel(readSource);
         dispatch_release(readSource);
       });
+
+      dispatch_resume(timerSource);
       dispatch_resume(readSource);
     }
   });
