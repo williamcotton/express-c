@@ -953,23 +953,17 @@ static client_t acceptClientConnection(int serverSocket)
   int clntSock = -1;
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
-  if ((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) < 0)
-  {
-    // perror("accept() failed");
-    return (client_t){.socket = -1, .ip = NULL};
-  }
 
-  // Make the socket non-blocking
-  if (fcntl(clntSock, F_SETFL, O_NONBLOCK) < 0)
-  {
-    // perror("fcntl() failed");
-    shutdown(clntSock, SHUT_RDWR);
-    close(clntSock);
-  }
+  check((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
+  check(fcntl(clntSock, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
 
   char *client_ip = inet_ntoa(echoClntAddr.sin_addr);
 
   return (client_t){.socket = clntSock, .ip = client_ip};
+error:
+  shutdown(clntSock, SHUT_RDWR);
+  close(clntSock);
+  return (client_t){.socket = -1, .ip = NULL};
 }
 
 static int initServerSocket(int *serverSocket)
