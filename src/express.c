@@ -48,6 +48,7 @@
 /* Private */
 
 #define MAX_REQUEST_SIZE 4096
+#define READ_TIMEOUT_SECS 10
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -1043,11 +1044,18 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   size_t bufferLen = 0, prevBufferLen = 0, methodLen, originalUrlLen;
   ssize_t readBytes;
 
-  // TODO: timeout support
+  time_t start;
+  time(&start);
+  time_t current;
+
   while (1)
   {
     while ((readBytes = read(client.socket, buffer + bufferLen, sizeof(buffer) - bufferLen)) == -1)
-      ;
+    {
+      time(&current);
+      time_t difference = difftime(current, start);
+      check(difference < READ_TIMEOUT_SECS, "request timeout");
+    };
     check(readBytes > 0, "read() failed");
     prevBufferLen = bufferLen;
     bufferLen += readBytes;
