@@ -267,7 +267,7 @@ typedef struct client_t
   char *ip;
 } client_t;
 
-static param_match_t *paramMatch(UNUSED const char *basePath, const char *route)
+static param_match_t *paramMatch(const char *basePath, const char *route)
 {
   param_match_t *pm = malloc(sizeof(param_match_t));
   pm->keys = malloc(sizeof(char *));
@@ -964,7 +964,7 @@ static void runMiddleware(int index, request_t *req, response_t *res, router_t *
 {
   if (index < router->middlewareCount)
   {
-    void (^cleanup)(cleanupHandler) = ^(UNUSED cleanupHandler cleanupBlock) {
+    void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
       req->middlewareCleanupBlocks = realloc(req->middlewareCleanupBlocks, sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
       req->middlewareCleanupBlocks[req->middlewareStackCount++] = (void *)cleanupBlock;
     };
@@ -1837,7 +1837,7 @@ router_t *expressRouter(char *basePath)
     }
   });
 
-  router->handler = Block_copy(^(UNUSED request_t *req, UNUSED response_t *res) {
+  router->handler = Block_copy(^(request_t *req, response_t *res) {
     runMiddleware(0, req, res, router, ^{
       route_handler_t routeHandler = matchRouteHandler(req, router);
       if (routeHandler.handler != NULL)
