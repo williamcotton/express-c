@@ -951,19 +951,20 @@ static void runMiddleware(int index, request_t *req, response_t *res, router_t *
 
 static client_t acceptClientConnection(int serverSocket)
 {
-  int clntSock = -1;
+  int clientSocket = -1;
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
 
-  check_silent((clntSock = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
-  check(fcntl(clntSock, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
+  check_silent((clientSocket = accept(serverSocket, (struct sockaddr *)&echoClntAddr, &clntLen)) >= 0, "accept() failed");
+  check(fcntl(clientSocket, F_SETFL, O_NONBLOCK) >= 0, "fcntl() failed");
 
   char *client_ip = inet_ntoa(echoClntAddr.sin_addr);
 
-  return (client_t){.socket = clntSock, .ip = client_ip};
+  return (client_t){.socket = clientSocket, .ip = client_ip};
 error:
-  shutdown(clntSock, SHUT_RDWR);
-  close(clntSock);
+  shutdown(clientSocket, SHUT_RDWR);
+  if (clientSocket >= 0)
+    close(clientSocket);
   return (client_t){.socket = -1, .ip = NULL};
 }
 
@@ -1310,6 +1311,7 @@ typedef struct http_status_t
 {
   client_t client;
   req_status_t reqStatus;
+  dispatch_source_t timerSource;
 } http_status_t;
 
 typedef struct client_thread_args_t
@@ -1317,6 +1319,7 @@ typedef struct client_thread_args_t
   int serverSocket;
   int epollFd;
   router_t *baseRouter;
+  dispatch_queue_t serverQueue;
 } client_thread_args_t;
 
 void *clientAcceptEventHandler(void *args)
@@ -1326,6 +1329,7 @@ void *clientAcceptEventHandler(void *args)
   int epollFd = clientThreadArgs->epollFd;
   int serverSocket = clientThreadArgs->serverSocket;
   router_t *baseRouter = clientThreadArgs->baseRouter;
+  dispatch_queue_t serverQueue = clientThreadArgs->serverQueue;
 
   struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
   struct epoll_event ev;
@@ -1347,6 +1351,7 @@ void *clientAcceptEventHandler(void *args)
         while (1)
         {
           client_t client = acceptClientConnection(serverSocket);
+
           if (client.socket < 0)
           {
             if (errno == EAGAIN | errno == EWOULDBLOCK)
@@ -1355,7 +1360,7 @@ void *clientAcceptEventHandler(void *args)
             }
             else
             {
-              log_err("accept() failed");
+              // log_err("accept() failed");
               break;
             }
           }
@@ -1367,6 +1372,21 @@ void *clientAcceptEventHandler(void *args)
           status->reqStatus = READING;
 
           ev.data.ptr = status;
+
+          dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, serverQueue);
+
+          status->timerSource = timerSource;
+
+          dispatch_time_t delay = dispatch_time(DISPATCH_TIME_NOW, ACCEPT_TIMEOUT_SECS * NSEC_PER_SEC);
+          dispatch_source_set_timer(timerSource, delay, delay, 0);
+          dispatch_source_set_event_handler(timerSource, ^{
+            log_err("timeout");
+            dispatch_source_cancel(timerSource);
+            dispatch_release(timerSource);
+            closeClientConnection(client);
+            free(status);
+          });
+          dispatch_resume(timerSource);
 
           if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client.socket, &ev) < 0)
           {
@@ -1383,6 +1403,9 @@ void *clientAcceptEventHandler(void *args)
         {
           ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
           ev.data.ptr = status;
+
+          dispatch_source_cancel(status->timerSource);
+          dispatch_release(status->timerSource);
 
           client_t client = status->client;
 
@@ -1436,6 +1459,7 @@ static int initClientAcceptEventHandler(int serverSocket, UNUSED dispatch_queue_
   client_thread_args_t threadArgs;
   threadArgs.epollFd = epollFd;
   threadArgs.serverSocket = serverSocket;
+  threadArgs.serverQueue = serverQueue;
   threadArgs.baseRouter = baseRouter;
 
   struct epoll_event epollEvent;
