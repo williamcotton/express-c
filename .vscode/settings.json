@@ -40,7 +40,7 @@
     "dispatch.h": "c",
     "signal.h": "c",
     "express.h": "c",
-    "test-harnass.h": "c",
+    "test-helpers.h": "c",
     "__availability": "c",
     "__functional_03": "c",
     "cstdlib": "c",

@@ -81,13 +81,13 @@ void sendData(char *data) {
   close(sock);
 }
 
-void randomString(char *str, size_t size, const char) {
+void randomString(char *str, size_t size) {
   const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK=;:!@#$%^&*()_+-"
                          "=[]{}|/.,<>?0123456789";
   if (size) {
     --size;
     for (size_t n = 0; n < size; n++) {
-      int key = rand() % (int)(sizeof charset - 1);
+      int key = rand() % (int)(sizeof charset - 1); // NOLINT
       str[n] = charset[key];
     }
     str[size] = '\0';
