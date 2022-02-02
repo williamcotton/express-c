@@ -186,7 +186,6 @@ typedef struct request_t
   void (^mSet)(const char *middlewareKey, void *middleware);
   long long contentLength;
   const char *rawRequest;
-  const char *rawRequestBody;
   session_t *session;
   const char *cookiesString;
   const char *cookies[4096];

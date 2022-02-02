@@ -570,7 +570,7 @@ static getBlock reqBodyFactory(request_t *req)
     char *body = strstr(rawRequest, "\r\n\r\n");
     body += 4;
 
-    req->bodyString = malloc(sizeof(char) * req->contentLength + 1);
+    req->bodyString = req->malloc(sizeof(char) * req->contentLength + 1);
     memcpy((char *)req->bodyString, body, req->contentLength);
     req->bodyString[req->contentLength] = '\0';
     if (req->bodyString && strlen(req->bodyString) > 0)
@@ -1145,7 +1145,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   if (queryStringStart)
   {
     size_t queryStringLen = strlen(queryStringStart + 1);
-    req.queryString = malloc(sizeof(char) * (queryStringLen + 1));
+    req.queryString = req.malloc(sizeof(char) * (queryStringLen + 1));
     strlcpy((char *)req.queryString, queryStringStart + 1, queryStringLen + 1);
     *queryStringStart = '\0';
     req.queryKeyValueCount = 0;
@@ -1154,7 +1154,7 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
   }
 
   size_t pathLen = strlen(path) + 1;
-  req.path = malloc(sizeof(char) * pathLen);
+  req.path = req.malloc(sizeof(char) * pathLen);
   snprintf((char *)req.path, pathLen, "%s", path);
 
   req.params = reqParamsFactory(&req, baseRouter);
@@ -1238,7 +1238,6 @@ static void freeRequest(request_t req)
     curl_free((void *)req._method);
   else
     free((void *)req.method);
-  free((void *)req.path);
   free((void *)req.url);
   free(req.session);
   if (req.paramMatch != NULL)
@@ -1253,10 +1252,6 @@ static void freeRequest(request_t req)
   free(req.paramMatch);
   free((void *)req.hostname);
   free((void *)req.cookiesString);
-  free((void *)req.bodyString);
-  free((void *)req.rawRequestBody);
-  if (strlen(req.queryString) > 0)
-    free((void *)req.queryString);
   for (int i = 0; i < req.mallocCount; i++)
   {
     free(req.mallocs[i].ptr);
