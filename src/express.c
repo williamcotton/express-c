@@ -290,6 +290,7 @@ static param_match_t *paramMatch(const char *basePath, const char *route)
   if (regcomp(&regexCompiled, regexString, REG_EXTENDED))
   {
     log_err("regcomp() failed");
+    free(basePathRoute);
     free(pm);
     return NULL;
   };
@@ -965,7 +966,7 @@ static void runMiddleware(int index, request_t *req, response_t *res, router_t *
   if (index < router->middlewareCount)
   {
     void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
-      req->middlewareCleanupBlocks = realloc(req->middlewareCleanupBlocks, sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
+      req->middlewareCleanupBlocks = realloc(req->middlewareCleanupBlocks, sizeof(cleanupHandler *) * (req->middlewareStackCount + 1)); // NOLINT
       req->middlewareCleanupBlocks[req->middlewareStackCount++] = (void *)cleanupBlock;
     };
     router->middlewares[index].handler(
@@ -1128,8 +1129,8 @@ static request_t buildRequest(client_t client, router_t *baseRouter)
 
   req.malloc = reqMallocFactory(&req);
   req.blockCopy = reqBlockCopyFactory(&req);
-  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
-  req.curl = curl_easy_init(); // TODO: move to global scope
+  req.middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
+  req.curl = curl_easy_init();                                    // TODO: move to global scope
   req.rawRequest = buffer;
 
   req.method = malloc(sizeof(char) * (methodLen + 1));
@@ -1667,6 +1668,10 @@ middlewareHandler expressStatic(const char *path, const char *fullPath, embedded
 
     if (isTraversal)
     {
+      if (filePath != NULL)
+      {
+        free(filePath);
+      }
       res->status = 403;
       res->sendf(errorHTML, req->path);
       return;

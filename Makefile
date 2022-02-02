@@ -44,7 +44,7 @@ test-coverage:
 	$(BUILD_DIR)/$@
 
 lint:
-	clang-tidy -warnings-as-errors=* src/express.c
+	clang-tidy --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -warnings-as-errors=* src/express.c
 
 clean:
 	rm -rf $(BUILD_DIR)
