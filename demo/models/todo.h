@@ -1,27 +1,24 @@
 #ifndef TODO_MODEL_H
 #define TODO_MODEL_H
 
-#include <cJSON/cJSON.h>
 #include "../../src/express.h"
+#include <cJSON/cJSON.h>
 
 typedef int (^filterCallback)(void *item);
 typedef void (^eachCallback)(void *item);
 
-typedef struct collection_t
-{
+typedef struct collection_t {
   void (^each)(eachCallback);
 } collection_t;
 
-typedef struct todo_t
-{
+typedef struct todo_t {
   int id;
   char *title;
   int completed;
   cJSON * (^toJSON)();
 } todo_t;
 
-typedef struct todo_store_t
-{
+typedef struct todo_store_t {
   cJSON *store;
   int count;
   todo_t * (^new)(char *);

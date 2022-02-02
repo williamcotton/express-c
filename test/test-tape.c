@@ -1,13 +1,12 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "tape.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-int main()
-{
+int main() {
   tape_t *t = tape();
 
   return t->test("ok test", ^(tape_t *t) {

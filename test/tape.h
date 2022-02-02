@@ -22,8 +22,7 @@
 
 #define UNUSED __attribute__((unused))
 
-typedef struct tape_t
-{
+typedef struct tape_t {
   char *name;
   int count;
   int failed;

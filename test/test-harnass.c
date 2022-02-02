@@ -1,11 +1,10 @@
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 
-char *curl(char *cmd)
-{
+char *curl(char *cmd) {
   system(cmd);
   FILE *file = fopen("./test/test-response.html", "r");
   char html[4096];
@@ -17,45 +16,60 @@ char *curl(char *cmd)
 }
 
 // TODO: refactor curlGet and curlDelete
-char *curlGet(char *url)
-{
-  char *curlCmd = "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html http://127.0.0.1:3032";
+char *curlGet(char *url) {
+  char *curlCmd =
+      "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o "
+      "./test/test-response.html http://127.0.0.1:3032";
   char cmd[1024];
   sprintf(cmd, "%s%s", curlCmd, url);
   return curl(cmd);
 }
 
-char *curlDelete(char *url)
-{
+char *curlDelete(char *url) {
   char cmd[1024];
-  sprintf(cmd, "%s%s", "curl -X DELETE -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html http://127.0.0.1:3032", url);
+  sprintf(
+      cmd, "%s%s",
+      "curl -X DELETE -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt "
+      "-o ./test/test-response.html http://127.0.0.1:3032",
+      url);
   return curl(cmd);
 }
 
 // TODO: refactor curlPost, curlPut and curlPatch
-char *curlPost(char *url, char *data)
-{
+char *curlPost(char *url, char *data) {
   char cmd[1024];
-  sprintf(cmd, "curl -X POST -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
+  sprintf(
+      cmd,
+      "curl -X POST -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt "
+      "-o ./test/test-response.html -H \"Content-Type: "
+      "application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s",
+      data, url);
   return curl(cmd);
 }
 
-char *curlPatch(char *url, char *data)
-{
+char *curlPatch(char *url, char *data) {
   char cmd[1024];
-  sprintf(cmd, "curl -X PATCH -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
+  sprintf(
+      cmd,
+      "curl -X PATCH -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt "
+      "-o ./test/test-response.html -H \"Content-Type: "
+      "application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s",
+      data, url);
   return curl(cmd);
 }
 
-char *curlPut(char *url, char *data)
-{
+char *curlPut(char *url, char *data) {
   char cmd[1024];
-  sprintf(cmd, "curl -X PUT -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o ./test/test-response.html -H \"Content-Type: application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s", data, url);
+  sprintf(
+      cmd,
+      "curl -X PUT -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o "
+      "./test/test-response.html -H \"Content-Type: "
+      "application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s",
+      data, url);
   return curl(cmd);
 }
 
-void sendData(char *data)
-{
+void sendData(char *data) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in serv_addr;
   serv_addr.sin_family = AF_INET;
@@ -67,14 +81,12 @@ void sendData(char *data)
   close(sock);
 }
 
-void randomString(char *str, size_t size, const char)
-{
-  const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK=;:!@#$%^&*()_+-=[]{}|/.,<>?0123456789";
-  if (size)
-  {
+void randomString(char *str, size_t size, const char) {
+  const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK=;:!@#$%^&*()_+-"
+                         "=[]{}|/.,<>?0123456789";
+  if (size) {
     --size;
-    for (size_t n = 0; n < size; n++)
-    {
+    for (size_t n = 0; n < size; n++) {
       int key = rand() % (int)(sizeof charset - 1);
       str[n] = charset[key];
     }
@@ -82,8 +94,7 @@ void randomString(char *str, size_t size, const char)
   }
 }
 
-void clearState()
-{
+void clearState() {
   system("rm -f ./test/test-cookies.txt");
   system("rm -f ./test/test-response.html");
 }

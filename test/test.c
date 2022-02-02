@@ -1,12 +1,12 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
+#include "../src/express.h"
+#include "tape.h"
+#include "test-harnass.h"
 #include <Block.h>
 #include <curl/curl.h>
 #include <dotenv-c/dotenv.h>
-#include "../src/express.h"
-#include "test-harnass.h"
-#include "tape.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
@@ -27,8 +27,7 @@ static char *errorHTML = "<!DOCTYPE html>\n"
                          "</body>\n"
                          "</html>\n";
 
-void runTests(int runAndExit, app_t app)
-{
+void runTests(int runAndExit, app_t app) {
   tape_t *t = tape();
 
   int testStatus = t->test("express", ^(tape_t *t) {
@@ -43,17 +42,20 @@ void runTests(int runAndExit, app_t app)
       sendData("\r\n\r\n");
       sendData("\r\n");
       sendData("");
-      sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\ngarbage");
-      sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 9999999999999999999999999999\r\n\r\ngarbage");
-      sendData("POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
+      sendData("POST / HTTP/1.1\r\nContent-Type: "
+               "application/json\r\nContent-Length: 50\r\n\r\ngarbage");
+      sendData("POST / HTTP/1.1\r\nContent-Type: "
+               "application/json\r\nContent-Length: "
+               "9999999999999999999999999999\r\n\r\ngarbage");
+      sendData(
+          "POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
       sendData("POST / HTTP/1.1\r\n\r\ngarbage");
       sendData("GET /qs?g=&a-?-&r&=b=a&ge HTTP1.1\r\n\r\n");
 
       t->test("send lots of garbage", ^(tape_t *t) {
         int multipliers[2] = {1, 64};
 
-        for (int i = 0; i < 2; i++)
-        {
+        for (int i = 0; i < 2; i++) {
           size_t longStringLen = 1024 * multipliers[i];
           log_info("Testing with %zu bytes", longStringLen);
 
@@ -68,13 +70,20 @@ void runTests(int runAndExit, app_t app)
           memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
           sendData(longString);
 
-          memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
+          memcpy(longString,
+                 "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
           sendData(longString);
 
-          memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 50\r\n\r\n", 71);
+          memcpy(longString,
+                 "POST / HTTP/1.1\r\nContent-Type: "
+                 "application/json\r\nContent-Length: 50\r\n\r\n",
+                 71);
           sendData(longString);
 
-          memcpy(longString, "POST / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 16384\r\n\r\n", 74);
+          memcpy(longString,
+                 "POST / HTTP/1.1\r\nContent-Type: "
+                 "application/json\r\nContent-Length: 16384\r\n\r\n",
+                 74);
           sendData(longString);
 
           randomString(longString, longStringLen);
@@ -97,30 +106,42 @@ void runTests(int runAndExit, app_t app)
     t->test("GET", ^(tape_t *t) {
       t->strEqual("root", curlGet("/"), "Hello World!");
       t->strEqual("basic route", curlGet("/test"), "Testing, testing!");
-      t->strEqual("route params", curlGet("/one/123/two/345/567.jpg"), "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
+      t->strEqual(
+          "route params", curlGet("/one/123/two/345/567.jpg"),
+          "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
       t->strEqual("send status", curlGet("/status"), "I'm a teapot");
-      t->strEqual("query string", curlGet("/qs\?value1=123\\&value2=34%205"), "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
+      t->strEqual(
+          "query string", curlGet("/qs\?value1=123\\&value2=34%205"),
+          "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
       t->strEqual("send file", curlGet("/file"), "hello, world!\n");
     });
 
     t->test("POST", ^(tape_t *t) {
-      t->strEqual("form data", curlPost("/post/form123", "param1=12%2B3&param2=3+4%205"), "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
+      t->strEqual("form data",
+                  curlPost("/post/form123", "param1=12%2B3&param2=3+4%205"),
+                  "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
     });
 
     t->test("PUT", ^(tape_t *t) {
-      t->strEqual("put form data", curlPut("/put/form123", "param1=12%2B3&param2=3+4%205"), "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
+      t->strEqual("put form data",
+                  curlPut("/put/form123", "param1=12%2B3&param2=3+4%205"),
+                  "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
     });
 
     t->test("PATCH", ^(tape_t *t) {
-      t->strEqual("patch form data", curlPatch("/patch/form123", "param1=12%2B3&param2=3+4%205"), "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
+      t->strEqual("patch form data",
+                  curlPatch("/patch/form123", "param1=12%2B3&param2=3+4%205"),
+                  "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
     });
 
     t->test("DELETE", ^(tape_t *t) {
-      t->strEqual("delete form data", curlDelete("/delete/form123"), "<h1>Delete</h1><p>ID: form123</p>");
+      t->strEqual("delete form data", curlDelete("/delete/form123"),
+                  "<h1>Delete</h1><p>ID: form123</p>");
     });
 
     t->test("Middleware", ^(tape_t *t) {
-      t->strEqual("static file middleware", curlGet("/test/test2.txt"), "this is a test!!!");
+      t->strEqual("static file middleware", curlGet("/test/test2.txt"),
+                  "this is a test!!!");
       t->strEqual("custom request middleware", curlGet("/m"), "super test");
     });
 
@@ -132,23 +153,30 @@ void runTests(int runAndExit, app_t app)
     });
 
     t->test("Session", ^(tape_t *t) {
-      t->strEqual("session set", curlPost("/session", "param1=session-data"), "ok");
+      t->strEqual("session set", curlPost("/session", "param1=session-data"),
+                  "ok");
       t->strEqual("session get", curlGet("/session"), "session-data");
     });
 
     t->test("Header", ^(tape_t *t) {
-      t->strEqual("headers", curlGet("/headers"), "<h1>Headers</h1><p>Host: 127.0.0.1:3032</p><p>Accept: */*</p>");
+      t->strEqual(
+          "headers", curlGet("/headers"),
+          "<h1>Headers</h1><p>Host: 127.0.0.1:3032</p><p>Accept: */*</p>");
       t->strEqual("set header", curlGet("/set_header"), "test1");
     });
 
     t->test("Cookies", ^(tape_t *t) {
-      t->strEqual("set cookie", curlGet("/set_cookie\?session=123\\&user=test"), "ok");
-      t->strEqual("get cookie", curlGet("/get_cookie"), "session: 123 - user: test");
+      t->strEqual("set cookie", curlGet("/set_cookie\?session=123\\&user=test"),
+                  "ok");
+      t->strEqual("get cookie", curlGet("/get_cookie"),
+                  "session: 123 - user: test");
     });
 
     t->test("Redirect", ^(tape_t *t) {
-      t->strEqual("redirect", curlGet("/redirect"), "Redirecting to /redirected");
-      t->strEqual("redirect back", curlGet("/redirect/back"), "Redirecting to back");
+      t->strEqual("redirect", curlGet("/redirect"),
+                  "Redirecting to /redirected");
+      t->strEqual("redirect back", curlGet("/redirect/back"),
+                  "Redirecting to back");
     });
 
     t->test("Error", ^(tape_t *t) {
@@ -160,21 +188,35 @@ void runTests(int runAndExit, app_t app)
     t->test("Router", ^(tape_t *t) {
       t->strEqual("root", curlGet("/base"), "Hello Router!");
       t->strEqual("basic route", curlGet("/base/test"), "Testing Router!");
-      t->strEqual("route params", curlGet("/base/one/123/two/345/567.jpg"), "<h1>Base Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
-      t->strEqual("custom request middleware", curlGet("/base/m"), "super-router test");
+      t->strEqual("route params", curlGet("/base/one/123/two/345/567.jpg"),
+                  "<h1>Base Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: "
+                  "567</p>");
+      t->strEqual("custom request middleware", curlGet("/base/m"),
+                  "super-router test");
 
       t->test("Nested router", ^(tape_t *t) {
         t->strEqual("root", curlGet("/base/nested"), "Hello Nested Router!");
-        t->strEqual("basic route", curlGet("/base/nested/test"), "Testing Nested Router!");
-        t->strEqual("route params", curlGet("/base/nested/one/123/two/345/567.jpg"), "<h1>Nested Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
-        t->strEqual("custom request middleware", curlGet("/base/nested/m"), "super-nested-router test");
+        t->strEqual("basic route", curlGet("/base/nested/test"),
+                    "Testing Nested Router!");
+        t->strEqual("route params",
+                    curlGet("/base/nested/one/123/two/345/567.jpg"),
+                    "<h1>Nested Params</h1><p>One: 123</p><p>Two: "
+                    "345</p><p>Three: 567</p>");
+        t->strEqual("custom request middleware", curlGet("/base/nested/m"),
+                    "super-nested-router test");
       });
 
       t->test("Params router", ^(tape_t *t) {
-        t->strEqual("basic route", curlGet("/base/params/blip/test"), "Testing Nested blip Router!");
-        t->strEqual("route params", curlGet("/base/params/blip/one/123/two/345/567.jpg"), "<h1>Nested Params blip</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
-        t->strEqual("root", curlGet("/base/params/blip"), "Hello Params blip Router!");
-        t->strEqual("custom request middleware", curlGet("/base/params/blip/m"), "super-nested-router test blip");
+        t->strEqual("basic route", curlGet("/base/params/blip/test"),
+                    "Testing Nested blip Router!");
+        t->strEqual("route params",
+                    curlGet("/base/params/blip/one/123/two/345/567.jpg"),
+                    "<h1>Nested Params blip</h1><p>One: 123</p><p>Two: "
+                    "345</p><p>Three: 567</p>");
+        t->strEqual("root", curlGet("/base/params/blip"),
+                    "Hello Params blip Router!");
+        t->strEqual("custom request middleware", curlGet("/base/params/blip/m"),
+                    "super-nested-router test blip");
       });
     });
   });
@@ -182,8 +224,7 @@ void runTests(int runAndExit, app_t app)
   Block_release(t->test);
   free(t);
 
-  if (runAndExit)
-  {
+  if (runAndExit) {
     app.closeServer();
     exit(testStatus);
   }
@@ -191,8 +232,7 @@ void runTests(int runAndExit, app_t app)
 
 #pragma clang diagnostic pop
 
-int main()
-{
+int main() {
   env_load(".", false);
 
   int runXTimes = getenv("RUN_X_TIMES") ? atoi(getenv("RUN_X_TIMES")) : 1;
@@ -210,15 +250,16 @@ int main()
   mem_session_t *memSession = malloc(sizeof(mem_session_t));
   memSession->stores = malloc(sizeof(mem_store_t *) * 100);
   memSession->count = 0;
-  dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
+  dispatch_queue_t memSessionQueue =
+      dispatch_queue_create("memSessionQueue", NULL);
   app.use(memSessionMiddlewareFactory(memSession, memSessionQueue));
 
-  typedef struct super_t
-  {
+  typedef struct super_t {
     char *uuid;
   } super_t;
 
-  app.use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
+  app.use(^(request_t *req, UNUSED response_t *res, void (^next)(),
+            void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super test";
     req->mSet("super", super);
@@ -245,7 +286,8 @@ int main()
   app.get("/qs", ^(request_t *req, response_t *res) {
     char *value1 = req->query("value1");
     char *value2 = req->query("value2");
-    res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>", value1, value2);
+    res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>",
+               value1, value2);
     curl_free(value1);
     curl_free(value2);
   });
@@ -253,7 +295,8 @@ int main()
   app.get("/headers", ^(request_t *req, response_t *res) {
     char *host = req->get("Host");
     char *accept = req->get("Accept");
-    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", host, accept);
+    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", host,
+               accept);
     free(host);
     free(accept);
   });
@@ -266,7 +309,8 @@ int main()
     char *one = req->params("one");
     char *two = req->params("two");
     char *three = req->params("three");
-    res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", one, two, three);
+    res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
+               one, two, three);
     free(one);
     free(two);
     free(three);
@@ -284,7 +328,8 @@ int main()
     char *param1 = req->body("param1");
     char *param2 = req->body("param2");
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1,
+               param2);
     curl_free(param1);
     curl_free(param2);
   });
@@ -305,7 +350,8 @@ int main()
     char *param1 = req->body("param1");
     char *param2 = req->body("param2");
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1,
+               param2);
     curl_free(param1);
     curl_free(param2);
   });
@@ -314,7 +360,8 @@ int main()
     char *param1 = req->body("param1");
     char *param2 = req->body("param2");
     res->status = 201;
-    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1, param2);
+    res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1,
+               param2);
     curl_free(param1);
     curl_free(param2);
   });
@@ -342,7 +389,13 @@ int main()
     char *user = req->query("user");
     res->cookie("session", session, (cookie_opts_t){});
     res->cookie("user", user, (cookie_opts_t){});
-    res->cookie("all", session, (cookie_opts_t){.secure = 1, .httpOnly = 1, .domain = "test.com", .path = "/test", .expires = "55", .maxAge = 1000});
+    res->cookie("all", session,
+                (cookie_opts_t){.secure = 1,
+                                .httpOnly = 1,
+                                .domain = "test.com",
+                                .path = "/test",
+                                .expires = "55",
+                                .maxAge = 1000});
     res->send("ok");
     curl_free(session);
     curl_free(user);
@@ -364,7 +417,8 @@ int main()
 
   router_t *router = expressRouter("/base");
 
-  router->use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
+  router->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
+                void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super-router test";
     req->mSet("super-router", super);
@@ -383,15 +437,18 @@ int main()
     res->send("Testing Router!");
   });
 
-  router->get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
-    char *one = req->params("one");
-    char *two = req->params("two");
-    char *three = req->params("three");
-    res->sendf("<h1>Base Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", one, two, three);
-    free(one);
-    free(two);
-    free(three);
-  });
+  router->get(
+      "/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
+        char *one = req->params("one");
+        char *two = req->params("two");
+        char *three = req->params("three");
+        res->sendf(
+            "<h1>Base Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
+            one, two, three);
+        free(one);
+        free(two);
+        free(three);
+      });
 
   router->get("/m", ^(request_t *req, response_t *res) {
     super_t *super = req->m("super-router");
@@ -400,7 +457,8 @@ int main()
 
   router_t *nestedRouter = expressRouter("/nested");
 
-  nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
+  nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
+                      void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super-nested-router test";
     req->mSet("super-nested-router", super);
@@ -419,11 +477,14 @@ int main()
     res->send("Testing Nested Router!");
   });
 
-  nestedRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
+  nestedRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req,
+                                                       response_t *res) {
     char *one = req->params("one");
     char *two = req->params("two");
     char *three = req->params("three");
-    res->sendf("<h1>Nested Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", one, two, three);
+    res->sendf(
+        "<h1>Nested Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
+        one, two, three);
     free(one);
     free(two);
     free(three);
@@ -438,7 +499,8 @@ int main()
 
   router_t *paramsRouter = expressRouter("/params/:id");
 
-  paramsRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
+  paramsRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
+                      void (^cleanup)(cleanupHandler)) {
     super_t *super = malloc(sizeof(super_t));
     super->uuid = "super-params-router test";
     req->mSet("super-params-router", super);
@@ -461,12 +523,15 @@ int main()
     free(id);
   });
 
-  paramsRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req, response_t *res) {
+  paramsRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req,
+                                                       response_t *res) {
     char *id = req->params("id");
     char *one = req->params("one");
     char *two = req->params("two");
     char *three = req->params("three");
-    res->sendf("<h1>Nested Params %s</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>", id, one, two, three);
+    res->sendf(
+        "<h1>Nested Params %s</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
+        id, one, two, three);
     free(id);
     free(one);
     free(two);
@@ -487,8 +552,7 @@ int main()
   app.cleanup(^{
     free(staticFilesPath);
     dispatch_release(memSessionQueue);
-    for (int i = 0; i < memSession->count; i++)
-    {
+    for (int i = 0; i < memSession->count; i++) {
       free(memSession->stores[i]->sessionStore);
       free(memSession->stores[i]->uuid);
       free(memSession->stores[i]);
@@ -498,8 +562,7 @@ int main()
   });
 
   app.listen(port, ^{
-    for (int i = 0; i < runXTimes; i++)
-    {
+    for (int i = 0; i < runXTimes; i++) {
       runTests(runXTimes == 1, app);
     }
     if (runXTimes > 1)

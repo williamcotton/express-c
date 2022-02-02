@@ -20,19 +20,17 @@
   THE SOFTWARE.
 */
 
+#include "../src/express.h"
+#include <Block.h>
+#include <cJSON/cJSON.h>
+#include <dirent.h>
+#include <mustach/mustach-cjson.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Block.h>
-#include <dirent.h>
-#include <cJSON/cJSON.h>
-#include <mustach/mustach-cjson.h>
-#include "../src/express.h"
 
-static char *mustacheErrorMessage(int result)
-{
-  switch (result)
-  {
+static char *mustacheErrorMessage(int result) {
+  switch (result) {
   case MUSTACH_ERROR_SYSTEM:
     return "System error";
   case MUSTACH_ERROR_UNEXPECTED_END:
@@ -60,20 +58,18 @@ static char *mustacheErrorMessage(int result)
   }
 }
 
-middlewareHandler cJSONMustacheMiddleware(char *viewsPath, embedded_files_data_t embeddedFiles)
-{
+middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
+                                          embedded_files_data_t embeddedFiles) {
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;
     char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);
     sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
-    if (embeddedFiles.count > 0)
-    {
+    if (embeddedFiles.count > 0) {
       template = matchEmbeddedFile(templatePath, embeddedFiles);
       return template;
     }
     FILE *templateFd = fopen(templatePath, "r");
-    if (templateFd)
-    {
+    if (templateFd) {
       fseek(templateFd, 0, SEEK_END);
       size_t length = ftell(templateFd);
       fseek(templateFd, 0, SEEK_SET);
@@ -86,14 +82,12 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath, embedded_files_data_t
     return template;
   };
 
-  void (^loadPartials)(cJSON *data, char *templateFile) = ^(cJSON *data, char *templateFile) {
-    if (embeddedFiles.count > 0)
-    {
+  void (^loadPartials)(cJSON *data, char *templateFile) = ^(
+      cJSON *data, char *templateFile) {
+    if (embeddedFiles.count > 0) {
       char *templateName = strtok(templateFile, ".");
-      for (int i = 0; i < embeddedFiles.count; i++)
-      {
-        if (strstr(embeddedFiles.names[i], "mustache"))
-        {
+      for (int i = 0; i < embeddedFiles.count; i++) {
+        if (strstr(embeddedFiles.names[i], "mustache")) {
           char *partialName = embeddedFiles.names[i];
           char *partial = (char *)embeddedFiles.data[i];
 
@@ -101,8 +95,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath, embedded_files_data_t
           char *extention = token;
           char *name = token;
           strtok(token, "_");
-          while ((token = strtok(NULL, "_")) != NULL)
-          {
+          while ((token = strtok(NULL, "_")) != NULL) {
             name = extention;
             extention = token;
           }
@@ -118,10 +111,8 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath, embedded_files_data_t
     }
     UNUSED struct dirent *de;
     DIR *dr = opendir(viewsPath);
-    while ((de = readdir(dr)) != NULL)
-    {
-      if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile))
-      {
+    while ((de = readdir(dr)) != NULL) {
+      if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile)) {
         char *partial = loadTemplate(de->d_name);
         char *partialName = strdup(de->d_name);
         char *partialNameSplit = strtok(partialName, ".");
@@ -133,39 +124,33 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath, embedded_files_data_t
     closedir(dr);
   };
 
-  return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)(), UNUSED void (^cleanup)(cleanupHandler)) {
+  return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)(),
+                      UNUSED void (^cleanup)(cleanupHandler)) {
     res->render = ^(void *templateName, void *data) {
       cJSON *json = data;
       char *templateFile;
-      if (strstr(templateName, ".mustache"))
-      {
+      if (strstr(templateName, ".mustache")) {
         templateFile = templateName;
-      }
-      else
-      {
+      } else {
         templateFile = malloc(strlen(templateName) + strlen(".mustache") + 1);
         sprintf(templateFile, "%s.mustache", (char *)templateName);
       }
       char *template = loadTemplate(templateFile);
-      if (template)
-      {
+      if (template) {
         size_t length;
         char *renderedTemplate;
         loadPartials(json, (char *)templateFile);
-        int result = mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
-        if (result == 0)
-        {
+        int result =
+            mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
+        if (result == 0) {
           res->send(renderedTemplate);
           free(renderedTemplate);
-        }
-        else
-        {
+        } else {
           res->status = 500;
-          res->sendf("Error rendering mustache template: %s", mustacheErrorMessage(result));
+          res->sendf("Error rendering mustache template: %s",
+                     mustacheErrorMessage(result));
         }
-      }
-      else
-      {
+      } else {
         res->status = 500;
         res->send("Template file not found");
       }

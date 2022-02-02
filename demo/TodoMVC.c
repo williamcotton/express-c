@@ -1,21 +1,20 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <Block.h>
-#include <string.h>
-#include <dotenv-c/dotenv.h>
-#include <cJSON/cJSON.h>
-#include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
-#include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
 #include "../src/express.h"
 #include "models/todo.h"
+#include <Block.h>
+#include <cJSON/cJSON.h>
+#include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
+#include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
+#include <dotenv-c/dotenv.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef EMBEDDED_FILES
 #include "embeddedFiles.h"
 #else
 embedded_files_data_t embeddedFiles = {0};
 #endif // EMBEDDED_FILES
 
-int main()
-{
+int main() {
   env_load(".", false);
 
   app_t app = express();
@@ -23,7 +22,8 @@ int main()
 
   signal(SIGINT, SIG_IGN);
 
-  dispatch_source_t sig_src = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
+  dispatch_source_t sig_src = dispatch_source_create(
+      DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
   dispatch_source_set_event_handler(sig_src, ^{
     app.closeServer();
     exit(0);
@@ -67,9 +67,12 @@ int main()
     cJSON *json = cJSON_CreateObject();
     cJSON *todos = cJSON_AddArrayToObject(json, "todos");
 
-    cJSON_AddStringToObject(json, "filterAll", strcmp(filter, "all") == 0 ? "selected" : "");
-    cJSON_AddStringToObject(json, "filterActive", strcmp(filter, "active") == 0 ? "selected" : "");
-    cJSON_AddStringToObject(json, "filterCompleted", strcmp(filter, "completed") == 0 ? "selected" : "");
+    cJSON_AddStringToObject(json, "filterAll",
+                            strcmp(filter, "all") == 0 ? "selected" : "");
+    cJSON_AddStringToObject(json, "filterActive",
+                            strcmp(filter, "active") == 0 ? "selected" : "");
+    cJSON_AddStringToObject(json, "filterCompleted",
+                            strcmp(filter, "completed") == 0 ? "selected" : "");
 
     todosCollection->each(^(void *item) {
       todo_t *todo = item;
@@ -78,9 +81,13 @@ int main()
 
     cJSON_AddNumberToObject(json, "uncompletedCount", uncompletedCount);
 
-    uncompletedCount == 1 ? cJSON_AddTrueToObject(json, "hasUncompletedSingular") : cJSON_AddFalseToObject(json, "hasUncompletedSingular");
-    completedCount > 0 ? cJSON_AddTrueToObject(json, "hasCompleted") : cJSON_AddFalseToObject(json, "hasCompleted");
-    total == 0 ? cJSON_AddTrueToObject(json, "noTodos") : cJSON_AddFalseToObject(json, "noTodos");
+    uncompletedCount == 1
+        ? cJSON_AddTrueToObject(json, "hasUncompletedSingular")
+        : cJSON_AddFalseToObject(json, "hasUncompletedSingular");
+    completedCount > 0 ? cJSON_AddTrueToObject(json, "hasCompleted")
+                       : cJSON_AddFalseToObject(json, "hasCompleted");
+    total == 0 ? cJSON_AddTrueToObject(json, "noTodos")
+               : cJSON_AddFalseToObject(json, "noTodos");
 
     res->render("index", json);
 
@@ -105,8 +112,7 @@ int main()
 
     int id = atoi(idString);
     todo_t *todo = todoStore->find(id);
-    if (todo != NULL)
-    {
+    if (todo != NULL) {
       todo->completed = !todo->completed;
       todoStore->update(todo);
     }
@@ -126,7 +132,7 @@ int main()
     free(idString);
   });
 
-  app.post("/todo_clear_all_completed", ^(UNUSED request_t *req, response_t *res) {
+  app.post("/todo_clear_all_completed", ^(request_t *req, response_t *res) {
     todo_store_t *todoStore = req->m("todoStore");
 
     collection_t *todosCollection = todoStore->filter(^(void *item) {

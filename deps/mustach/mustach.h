@@ -156,20 +156,20 @@ struct mustach_sbuf; /* see below */
  * but is used for 'partial' if 'partial' is NULL. Thus for clarity, do not use
  * it that way but define 'partial' and let 'get' be NULL.
  *
- * The DANGEROUS case is special: it allows abstract FILE if 'partial' is defined
- * but forbids abstract FILE when 'partial' is NULL.
+ * The DANGEROUS case is special: it allows abstract FILE if 'partial' is
+ * defined but forbids abstract FILE when 'partial' is NULL.
  *
  * The INVALID case returns error MUSTACH_ERROR_INVALID_ITF.
  */
-struct mustach_itf
-{
+struct mustach_itf {
   int (*start)(void *closure);
   int (*put)(void *closure, const char *name, int escape, FILE *file);
   int (*enter)(void *closure, const char *name);
   int (*next)(void *closure);
   int (*leave)(void *closure);
   int (*partial)(void *closure, const char *name, struct mustach_sbuf *sbuf);
-  int (*emit)(void *closure, const char *buffer, size_t size, int escape, FILE *file);
+  int (*emit)(void *closure, const char *buffer, size_t size, int escape,
+              FILE *file);
   int (*get)(void *closure, const char *name, struct mustach_sbuf *sbuf);
   void (*stop)(void *closure, int status);
 };
@@ -181,15 +181,18 @@ struct mustach_itf
  * to mustach. The callee can provide a function for releasing the returned
  * 'value'. Three methods for releasing the string are possible.
  *
- *  1. no release: set either 'freecb' or 'releasecb' with NULL (done by default)
+ *  1. no release: set either 'freecb' or 'releasecb' with NULL (done by
+ * default)
  *  2. release without closure: set 'freecb' to its expected value
- *  3. release with closure: set 'releasecb' and 'closure' to their expected values
+ *  3. release with closure: set 'releasecb' and 'closure' to their expected
+ * values
  *
- * @value: The value of the string. That value is not changed by mustach -const-.
+ * @value: The value of the string. That value is not changed by mustach
+ * -const-.
  *
  * @freecb: The function to call for freeing the value without closure.
- *          For convenience, signature of that callback is compatible with 'free'.
- *          Can be NULL.
+ *          For convenience, signature of that callback is compatible with
+ * 'free'. Can be NULL.
  *
  * @releasecb: The function to release with closure.
  *             Can be NULL.
@@ -199,11 +202,9 @@ struct mustach_itf
  * @length: Length of the value or zero if unknown and value null terminated.
  *          To return the empty string, let it to zero and let value to NULL.
  */
-struct mustach_sbuf
-{
+struct mustach_sbuf {
   const char *value;
-  union
-  {
+  union {
     void (*freecb)(void *);
     void (*releasecb)(const char *value, void *closure);
   };
@@ -212,10 +213,12 @@ struct mustach_sbuf
 };
 
 /**
- * mustach_file - Renders the mustache 'template' in 'file' for 'itf' and 'closure'.
+ * mustach_file - Renders the mustache 'template' in 'file' for 'itf' and
+ * 'closure'.
  *
  * @template: the template string to instanciate
- * @length:   length of the template or zero if unknown and template null terminated
+ * @length:   length of the template or zero if unknown and template null
+ * terminated
  * @itf:      the interface to the functions that mustach calls
  * @closure:  the closure to pass to functions called
  * @file:     the file where to write the result
@@ -223,13 +226,16 @@ struct mustach_sbuf
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-extern int mustach_file(const char *template, size_t length, const struct mustach_itf *itf, void *closure, int flags, FILE *file);
+extern int mustach_file(const char *template, size_t length,
+                        const struct mustach_itf *itf, void *closure, int flags,
+                        FILE *file);
 
 /**
  * mustach_fd - Renders the mustache 'template' in 'fd' for 'itf' and 'closure'.
  *
  * @template: the template string to instanciate
- * @length:   length of the template or zero if unknown and template null terminated
+ * @length:   length of the template or zero if unknown and template null
+ * terminated
  * @itf:      the interface to the functions that mustach calls
  * @closure:  the closure to pass to functions called
  * @fd:       the file descriptor number where to write the result
@@ -237,13 +243,17 @@ extern int mustach_file(const char *template, size_t length, const struct mustac
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-extern int mustach_fd(const char *template, size_t length, const struct mustach_itf *itf, void *closure, int flags, int fd);
+extern int mustach_fd(const char *template, size_t length,
+                      const struct mustach_itf *itf, void *closure, int flags,
+                      int fd);
 
 /**
- * mustach_mem - Renders the mustache 'template' in 'result' for 'itf' and 'closure'.
+ * mustach_mem - Renders the mustache 'template' in 'result' for 'itf' and
+ * 'closure'.
  *
  * @template: the template string to instanciate
- * @length:   length of the template or zero if unknown and template null terminated
+ * @length:   length of the template or zero if unknown and template null
+ * terminated
  * @itf:      the interface to the functions that mustach calls
  * @closure:  the closure to pass to functions called
  * @result:   the pointer receiving the result when 0 is returned
@@ -252,7 +262,9 @@ extern int mustach_fd(const char *template, size_t length, const struct mustach_
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-extern int mustach_mem(const char *template, size_t length, const struct mustach_itf *itf, void *closure, int flags, char **result, size_t *size);
+extern int mustach_mem(const char *template, size_t length,
+                       const struct mustach_itf *itf, void *closure, int flags,
+                       char **result, size_t *size);
 
 /***************************************************************************
  * compatibility with version before 1.0
@@ -262,7 +274,8 @@ extern int mustach_mem(const char *template, size_t length, const struct mustach
 #elif defined(_MSC_VER)
 #define DEPRECATED_MUSTACH(func) __declspec(deprecated) func
 #elif !defined(DEPRECATED_MUSTACH)
-#pragma message("WARNING: You need to implement DEPRECATED_MUSTACH for this compiler")
+#pragma message(                                                               \
+    "WARNING: You need to implement DEPRECATED_MUSTACH for this compiler")
 #define DEPRECATED_MUSTACH(func) func
 #endif
 /**
@@ -278,7 +291,9 @@ extern int mustach_mem(const char *template, size_t length, const struct mustach
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-DEPRECATED_MUSTACH(extern int fmustach(const char *template, const struct mustach_itf *itf, void *closure, FILE *file));
+DEPRECATED_MUSTACH(extern int fmustach(const char *template,
+                                       const struct mustach_itf *itf,
+                                       void *closure, FILE *file));
 
 /**
  * OBSOLETE use mustach_fd
@@ -293,12 +308,15 @@ DEPRECATED_MUSTACH(extern int fmustach(const char *template, const struct mustac
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-DEPRECATED_MUSTACH(extern int fdmustach(const char *template, const struct mustach_itf *itf, void *closure, int fd));
+DEPRECATED_MUSTACH(extern int fdmustach(const char *template,
+                                        const struct mustach_itf *itf,
+                                        void *closure, int fd));
 
 /**
  * OBSOLETE use mustach_mem
  *
- * mustach - Renders the mustache 'template' in 'result' for 'itf' and 'closure'.
+ * mustach - Renders the mustache 'template' in 'result' for 'itf' and
+ * 'closure'.
  *
  * @template: the template string to instanciate, null terminated
  * @itf:      the interface to the functions that mustach calls
@@ -309,6 +327,9 @@ DEPRECATED_MUSTACH(extern int fdmustach(const char *template, const struct musta
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-DEPRECATED_MUSTACH(extern int mustach(const char *template, const struct mustach_itf *itf, void *closure, char **result, size_t *size));
+DEPRECATED_MUSTACH(extern int mustach(const char *template,
+                                      const struct mustach_itf *itf,
+                                      void *closure, char **result,
+                                      size_t *size));
 
 #endif
