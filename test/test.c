@@ -495,8 +495,6 @@ int main() {
     res->send(super->uuid);
   });
 
-  router->useRouter(nestedRouter);
-
   router_t *paramsRouter = expressRouter("/params/:id");
 
   paramsRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
@@ -545,8 +543,10 @@ int main() {
     free(id);
   });
 
+  router->useRouter(nestedRouter);
   router->useRouter(paramsRouter);
 
+  // TODO: add another app.useRouter that connects at base path
   app.useRouter(router);
 
   app.cleanup(^{

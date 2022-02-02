@@ -1732,6 +1732,7 @@ router_t *expressRouter(char *basePath) {
         (middleware_t){.handler = handler};
   });
 
+  // TODO: useRouter("/api", apiRouter);
   router->useRouter = Block_copy(^(router_t *_router) {
     char *_basePath = (char *)_router->basePath;
     size_t basePathLen = strlen(router->basePath) + strlen(_basePath) + 1;
@@ -1810,7 +1811,7 @@ app_t express() {
   app.patch = baseRouter->patch;
   app.delete = baseRouter->delete;
   app.use = baseRouter->use;
-  app.useRouter = baseRouter->useRouter;
+  app.useRouter = baseRouter->useRouter; // TODO: useRouter("/api", apiRouter);
 
   app.cleanup = Block_copy(^(appCleanupHandler handler) {
     appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) *

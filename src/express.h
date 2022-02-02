@@ -299,7 +299,7 @@ typedef struct router_t {
   int routerCount;
 } router_t;
 
-router_t *expressRouter();
+router_t *expressRouter(char *basePath);
 
 /* server */
 
