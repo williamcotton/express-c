@@ -20,6 +20,7 @@
   THE SOFTWARE.
 */
 
+#include "express.h"
 #include <Block.h>
 #include <MegaMimes/MegaMimes.h>
 #include <arpa/inet.h>
@@ -37,12 +38,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <uuid/uuid.h>
+
 #ifdef __linux__
 #include <bsd/string.h>
 #include <pthread.h>
 #include <sys/epoll.h>
 #endif
-#include "express.h"
 
 /* Private */
 
@@ -1803,33 +1804,13 @@ app_t express() {
   __block server_t *server = expressServer();
   __block router_t *baseRouter = expressRouter("");
 
-  app.get = Block_copy(^(const char *path, requestHandler handler) {
-    baseRouter->get(path, handler);
-  });
-
-  app.post = Block_copy(^(const char *path, requestHandler handler) {
-    baseRouter->post(path, handler);
-  });
-
-  app.put = Block_copy(^(const char *path, requestHandler handler) {
-    baseRouter->put(path, handler);
-  });
-
-  app.patch = Block_copy(^(const char *path, requestHandler handler) {
-    baseRouter->patch(path, handler);
-  });
-
-  app.delete = Block_copy(^(const char *path, requestHandler handler) {
-    baseRouter->delete (path, handler);
-  });
-
-  app.use = Block_copy(^(middlewareHandler handler) {
-    baseRouter->use(handler);
-  });
-
-  app.useRouter = Block_copy(^(router_t *router) {
-    baseRouter->useRouter(router);
-  });
+  app.get = baseRouter->get;
+  app.post = baseRouter->post;
+  app.put = baseRouter->put;
+  app.patch = baseRouter->patch;
+  app.delete = baseRouter->delete;
+  app.use = baseRouter->use;
+  app.useRouter = baseRouter->useRouter;
 
   app.cleanup = Block_copy(^(appCleanupHandler handler) {
     appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) *
