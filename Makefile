@@ -5,7 +5,7 @@ endif
 
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV)
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
 SRC = src/express.c
@@ -42,6 +42,9 @@ test-coverage:
 	mkdir -p $(BUILD_DIR)
 	clang -o $(BUILD_DIR)/$@ test/test.c test/test-harnass.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) --coverage
 	$(BUILD_DIR)/$@
+
+lint:
+	clang-tidy -warnings-as-errors=* src/express.c
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -1819,7 +1819,7 @@ router_t *expressRouter(char *basePath)
     size_t basePathLen = strlen(router->basePath) + strlen(_basePath) + 1;
     _router->basePath = malloc(basePathLen);
     snprintf((char *)_router->basePath, basePathLen, "%s%s", router->basePath, _basePath);
-    router->routers = realloc(router->routers, sizeof(router_t) * (router->routerCount + 1));
+    router->routers = realloc(router->routers, sizeof(router_t *) * (router->routerCount + 1));
     router->routers[router->routerCount++] = _router;
 
     for (int i = 0; i < _router->routeHandlerCount; i++)
