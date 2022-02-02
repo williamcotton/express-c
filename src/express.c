@@ -495,18 +495,17 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter)
 
 static getBlock reqCookieFactory(request_t *req)
 {
-  // TODO: replace with reading directly from req.cookiesString (pointer offsets and lengths)
-  req->cookiesHash = hash_new();
   req->cookiesString = (char *)req->get("Cookie");
+  char *cookies = (char *)req->cookiesString;
   if (req->cookiesString != NULL)
   {
-    char *cookie = strtok((char *)req->cookiesString, ";");
+    char *cookie = strtok(cookies, ";");
     int i = 0;
     while (cookie != NULL)
     {
       req->cookies[i] = cookie;
       cookie = strtok(NULL, ";");
-      i++;
+      req->cookiesKeyValueCount = ++i;
     }
     for (i = 0; i < 4096; i++)
     {
@@ -516,12 +515,28 @@ static getBlock reqCookieFactory(request_t *req)
       char *value = strtok(NULL, "=");
       if (key[0] == ' ')
         key++;
-      hash_set(req->cookiesHash, key, value);
+      req->cookiesKeyValues[i].key = key;
+      req->cookiesKeyValues[i].keyLen = strlen(key);
+      req->cookiesKeyValues[i].value = value;
+      req->cookiesKeyValues[i].valueLen = strlen(value);
     }
   }
 
   return Block_copy(^(const char *key) {
-    return (char *)hash_get(req->cookiesHash, (char *)key);
+    check_silent(req->cookiesKeyValueCount > 0, "No cookies found");
+    for (size_t j = req->cookiesKeyValueCount - 1; j >= 0; j--)
+    {
+      check_silent(req->cookiesKeyValues[j].key != NULL, "No cookies found");
+      size_t keyLen = strlen(key);
+      if (strncmp(req->cookiesKeyValues[j].key, key, keyLen) == 0)
+      {
+        char *value = malloc(sizeof(char) * (req->cookiesKeyValues[j].valueLen + 1));
+        strlcpy(value, req->cookiesKeyValues[j].value, req->cookiesKeyValues[j].valueLen + 1);
+        return (char *)value;
+      }
+    }
+  error:
+    return (char *)NULL;
   });
 }
 
@@ -1226,7 +1241,6 @@ static void freeRequest(request_t req)
   free((void *)req.rawRequestBody);
   if (strlen(req.queryString) > 0)
     free((void *)req.queryString);
-  hash_free(req.cookiesHash);
   hash_free(req.middlewareHash);
   for (int i = 0; i < req.mallocCount; i++)
   {

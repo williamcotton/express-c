@@ -184,7 +184,8 @@ typedef struct request_t
   session_t *session;
   const char *cookiesString;
   const char *cookies[4096];
-  void *cookiesHash;
+  key_value_t cookiesKeyValues[100];
+  size_t cookiesKeyValueCount;
   char * (^cookie)(const char *key);
   int mallocCount;
   req_malloc_t mallocs[1024];
@@ -207,7 +208,6 @@ typedef struct response_t
   void *headersHash;
   void (^set)(const char *, const char *);
   char * (^get)(const char *);
-  void *cookiesHash;
   int cookieHeadersLength;
   char cookieHeaders[4096];
   void (^cookie)(const char *, const char *, cookie_opts_t);
