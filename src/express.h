@@ -124,6 +124,12 @@ typedef struct key_value_t
   size_t valueLen;
 } key_value_t;
 
+typedef struct key_store_t
+{
+  const char *key;
+  void *value;
+} key_store_t;
+
 typedef struct req_malloc_t
 {
   void *ptr;
@@ -175,7 +181,8 @@ typedef struct request_t
   char *bodyString;
   char * (^body)(const char *bodyKey);
   int middlewareStackCount;
-  void *middlewareHash;
+  key_store_t middlewareKeyValues[100];
+  size_t middlewareKeyValueCount;
   void * (^m)(const char *middlewareKey);
   void (^mSet)(const char *middlewareKey, void *middleware);
   long long contentLength;

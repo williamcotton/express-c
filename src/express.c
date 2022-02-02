@@ -543,9 +543,13 @@ static getBlock reqCookieFactory(request_t *req)
 typedef void * (^getMiddlewareBlock)(const char *key);
 static getMiddlewareBlock reqMiddlewareFactory(request_t *req)
 {
-  req->middlewareHash = hash_new();
   return Block_copy(^(const char *key) {
-    return hash_get(req->middlewareHash, (char *)key);
+    for (size_t i = 0; i < req->middlewareKeyValueCount; i++)
+    {
+      if (strcmp(req->middlewareKeyValues[i].key, key) == 0)
+        return req->middlewareKeyValues[i].value;
+    }
+    return NULL;
   });
 }
 
@@ -553,7 +557,9 @@ typedef void (^getMiddlewareSetBlock)(const char *key, void *middleware);
 static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req)
 {
   return Block_copy(^(const char *key, void *middleware) {
-    return hash_set(req->middlewareHash, (char *)key, middleware);
+    req->middlewareKeyValues[req->middlewareKeyValueCount].key = key;
+    req->middlewareKeyValues[req->middlewareKeyValueCount].value = middleware;
+    req->middlewareKeyValueCount++;
   });
 }
 
@@ -1241,7 +1247,6 @@ static void freeRequest(request_t req)
   free((void *)req.rawRequestBody);
   if (strlen(req.queryString) > 0)
     free((void *)req.queryString);
-  hash_free(req.middlewareHash);
   for (int i = 0; i < req.mallocCount; i++)
   {
     free(req.mallocs[i].ptr);
