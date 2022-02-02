@@ -4,7 +4,6 @@
 #include <Block.h>
 #include <curl/curl.h>
 #include <dotenv-c/dotenv.h>
-#include <hash/hash.h>
 #include "../src/express.h"
 #include "test-harnass.h"
 #include "tape.h"
@@ -139,7 +138,7 @@ void runTests(int runAndExit, app_t app)
 
     t->test("Header", ^(tape_t *t) {
       t->strEqual("headers", curlGet("/headers"), "<h1>Headers</h1><p>Host: 127.0.0.1:3032</p><p>Accept: */*</p>");
-      t->strEqual("set header", curlGet("/set_header"), "ok");
+      t->strEqual("set header", curlGet("/set_header"), "test1");
     });
 
     t->test("Cookies", ^(tape_t *t) {
@@ -208,9 +207,11 @@ int main()
   embedded_files_data_t embeddedFiles = {0};
   app.use(expressStatic("test", staticFilesPath, embeddedFiles));
 
-  hash_t *memSessionStore = hash_new();
+  mem_session_t *memSession = malloc(sizeof(mem_session_t));
+  memSession->stores = malloc(sizeof(mem_store_t *) * 100);
+  memSession->count = 0;
   dispatch_queue_t memSessionQueue = dispatch_queue_create("memSessionQueue", NULL);
-  app.use(memSessionMiddlewareFactory(memSessionStore, memSessionQueue));
+  app.use(memSessionMiddlewareFactory(memSession, memSessionQueue));
 
   typedef struct super_t
   {
@@ -332,7 +333,8 @@ int main()
   app.get("/set_header", ^(UNUSED request_t *req, response_t *res) {
     res->set("X-Test-1", "test1");
     res->set("X-Test-2", "test2");
-    res->send("ok");
+    char *xTest1 = res->get("X-Test-1");
+    res->send(xTest1);
   });
 
   app.get("/set_cookie", ^(request_t *req, response_t *res) {
@@ -358,17 +360,6 @@ int main()
 
   app.get("/redirect/back", ^(UNUSED request_t *req, response_t *res) {
     res->redirect("back");
-  });
-
-  app.cleanup(^{
-    free(staticFilesPath);
-    hash_each(memSessionStore, {
-      hash_t *store = (hash_t *)val;
-      free((void *)key);
-      hash_free(store);
-    });
-    hash_free(memSessionStore);
-    dispatch_release(memSessionQueue);
   });
 
   router_t *router = expressRouter("/base");
@@ -492,6 +483,19 @@ int main()
   router->useRouter(paramsRouter);
 
   app.useRouter(router);
+
+  app.cleanup(^{
+    free(staticFilesPath);
+    dispatch_release(memSessionQueue);
+    for (int i = 0; i < memSession->count; i++)
+    {
+      free(memSession->stores[i]->sessionStore);
+      free(memSession->stores[i]->uuid);
+      free(memSession->stores[i]);
+    }
+    free(memSession->stores);
+    free(memSession);
+  });
 
   app.listen(port, ^{
     for (int i = 0; i < runXTimes; i++)

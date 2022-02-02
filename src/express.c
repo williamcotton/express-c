@@ -32,7 +32,6 @@
 #include <Block.h>
 #include <picohttpparser/picohttpparser.h>
 #include <sys/stat.h>
-#include <hash/hash.h>
 #include <signal.h>
 #include <curl/curl.h>
 #include <MegaMimes/MegaMimes.h>
@@ -641,33 +640,29 @@ static char *buildResponseString(const char *body, response_t *res)
   char *status = malloc(sizeof(char) * (strlen(statusMessage) + 5));
   sprintf(status, "%d %s", res->status, statusMessage);
 
-  size_t customHeadersLen = 0;
-  char customHeaders[4096];
-  memset(customHeaders, 0, 4096);
+  size_t headersLength = 0;
+  char headers[4096];
+  memset(headers, 0, 4096);
 
-  // TODO: replace with writing directly from res.headersString
-  hash_each((hash_t *)res->headersHash,
-            {
-              size_t headersLen = strlen(key) + strlen(val) + 4;
-              strncpy(customHeaders + customHeadersLen, key, strlen(key));
-              customHeaders[customHeadersLen + strlen(key)] = ':';
-              customHeaders[customHeadersLen + strlen(key) + 1] = ' ';
-              strncpy(customHeaders + customHeadersLen + strlen(key) + 2, val, strlen(val));
-              customHeaders[customHeadersLen + strlen(key) + strlen(val) + 2] = '\r';
-              customHeaders[customHeadersLen + strlen(key) + strlen(val) + 3] = '\n';
-              customHeadersLen += headersLen;
-            });
+  for (size_t i = 0; i < res->headersKeyValueCount; i++)
+  {
+    size_t headerLength = res->headersKeyValues[i].keyLen + res->headersKeyValues[i].valueLen + 4;
+    if (headersLength + headerLength > 4096)
+      break;
+    sprintf(headers + headersLength, "%s: %s\r\n", res->headersKeyValues[i].key, res->headersKeyValues[i].value);
+    headersLength += headerLength;
+  }
 
-  char *headers = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + customHeadersLen + res->cookieHeadersLength + 1));
-  sprintf(headers, "HTTP/1.1 %s\r\n%s%s\r\n", status, customHeaders, res->cookieHeaders);
+  char *allHeaders = malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) + headersLength + res->cookieHeadersLength + 1));
+  sprintf(allHeaders, "HTTP/1.1 %s\r\n%s%s\r\n", status, headers, res->cookieHeaders);
 
-  size_t headersLen = strlen(headers) + 1;
+  size_t allHeadersLen = strlen(allHeaders) + 1;
   size_t bodyLen = strlen(body);
-  char *responseString = malloc(sizeof(char) * (headersLen + bodyLen));
-  strncpy(responseString, headers, headersLen);
+  char *responseString = malloc(sizeof(char) * (allHeadersLen + bodyLen));
+  strncpy(responseString, allHeaders, allHeadersLen);
   strncat(responseString, body, bodyLen);
   free(status);
-  free(headers);
+  free(allHeaders);
   free(contentLength);
   return responseString;
 }
@@ -693,9 +688,7 @@ static sendfBlock resSendfFactory(response_t *res)
     va_list args;
     va_start(args, format);
     vsnprintf(body, 65536, format, args);
-    char *response = buildResponseString(body, res);
     res->send(body);
-    free(response);
     va_end(args);
   });
 }
@@ -774,21 +767,38 @@ static downloadBlock resDownloadFactory(response_t *res)
   });
 }
 
-typedef void (^setBlock)(const char *headerKey, const char *headerValue);
+typedef void (^setBlock)(const char *key, const char *value);
 static setBlock resSetFactory(response_t *res)
 {
-  // TODO: replace hash with writing directly to res.headersString
-  res->headersHash = hash_new();
-  return Block_copy(^(const char *headerKey, const char *headerValue) {
-    return hash_set(res->headersHash, (char *)headerKey, (char *)headerValue);
+  res->headersKeyValueCount = 0;
+
+  return Block_copy(^(const char *key, const char *value) {
+    for (size_t i = 0; i < res->headersKeyValueCount; i++)
+    {
+      if (strcmp(res->headersKeyValues[i].key, key) == 0)
+      {
+        res->headersKeyValues[i].value = value;
+        return;
+      }
+    }
+
+    res->headersKeyValues[res->headersKeyValueCount].key = key;
+    res->headersKeyValues[res->headersKeyValueCount].keyLen = strlen(key);
+    res->headersKeyValues[res->headersKeyValueCount].value = value;
+    res->headersKeyValues[res->headersKeyValueCount].valueLen = strlen(value);
+    res->headersKeyValueCount++;
   });
 }
 
 static getBlock resGetFactory(response_t *res)
 {
-  // TODO: replace hash with reading directly from res.headersString (pointer offsets and lengths)
-  return Block_copy(^(const char *headerKey) {
-    return (char *)hash_get(res->headersHash, (char *)headerKey);
+  return Block_copy(^(const char *key) {
+    for (size_t i = 0; i < res->headersKeyValueCount; i++)
+    {
+      if (strcmp(res->headersKeyValues[i].key, key) == 0)
+        return (char *)res->headersKeyValues[i].value;
+    }
+    return (char *)NULL;
   });
 }
 
@@ -1269,7 +1279,6 @@ static void freeRequest(request_t req)
 
 static void freeResponse(response_t res)
 {
-  hash_free(res.headersHash);
   Block_release(res.send);
   Block_release(res.sendFile);
   Block_release(res.sendf);
@@ -1680,7 +1689,7 @@ middlewareHandler expressStatic(const char *path, const char *fullPath, embedded
   });
 }
 
-middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue)
+middlewareHandler memSessionMiddlewareFactory(mem_session_t *memSession, dispatch_queue_t memSessionQueue)
 {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(), void (^cleanup)(cleanupHandler)) {
     req->session->uuid = req->cookie("sessionUuid");
@@ -1691,24 +1700,55 @@ middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_
       res->cookie("sessionUuid", req->session->uuid, opts);
     }
 
-    if (hash_has(memSessionStore, (char *)req->session->uuid))
+    int storeExists = 0;
+    for (int i = 0; i < memSession->count; i++)
     {
-      req->session->store = hash_get(memSessionStore, (char *)req->session->uuid);
+      if (strcmp(memSession->stores[i]->uuid, req->session->uuid) == 0)
+      {
+        storeExists = 1;
+        req->session->store = memSession->stores[i]->sessionStore;
+        break;
+      }
     }
-    else
+
+    if (!storeExists)
     {
-      req->session->store = hash_new();
+      mem_session_store_t *sessionStore = malloc(sizeof(mem_session_store_t));
+      sessionStore->count = 0;
+      req->session->store = sessionStore;
+      mem_store_t *store = malloc(sizeof(mem_store_t));
+      store->uuid = (char *)req->session->uuid;
+      store->sessionStore = sessionStore;
       dispatch_sync(memSessionQueue, ^{
-        hash_set(memSessionStore, (char *)req->session->uuid, req->session->store);
+        memSession->stores[memSession->count++] = store;
       });
     }
 
     req->session->get = ^(const char *key) {
-      return hash_get(req->session->store, (char *)key);
+      mem_session_store_t *sessionStore = req->session->store;
+      for (int i = 0; i < sessionStore->count; i++)
+      {
+        if (strcmp(sessionStore->keyValues[i].key, key) == 0)
+        {
+          return (void *)sessionStore->keyValues[i].value;
+        }
+      }
+      return NULL;
     };
 
     req->session->set = ^(const char *key, void *value) {
-      hash_set(req->session->store, (char *)key, value);
+      mem_session_store_t *store = req->session->store;
+      for (int i = 0; i < store->count; i++)
+      {
+        if (strcmp(store->keyValues[i].key, key) == 0)
+        {
+          store->keyValues[i].value = value;
+          return;
+        }
+      }
+      store->keyValues[store->count].key = key;
+      store->keyValues[store->count].value = value;
+      store->count++;
     };
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){

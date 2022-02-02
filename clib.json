@@ -6,7 +6,6 @@
   "author": "William Cotton",
   "license": "MIT",
   "dependencies": {
-    "Isty001/dotenv-c": "0.1.0",
-    "clibs/hash": "0.0.1"
+    "Isty001/dotenv-c": "0.1.0"
   }
 }

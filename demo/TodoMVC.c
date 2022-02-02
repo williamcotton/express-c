@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <hash/hash.h>
 #include <Block.h>
 #include <string.h>
 #include <dotenv-c/dotenv.h>

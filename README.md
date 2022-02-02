@@ -232,9 +232,9 @@ $ make test-watch
 
 Uses [clib](https://github.com/clibs/clib) for dependency management:
 
-- [clibs/hash](https://github.com/clibs/hash)
 - [Isty001/dotenv-c](https://github.com/Isty001/dotenv-c)
 
 And:
 
 - [h2o/picohttpparser](https://github.com/h2o/picohttpparser)
+- [trumpowen/MegaMimes](https://github.com/trumpowen/MegaMimes)

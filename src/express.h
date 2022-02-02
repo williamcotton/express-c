@@ -28,7 +28,6 @@
 #include <string.h>
 #include <picohttpparser/picohttpparser.h>
 #include <dispatch/dispatch.h>
-#include <hash/hash.h>
 #include <curl/curl.h>
 
 /* Helpers */
@@ -215,7 +214,9 @@ typedef struct response_t
   void *headersHash;
   void (^set)(const char *, const char *);
   char * (^get)(const char *);
-  int cookieHeadersLength;
+  key_value_t headersKeyValues[100];
+  size_t headersKeyValueCount;
+  size_t cookieHeadersLength;
   char cookieHeaders[4096];
   void (^cookie)(const char *, const char *, cookie_opts_t);
   void (^clearCookie)(const char *, cookie_opts_t); // TODO: add res.clearCookie
@@ -247,8 +248,26 @@ char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles);
 
 /* Public middleware */
 
+typedef struct mem_session_store_t
+{
+  key_value_t keyValues[100];
+  int count;
+} mem_session_store_t;
+
+typedef struct mem_store_t
+{
+  char *uuid;
+  mem_session_store_t *sessionStore;
+} mem_store_t;
+
+typedef struct mem_session_t
+{
+  mem_store_t **stores;
+  int count;
+} mem_session_t;
+
 middlewareHandler expressStatic(const char *path, const char *fullPath, embedded_files_data_t embeddedFiles);
-middlewareHandler memSessionMiddlewareFactory(hash_t *memSessionStore, dispatch_queue_t memSessionQueue);
+middlewareHandler memSessionMiddlewareFactory(mem_session_t *memSession, dispatch_queue_t memSessionQueue);
 
 /* expressRouter */
 
