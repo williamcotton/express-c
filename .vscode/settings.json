@@ -63,7 +63,8 @@
     "*.tcc": "c",
     "__functional_base_03": "c",
     "assert.h": "c",
-    "cjson.h": "c"
+    "cjson.h": "c",
+    "cjsoncookiesessionmiddleware.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

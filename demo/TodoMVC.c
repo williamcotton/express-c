@@ -1,4 +1,5 @@
 #include "../src/express.h"
+#include "controllers/api.h"
 #include "controllers/todo.h"
 #include <Block.h>
 #include <cJSON/cJSON.h>
@@ -37,6 +38,7 @@ int main() {
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
   /* Controllers */
+  app.useRouter(apiController());
   app.useRouter(todosController(embeddedFiles));
 
   /* Clean up */
