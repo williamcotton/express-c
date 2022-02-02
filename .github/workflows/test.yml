@@ -9,6 +9,7 @@ jobs:
       image: ghcr.io/williamcotton/express-c:release
     steps:
       - uses: actions/checkout@v2
+      - run: make format
       - run: make lint
       - run: make test-leaks
       - run: make test
@@ -16,6 +17,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+      - run: make format
       - run: make lint
       - run: make test-leaks
       - run: make test

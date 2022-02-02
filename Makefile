@@ -50,6 +50,12 @@ else ifeq ($(PLATFORM),DARWIN)
 	$(shell brew --prefix llvm)/bin/clang-tidy -warnings-as-errors=* src/express.c
 endif
 
+format:
+ifeq ($(PLATFORM),LINUX)
+	clang-format --dry-run --Werror $(SRC)
+else ifeq ($(PLATFORM),DARWIN)
+	$(shell brew --prefix llvm)/bin/clang-format --dry-run --Werror $(SRC)
+endif
 
 clean:
 	rm -rf $(BUILD_DIR)

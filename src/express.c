@@ -922,9 +922,9 @@ static void runMiddleware(int index, request_t *req, response_t *res,
                           router_t *router, void (^next)()) {
   if (index < router->middlewareCount) {
     void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
-      req->middlewareCleanupBlocks = realloc(
+      req->middlewareCleanupBlocks = realloc( // NOLINT
           req->middlewareCleanupBlocks,
-          sizeof(cleanupHandler *) * (req->middlewareStackCount + 1)); // NOLINT
+          sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
       req->middlewareCleanupBlocks[req->middlewareStackCount++] =
           (void *)cleanupBlock;
     };
