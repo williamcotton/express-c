@@ -530,7 +530,7 @@ static getBlock reqCookieFactory(request_t *req)
       size_t keyLen = strlen(key);
       if (strncmp(req->cookiesKeyValues[j].key, key, keyLen) == 0)
       {
-        char *value = malloc(sizeof(char) * (req->cookiesKeyValues[j].valueLen + 1));
+        char *value = req->malloc(sizeof(char) * (req->cookiesKeyValues[j].valueLen + 1));
         strlcpy(value, req->cookiesKeyValues[j].value, req->cookiesKeyValues[j].valueLen + 1);
         return (char *)value;
       }
