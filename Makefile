@@ -44,7 +44,12 @@ test-coverage:
 	$(BUILD_DIR)/$@
 
 lint:
+ifeq ($(PLATFORM),LINUX)
 	clang-tidy --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -warnings-as-errors=* src/express.c
+else ifeq ($(PLATFORM),DARWIN)
+	$(shell brew --prefix llvm)/bin/clang-tidy -warnings-as-errors=* src/express.c
+endif
+
 
 clean:
 	rm -rf $(BUILD_DIR)
