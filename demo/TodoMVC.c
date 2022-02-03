@@ -2,6 +2,7 @@
 #include "controllers/api.h"
 #include "controllers/todo.h"
 #include <dotenv-c/dotenv.h>
+#include <stdlib.h>
 
 #ifdef EMBEDDED_FILES
 #include "embeddedFiles.h"

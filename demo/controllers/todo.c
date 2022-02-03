@@ -3,6 +3,7 @@
 #include <cJSON/cJSON.h>
 #include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
 #include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
+#include <stdlib.h>
 
 router_t *todosController(embedded_files_data_t embeddedFiles) {
   router_t *router = expressRouter(0);
