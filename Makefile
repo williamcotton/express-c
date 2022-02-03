@@ -5,7 +5,7 @@ endif
 
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir)
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
 SRC = src/express.c
@@ -62,7 +62,7 @@ clean:
 	mkdir -p $(BUILD_DIR)
 
 $(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
-	fswatch --event Updated deps/ src/ demo/$(TARGETS).c | xargs -n1 -I{} scripts/watch.sh $(TARGETS)
+	fswatch --event Updated deps/ src/ demo/ | xargs -n1 -I{} scripts/watch.sh $(TARGETS)
 
 $(TARGETS)-run-background: $(TARGETS)-kill
 	$(BUILD_DIR)/$(TARGETS) &
