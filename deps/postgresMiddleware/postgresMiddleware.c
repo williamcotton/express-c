@@ -30,35 +30,46 @@ middlewareHandler postgresMiddlewareFactory(const char *pgUri) {
   pg_t *postgres = malloc(sizeof(pg_t));
 
   PGconn *pgConnection = PQconnectdb(pgUri);
-  if (PQstatus(pgConnection) != CONNECTION_OK) {
-    fprintf(stderr, "%s", PQerrorMessage(pgConnection));
-    PQfinish(pgConnection);
-  }
-  postgres->connection = pgConnection;
 
   dispatch_queue_t postgresQueue = dispatch_queue_create("postgresQueue", NULL);
 
-  return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
-                      void (^next)(), void (^cleanup)(cleanupHandler)) {
-    postgres->exec = req->blockCopy(^(const char *sql) {
-      __block PGresult *pgres;
-      dispatch_sync(postgresQueue, ^{
-        pgres = PQexec(postgres->connection, sql);
-        if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
-          fprintf(stderr, "SELECT failed: %s",
-                  PQerrorMessage(postgres->connection));
-          PQclear(pgres);
-          PQfinish(postgres->connection);
-        }
-      });
-      return pgres;
+  check(PQstatus(pgConnection) == CONNECTION_OK,
+        "Failed to connect to postgres: %s (%s)", PQerrorMessage(pgConnection),
+        pgUri);
+  postgres->connection = pgConnection;
+
+  postgres->exec = Block_copy(^(const char *sql) {
+    __block PGresult *pgres;
+
+    dispatch_sync(postgresQueue, ^{
+      pgres = PQexec(postgres->connection, sql);
+
+      check(PQresultStatus(pgres) == PGRES_TUPLES_OK, "exec failed: %s (%s)",
+            PQerrorMessage(postgres->connection), sql);
+
+    error:
+      return;
     });
 
+    return pgres;
+  });
+
+  return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
+                      void (^next)(), void (^cleanup)(cleanupHandler)) {
     req->mSet("pg", postgres);
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
-        //
     }));
+
     next();
   });
+
+error:
+  PQfinish(pgConnection);
+  return ^(UNUSED request_t *req, UNUSED response_t *res, void (^next)(),
+           void (^cleanup)(cleanupHandler)) {
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+    }));
+    next();
+  };
 }
