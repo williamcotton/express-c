@@ -415,7 +415,7 @@ int main() {
     res->redirect("back");
   });
 
-  router_t *router = expressRouter("/base");
+  router_t *router = expressRouter(0);
 
   router->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
                 void (^cleanup)(cleanupHandler)) {
@@ -455,7 +455,7 @@ int main() {
     res->send(super->uuid);
   });
 
-  router_t *nestedRouter = expressRouter("/nested");
+  router_t *nestedRouter = expressRouter(0);
 
   nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
@@ -495,7 +495,7 @@ int main() {
     res->send(super->uuid);
   });
 
-  router_t *paramsRouter = expressRouter("/params/:id");
+  router_t *paramsRouter = expressRouter(0);
 
   paramsRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
@@ -543,11 +543,11 @@ int main() {
     free(id);
   });
 
-  router->useRouter(nestedRouter);
-  router->useRouter(paramsRouter);
+  // TODO: Order matters, fix this!
+  app.useRouter("/base", router);
 
-  // TODO: add another app.useRouter that connects at base path
-  app.useRouter(router);
+  router->useRouter("/nested", nestedRouter);
+  router->useRouter("/params/:id", paramsRouter);
 
   app.cleanup(^{
     free(staticFilesPath);

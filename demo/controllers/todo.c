@@ -5,7 +5,7 @@
 #include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
 
 router_t *todosController(embedded_files_data_t embeddedFiles) {
-  router_t *router = expressRouter("");
+  router_t *router = expressRouter(0);
 
   router->use(cJSONCookieSessionMiddlewareFactory());
   router->use(todoStoreMiddleware());

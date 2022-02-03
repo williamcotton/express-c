@@ -288,7 +288,7 @@ typedef struct router_t {
   void (^delete)(const char *path, requestHandler);
   void (^all)(const char *path, requestHandler); // TODO: add router.all
   void (^use)(middlewareHandler);
-  void (^useRouter)(struct router_t *router);
+  void (^useRouter)(char *basePath, struct router_t *router);
   void (^param)(const char *param, paramHandler); // TODO: add router.param
   void (^handler)(request_t *req, response_t *res);
   route_handler_t *routeHandlers;
@@ -299,7 +299,7 @@ typedef struct router_t {
   int routerCount;
 } router_t;
 
-router_t *expressRouter(char *basePath);
+router_t *expressRouter(int basePath);
 
 /* server */
 
@@ -321,7 +321,7 @@ typedef struct app_t {
   void (^all)(const char *path, requestHandler); // TODO: add app.all
   void (^listen)(int port, void (^callback)());
   void (^use)(middlewareHandler);
-  void (^useRouter)(router_t *router);
+  void (^useRouter)(char *basePath, router_t *router);
   void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);

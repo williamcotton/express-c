@@ -1667,10 +1667,10 @@ memSessionMiddlewareFactory(mem_session_t *memSession,
 
 /* expressRouter */
 
-router_t *expressRouter(char *basePath) {
+router_t *expressRouter(int basePath) {
   __block router_t *router = malloc(sizeof(router_t));
 
-  router->basePath = basePath;
+  router->basePath = basePath ? "" : "/";
   router->routeHandlers = malloc(sizeof(route_handler_t));
   router->routeHandlerCount = 0;
   router->middlewares = malloc(sizeof(middleware_t));
@@ -1732,9 +1732,7 @@ router_t *expressRouter(char *basePath) {
         (middleware_t){.handler = handler};
   });
 
-  // TODO: useRouter("/api", apiRouter);
-  router->useRouter = Block_copy(^(router_t *_router) {
-    char *_basePath = (char *)_router->basePath;
+  router->useRouter = Block_copy(^(char *_basePath, router_t *_router) {
     size_t basePathLen = strlen(router->basePath) + strlen(_basePath) + 1;
     _router->basePath = malloc(basePathLen);
     snprintf((char *)_router->basePath, basePathLen, "%s%s", router->basePath,
@@ -1745,6 +1743,8 @@ router_t *expressRouter(char *basePath) {
 
     for (int i = 0; i < _router->routeHandlerCount; i++) {
       _router->routeHandlers[i].basePath = (char *)_router->basePath;
+      _router->routeHandlers[i].regex = _router->routeHandlers[i].regex ||
+                                        strchr(_router->basePath, ':') != NULL;
       if (_router->routeHandlers[i].regex)
         _router->routeHandlers[i].paramMatch =
             paramMatch(_router->basePath, _router->routeHandlers[i].path);
@@ -1802,8 +1802,8 @@ app_t express() {
   __block appCleanupHandler *appCleanupBlocks =
       malloc(sizeof(appCleanupHandler));
 
-  __block server_t *server = expressServer();
-  __block router_t *baseRouter = expressRouter("");
+  server_t *server = expressServer();
+  router_t *baseRouter = expressRouter(1);
 
   app.get = baseRouter->get;
   app.post = baseRouter->post;
@@ -1811,7 +1811,7 @@ app_t express() {
   app.patch = baseRouter->patch;
   app.delete = baseRouter->delete;
   app.use = baseRouter->use;
-  app.useRouter = baseRouter->useRouter; // TODO: useRouter("/api", apiRouter);
+  app.useRouter = baseRouter->useRouter;
 
   app.cleanup = Block_copy(^(appCleanupHandler handler) {
     appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) *

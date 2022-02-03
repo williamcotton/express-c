@@ -1,14 +1,7 @@
 #include "../src/express.h"
 #include "controllers/api.h"
 #include "controllers/todo.h"
-#include <Block.h>
-#include <cJSON/cJSON.h>
-#include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
-#include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
 #include <dotenv-c/dotenv.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #ifdef EMBEDDED_FILES
 #include "embeddedFiles.h"
@@ -38,8 +31,8 @@ int main() {
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
   /* Controllers */
-  app.useRouter(apiController());
-  app.useRouter(todosController(embeddedFiles));
+  app.useRouter("/api2", apiController());
+  app.useRouter("/", todosController(embeddedFiles));
 
   /* Clean up */
   app.cleanup(^{
