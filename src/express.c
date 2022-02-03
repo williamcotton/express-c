@@ -1752,6 +1752,7 @@ router_t *expressRouter(int basePath) {
   });
 
   router->handler = Block_copy(^(request_t *req, response_t *res) {
+    // TODO: only run middleware if the request is for this router
     runMiddleware(0, req, res, router, ^{
       route_handler_t routeHandler = matchRouteHandler(req, router);
       if (routeHandler.handler != NULL) {
@@ -1813,6 +1814,7 @@ app_t express() {
   app.use = baseRouter->use;
   app.useRouter = baseRouter->useRouter;
 
+  // TODO: move cleanup to router
   app.cleanup = Block_copy(^(appCleanupHandler handler) {
     appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) *
                                                      (appCleanupCount + 1));
@@ -1821,6 +1823,7 @@ app_t express() {
 
   app.closeServer = Block_copy(^() {
     printf("\nClosing server...\n");
+    // TODO: move freeing of handlers and middleware to router
     freeRouteHandlers(baseRouter->routeHandlers, baseRouter->routeHandlerCount);
     freeMiddlewares(baseRouter->middlewares, baseRouter->middlewareCount);
     server->close();

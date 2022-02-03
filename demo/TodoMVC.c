@@ -14,7 +14,13 @@ int main() {
 
   /* Load .env file */
   env_load(".", false);
-  int port = getenv("PORT") ? atoi(getenv("PORT")) : 3000;
+
+  /* Environment variables */
+  char *PORT = getenv("PORT");
+  char *POSTGRES_URI = getenv("POSTGRES_URI");
+  int port = PORT ? atoi(PORT) : 3000;
+  const char *pgUri =
+      POSTGRES_URI ? POSTGRES_URI : "postgresql://localhost/express-demo";
 
   /* Close app on Ctrl+C */
   signal(SIGINT, SIG_IGN);
@@ -31,7 +37,7 @@ int main() {
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
   /* Controllers */
-  app.useRouter("/api2", apiController());
+  app.useRouter("/api/v1", apiController(pgUri));
   app.useRouter("/", todosController(embeddedFiles));
 
   /* Clean up */
