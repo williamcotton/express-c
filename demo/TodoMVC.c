@@ -37,6 +37,11 @@ int main() {
   char *staticFilesPath = cwdFullPath("demo/public");
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
+  /* Health check */
+  app.get("/healthz", ^(UNUSED request_t *req, response_t *res) {
+    res->send("OK");
+  });
+
   /* Controllers */
   app.useRouter("/api/v1", apiController(pgUri));
   app.useRouter("/", todosController(embeddedFiles));
