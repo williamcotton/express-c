@@ -26,46 +26,73 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define POOL_SIZE 30
+
 middlewareHandler postgresMiddlewareFactory(const char *pgUri) {
-  pg_t *postgres = malloc(sizeof(pg_t));
+  /* Test connection */
+  PGconn *connection = PQconnectdb(pgUri);
+  check(PQstatus(connection) == CONNECTION_OK,
+        "Failed to connect to postgres: %s (%s)", PQerrorMessage(connection),
+        pgUri);
+  PQfinish(connection);
 
-  PGconn *pgConnection = PQconnectdb(pgUri);
+  /* Create pool */
+  pg_t **connectionPool = malloc(sizeof(pg_t *) * POOL_SIZE);
+  dispatch_semaphore_t connectionPoolSemaphore =
+      dispatch_semaphore_create(POOL_SIZE);
+  for (int i = 0; i < POOL_SIZE; i++) {
+    connectionPool[i] = malloc(sizeof(pg_t));
+    connectionPool[i]->connection = PQconnectdb(pgUri);
+    connectionPool[i]->used = 0;
+    connectionPool[i]->exec = Block_copy(^(const char *sql) {
+      PGresult *pgres = PQexec(connectionPool[i]->connection, sql);
+      return pgres;
+    });
+    connectionPool[i]->close = Block_copy(^{
+      PQfinish(connectionPool[i]->connection);
+    });
+  }
 
+  /* Create sync queue for mutex */
   dispatch_queue_t postgresQueue = dispatch_queue_create("postgresQueue", NULL);
 
-  check(PQstatus(pgConnection) == CONNECTION_OK,
-        "Failed to connect to postgres: %s (%s)", PQerrorMessage(pgConnection),
-        pgUri);
-  postgres->connection = pgConnection;
-
-  postgres->exec = Block_copy(^(const char *sql) {
-    __block PGresult *pgres;
-
-    dispatch_sync(postgresQueue, ^{
-      pgres = PQexec(postgres->connection, sql);
-
-      check(PQresultStatus(pgres) == PGRES_TUPLES_OK, "exec failed: %s (%s)",
-            PQerrorMessage(postgres->connection), sql);
-
-    error:
-      return;
-    });
-
-    return pgres;
-  });
-
+  /* Create middleware, getting a postgress connection at the beginning of every
+   * request and releasing it after the request has finished */
   return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
                       void (^next)(), void (^cleanup)(cleanupHandler)) {
+    /* Wait for a connection */
+    dispatch_semaphore_wait(connectionPoolSemaphore, DISPATCH_TIME_FOREVER);
+
+    __block pg_t *postgres;
+
+    /* Get connection */
+    dispatch_sync(postgresQueue, ^{
+      for (int i = 0; i < POOL_SIZE; i++) {
+        if (connectionPool[i]->used == 0) {
+          connectionPool[i]->used = 1;
+          postgres = connectionPool[i];
+          break;
+        }
+      }
+    });
+
     req->mSet("pg", postgres);
 
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+      /* Release connection */
+      dispatch_sync(postgresQueue, ^{
+        postgres->used = 0;
+      });
+
+      /* Signal a release */
+      dispatch_semaphore_signal(connectionPoolSemaphore);
     }));
 
     next();
   });
 
 error:
-  PQfinish(pgConnection);
+  PQfinish(connection);
   return ^(UNUSED request_t *req, UNUSED response_t *res, void (^next)(),
            void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){

@@ -25,6 +25,7 @@
 
 typedef struct pg_t {
   PGconn *connection;
+  int used;
   PGresult * (^exec)(const char *);
   void (^close)();
 } pg_t;
