@@ -1648,10 +1648,10 @@ memSessionMiddlewareFactory(mem_session_t *memSession,
 
 /* expressRouter */
 
-router_t *expressRouter(int basePath) {
+router_t *expressRouter(int isBasePath) {
   __block router_t *router = malloc(sizeof(router_t));
 
-  router->basePath = basePath ? "" : "/";
+  router->basePath = isBasePath ? "" : "/";
   router->routeHandlers = malloc(sizeof(route_handler_t));
   router->routeHandlerCount = 0;
   router->middlewares = malloc(sizeof(middleware_t));
@@ -1781,16 +1781,30 @@ router_t *expressRouter(int basePath) {
     }
     free(router->middlewares);
 
-    // /* Free routers */
+    /* Free routers */
+    for (int i = 0; i < router->routerCount; i++) {
+      router->routers[i]->free();
+      free((void *)router->routers[i]->basePath);
+      free(router->routers[i]);
+    }
     free(router->routers);
 
-    // /* Free app cleanup blocks */
+    /* Free app cleanup blocks */
     for (int i = 0; i < router->appCleanupCount; i++) {
       router->appCleanupBlocks[i]();
     }
+    free(router->appCleanupBlocks);
 
     /* Free router */
+    Block_release(router->get);
+    Block_release(router->post);
+    Block_release(router->put);
+    Block_release(router->patch);
+    Block_release(router->delete);
+    Block_release(router->use);
+    Block_release(router->useRouter);
     Block_release(router->handler);
+    Block_release(router->cleanup);
     Block_release(router->free);
   });
 

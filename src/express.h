@@ -303,7 +303,7 @@ typedef struct router_t {
   int appCleanupCount;
 } router_t;
 
-router_t *expressRouter(int basePath);
+router_t *expressRouter(int isBasePath);
 
 /* server */
 
