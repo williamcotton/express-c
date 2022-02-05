@@ -48,8 +48,8 @@
 /* Private */
 
 #define MAX_REQUEST_SIZE 4096
-#define READ_TIMEOUT_SECS 10
-#define ACCEPT_TIMEOUT_SECS 10
+#define READ_TIMEOUT_SECS 30
+#define ACCEPT_TIMEOUT_SECS 30
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -1189,6 +1189,7 @@ static void freeRequest(request_t req) {
       (void (^*)(request_t *))req.middlewareCleanupBlocks;
   for (int i = 0; i < req.middlewareStackCount; i++) {
     middlewareCleanupBlocks[i](&req);
+    Block_release(middlewareCleanupBlocks[i]);
   }
   free(req.middlewareCleanupBlocks);
   if (req._method != NULL)
