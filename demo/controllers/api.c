@@ -7,7 +7,7 @@ router_t *apiController(const char *pgUri) {
 
   router->use(postgresMiddlewareFactory(pgUri));
 
-  router->get("/todos", ^(UNUSED request_t *req, response_t *res) {
+  router->get("/todos", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     PGresult *pgres = pg->exec(
         "SELECT json_build_object('todos', json_agg(todos)) FROM todos");
