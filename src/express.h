@@ -291,12 +291,16 @@ typedef struct router_t {
   void (^useRouter)(char *basePath, struct router_t *router);
   void (^param)(const char *param, paramHandler); // TODO: add router.param
   void (^handler)(request_t *req, response_t *res);
+  void (^cleanup)(appCleanupHandler);
+  void (^free)();
   route_handler_t *routeHandlers;
   int routeHandlerCount;
   middleware_t *middlewares;
   int middlewareCount;
   struct router_t **routers;
   int routerCount;
+  appCleanupHandler *appCleanupBlocks;
+  int appCleanupCount;
 } router_t;
 
 router_t *expressRouter(int basePath);

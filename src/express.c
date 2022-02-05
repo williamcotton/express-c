@@ -974,32 +974,12 @@ error:
   return -1;
 }
 
-static void freeMiddlewares(middleware_t *middlewares, int middlewareCount) {
-  for (int i = 0; i < middlewareCount; i++) {
-    free((void *)middlewares[i].path);
-    Block_release(middlewares[i].handler);
-  }
-  free(middlewares);
-}
-
 static void paramMatchFree(param_match_t *paramMatch) {
   for (int i = 0; i < paramMatch->count; i++) {
     free(paramMatch->keys[i]);
   }
   free(paramMatch->keys);
   free(paramMatch->regexRoute);
-}
-
-static void freeRouteHandlers(route_handler_t *routeHandlers,
-                              int routeHandlerCount) {
-  for (int i = 0; i < routeHandlerCount; i++) {
-    if (routeHandlers[i].regex) {
-      paramMatchFree(routeHandlers[i].paramMatch);
-      free(routeHandlers[i].paramMatch);
-    }
-    Block_release(routeHandlers[i].handler);
-  }
-  free(routeHandlers);
 }
 
 static int initServerListen(int port, server_t *server) {
@@ -1678,6 +1658,8 @@ router_t *expressRouter(int basePath) {
   router->middlewareCount = 0;
   router->routers = malloc(sizeof(router_t *));
   router->routerCount = 0;
+  router->appCleanupBlocks = malloc(sizeof(appCleanupHandler));
+  router->appCleanupCount = 0;
 
   int isBaseRouter = strlen(router->basePath) == 0;
 
@@ -1774,6 +1756,44 @@ router_t *expressRouter(int basePath) {
     }
   });
 
+  router->cleanup = Block_copy(^(appCleanupHandler handler) {
+    router->appCleanupBlocks =
+        realloc(router->appCleanupBlocks,
+                sizeof(appCleanupHandler) * (router->appCleanupCount + 1));
+    router->appCleanupBlocks[router->appCleanupCount++] = handler;
+  });
+
+  router->free = Block_copy(^(void) {
+    /* Free route handlers */
+    for (int i = 0; i < router->routeHandlerCount; i++) {
+      if (router->routeHandlers[i].regex) {
+        paramMatchFree(router->routeHandlers[i].paramMatch);
+        free(router->routeHandlers[i].paramMatch);
+      }
+      Block_release(router->routeHandlers[i].handler);
+    }
+    free(router->routeHandlers);
+
+    /* Free middleware */
+    for (int i = 0; i < router->middlewareCount; i++) {
+      free((void *)router->middlewares[i].path);
+      Block_release(router->middlewares[i].handler);
+    }
+    free(router->middlewares);
+
+    // /* Free routers */
+    free(router->routers);
+
+    // /* Free app cleanup blocks */
+    for (int i = 0; i < router->appCleanupCount; i++) {
+      router->appCleanupBlocks[i]();
+    }
+
+    /* Free router */
+    Block_release(router->handler);
+    Block_release(router->free);
+  });
+
   return router;
 }
 
@@ -1800,10 +1820,6 @@ static server_t *expressServer() {
 app_t express() {
   app_t app;
 
-  __block int appCleanupCount = 0;
-  __block appCleanupHandler *appCleanupBlocks =
-      malloc(sizeof(appCleanupHandler));
-
   server_t *server = expressServer();
   router_t *baseRouter = expressRouter(1);
 
@@ -1814,24 +1830,16 @@ app_t express() {
   app.delete = baseRouter->delete;
   app.use = baseRouter->use;
   app.useRouter = baseRouter->useRouter;
-
-  // TODO: move cleanup to router
-  app.cleanup = Block_copy(^(appCleanupHandler handler) {
-    appCleanupBlocks = realloc(appCleanupBlocks, sizeof(appCleanupHandler) *
-                                                     (appCleanupCount + 1));
-    appCleanupBlocks[appCleanupCount++] = handler;
-  });
+  app.cleanup = baseRouter->cleanup;
 
   app.closeServer = Block_copy(^() {
     printf("\nClosing server...\n");
-    // TODO: move freeing of handlers and middleware to router
-    freeRouteHandlers(baseRouter->routeHandlers, baseRouter->routeHandlerCount);
-    freeMiddlewares(baseRouter->middlewares, baseRouter->middlewareCount);
+
+    baseRouter->free();
+    free(baseRouter);
+
     server->close();
     free(server);
-    for (int i = 0; i < appCleanupCount; i++) {
-      appCleanupBlocks[i]();
-    }
   });
 
   app.listen = Block_copy(^(int port, void (^callback)()) {
