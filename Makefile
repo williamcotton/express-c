@@ -17,7 +17,7 @@ ifeq ($(PLATFORM),LINUX)
 	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
 	PROD_CFLAGS = -Ofast
 else ifeq ($(PLATFORM),DARWIN)
-	DEV_CFLAGS += -fsanitize=address,undefined
+	DEV_CFLAGS += -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability
 	PROD_CFLAGS = -Ofast
 endif
 
@@ -90,7 +90,7 @@ endif
 
 test-threads:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-app.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
+	clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
 	$(BUILD_DIR)/$@
 
 manual-test-trace: build-test-trace
