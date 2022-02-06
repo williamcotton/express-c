@@ -3,7 +3,7 @@
 #include <postgresMiddleware/postgresMiddleware.h>
 
 router_t *apiController(const char *pgUri) {
-  router_t *router = expressRouter(0);
+  router_t *router = expressRouter();
 
   router->use(postgresMiddlewareFactory(pgUri));
 

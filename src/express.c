@@ -1648,10 +1648,10 @@ memSessionMiddlewareFactory(mem_session_t *memSession,
 
 /* expressRouter */
 
-router_t *expressRouter(int isBasePath) {
+router_t *expressRouter() {
   __block router_t *router = malloc(sizeof(router_t));
 
-  router->basePath = isBasePath ? "" : "/";
+  router->basePath = NULL;
   router->routeHandlers = malloc(sizeof(route_handler_t));
   router->routeHandlerCount = 0;
   router->middlewares = malloc(sizeof(middleware_t));
@@ -1661,31 +1661,31 @@ router_t *expressRouter(int isBasePath) {
   router->appCleanupBlocks = malloc(sizeof(appCleanupHandler));
   router->appCleanupCount = 0;
 
-  int isBaseRouter = strlen(router->basePath) == 0;
+  int (^isBaseRouter)(void) = ^{
+    return router->basePath && strlen(router->basePath) == 0;
+  };
 
-  void (^addRouteHandler)(const char *, const char *, requestHandler) =
-      ^(const char *method, const char *path, requestHandler handler) {
-        int regex =
-            strchr(path, ':') != NULL || strchr(router->basePath, ':') != NULL;
-        router->routeHandlers =
-            realloc(router->routeHandlers,
-                    sizeof(route_handler_t) * (router->routeHandlerCount + 1));
-        size_t basePathLen = strlen(router->basePath);
-        size_t pathLen = strlen(path);
+  void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(
+      const char *method, const char *path, requestHandler handler) {
+    int regex = strchr(path, ':') != NULL;
+    router->routeHandlers =
+        realloc(router->routeHandlers,
+                sizeof(route_handler_t) * (router->routeHandlerCount + 1));
+    size_t pathLen = strlen(path);
 
-        route_handler_t routeHandler = {
-            .method = method,
-            .path = basePathLen && pathLen == 1 && path[0] == '/' ? "" : path,
-            .regex = regex,
-            .handler = handler,
-        };
-        if (isBaseRouter) {
-          routeHandler.basePath = (char *)router->basePath;
-          routeHandler.paramMatch =
-              regex ? paramMatch(router->basePath, path) : NULL;
-        }
-        router->routeHandlers[router->routeHandlerCount++] = routeHandler;
-      };
+    route_handler_t routeHandler = {
+        .method = method,
+        .path = !isBaseRouter() && pathLen == 1 && path[0] == '/' ? "" : path,
+        .regex = regex,
+        .handler = handler,
+    };
+    if (isBaseRouter()) {
+      routeHandler.basePath = (char *)router->basePath;
+      routeHandler.paramMatch =
+          regex ? paramMatch(router->basePath, path) : NULL;
+    }
+    router->routeHandlers[router->routeHandlerCount++] = routeHandler;
+  };
 
   router->get = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("GET", path, handler);
@@ -1715,23 +1715,41 @@ router_t *expressRouter(int isBasePath) {
         (middleware_t){.handler = handler};
   });
 
-  router->useRouter = Block_copy(^(char *_basePath, router_t *_router) {
-    size_t basePathLen = strlen(router->basePath) + strlen(_basePath) + 1;
-    _router->basePath = malloc(basePathLen);
-    snprintf((char *)_router->basePath, basePathLen, "%s%s", router->basePath,
-             _basePath);
+  router->mountTo = Block_copy(^(router_t *baseRouter) {
+    if (!baseRouter->basePath)
+      return;
+
+    if (strlen(baseRouter->basePath) == 0 &&
+        strcmp(router->mountPath, "/") == 0) {
+      router->basePath = strdup("");
+    } else {
+      size_t basePathLen =
+          strlen(baseRouter->basePath) + strlen(router->mountPath) + 1;
+      router->basePath = malloc(basePathLen);
+      snprintf((char *)router->basePath, basePathLen, "%s%s",
+               baseRouter->basePath, router->mountPath);
+    }
+
+    for (int i = 0; i < router->routeHandlerCount; i++) {
+      router->routeHandlers[i].basePath = (char *)router->basePath;
+      router->routeHandlers[i].regex = router->routeHandlers[i].regex ||
+                                       strchr(router->basePath, ':') != NULL;
+      if (router->routeHandlers[i].regex)
+        router->routeHandlers[i].paramMatch =
+            paramMatch(router->basePath, router->routeHandlers[i].path);
+    }
+
+    for (int i = 0; i < router->routerCount; i++) {
+      router->routers[i]->mountTo(router);
+    }
+  });
+
+  router->useRouter = Block_copy(^(char *mountPath, router_t *routerToMount) {
+    routerToMount->mountPath = mountPath;
     router->routers = realloc(router->routers,
                               sizeof(router_t *) * (router->routerCount + 1));
-    router->routers[router->routerCount++] = _router;
-
-    for (int i = 0; i < _router->routeHandlerCount; i++) {
-      _router->routeHandlers[i].basePath = (char *)_router->basePath;
-      _router->routeHandlers[i].regex = _router->routeHandlers[i].regex ||
-                                        strchr(_router->basePath, ':') != NULL;
-      if (_router->routeHandlers[i].regex)
-        _router->routeHandlers[i].paramMatch =
-            paramMatch(_router->basePath, _router->routeHandlers[i].path);
-    }
+    router->routers[router->routerCount++] = routerToMount;
+    routerToMount->mountTo(router);
   });
 
   router->handler = Block_copy(^(request_t *req, response_t *res) {
@@ -1750,7 +1768,7 @@ router_t *expressRouter(int isBasePath) {
       router->routers[i]->handler(req, res);
     }
 
-    if (isBaseRouter && res->didSend == 0) {
+    if (isBaseRouter() && res->didSend == 0) {
       res->status = 404;
       res->sendf(errorHTML, req->path);
     }
@@ -1802,6 +1820,7 @@ router_t *expressRouter(int isBasePath) {
     Block_release(router->patch);
     Block_release(router->delete);
     Block_release(router->use);
+    Block_release(router->mountTo);
     Block_release(router->useRouter);
     Block_release(router->handler);
     Block_release(router->cleanup);
@@ -1835,7 +1854,10 @@ app_t express() {
   app_t app;
 
   server_t *server = expressServer();
-  router_t *baseRouter = expressRouter(1);
+  router_t *baseRouter = expressRouter();
+
+  baseRouter->basePath = "";
+  baseRouter->mountPath = "";
 
   app.get = baseRouter->get;
   app.post = baseRouter->post;

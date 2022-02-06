@@ -216,7 +216,7 @@ void runTests(int runAndExit, app_t app) {
         t->strEqual("root", curlGet("/base/params/blip"),
                     "Hello Params blip Router!");
         t->strEqual("custom request middleware", curlGet("/base/params/blip/m"),
-                    "super-nested-router test blip");
+                    "super-params-router test blip");
       });
     });
   });
@@ -415,7 +415,7 @@ int main() {
     res->redirect("back");
   });
 
-  router_t *router = expressRouter(0);
+  router_t *router = expressRouter();
 
   router->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
                 void (^cleanup)(cleanupHandler)) {
@@ -455,7 +455,7 @@ int main() {
     res->send(super->uuid);
   });
 
-  router_t *nestedRouter = expressRouter(0);
+  router_t *nestedRouter = expressRouter();
 
   nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
@@ -495,7 +495,7 @@ int main() {
     res->send(super->uuid);
   });
 
-  router_t *paramsRouter = expressRouter(0);
+  router_t *paramsRouter = expressRouter();
 
   paramsRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
@@ -538,16 +538,14 @@ int main() {
 
   paramsRouter->get("/m", ^(request_t *req, response_t *res) {
     char *id = req->params("id");
-    super_t *super = req->m("super-nested-router");
+    super_t *super = req->m("super-params-router");
     res->sendf("%s %s", super->uuid, id);
     free(id);
   });
 
-  // TODO: Order matters, fix this!
-  app.useRouter("/base", router);
-
-  router->useRouter("/nested", nestedRouter);
   router->useRouter("/params/:id", paramsRouter);
+  app.useRouter("/base", router);
+  router->useRouter("/nested", nestedRouter);
 
   app.cleanup(^{
     free(staticFilesPath);

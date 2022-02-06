@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 router_t *todosController(embedded_files_data_t embeddedFiles) {
-  router_t *router = expressRouter(0);
+  router_t *router = expressRouter();
 
   router->use(cJSONCookieSessionMiddlewareFactory());
   router->use(todoStoreMiddleware());

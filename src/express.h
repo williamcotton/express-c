@@ -281,6 +281,7 @@ typedef struct middleware_t {
 
 typedef struct router_t {
   const char *basePath;
+  const char *mountPath;
   void (^get)(const char *path, requestHandler);
   void (^post)(const char *path, requestHandler);
   void (^put)(const char *path, requestHandler);
@@ -288,7 +289,8 @@ typedef struct router_t {
   void (^delete)(const char *path, requestHandler);
   void (^all)(const char *path, requestHandler); // TODO: add router.all
   void (^use)(middlewareHandler);
-  void (^useRouter)(char *basePath, struct router_t *router);
+  void (^useRouter)(char *mountPath, struct router_t *routerToMount);
+  void (^mountTo)(struct router_t *baseRouter);
   void (^param)(const char *param, paramHandler); // TODO: add router.param
   void (^handler)(request_t *req, response_t *res);
   void (^cleanup)(appCleanupHandler);
@@ -303,7 +305,7 @@ typedef struct router_t {
   int appCleanupCount;
 } router_t;
 
-router_t *expressRouter(int isBasePath);
+router_t *expressRouter();
 
 /* server */
 
@@ -325,7 +327,7 @@ typedef struct app_t {
   void (^all)(const char *path, requestHandler); // TODO: add app.all
   void (^listen)(int port, void (^callback)());
   void (^use)(middlewareHandler);
-  void (^useRouter)(char *basePath, router_t *router);
+  void (^useRouter)(char *mountPath, struct router_t *routerToMount);
   void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);
