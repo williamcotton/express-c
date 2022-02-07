@@ -282,6 +282,7 @@ typedef struct middleware_t {
 typedef struct router_t {
   const char *basePath;
   const char *mountPath;
+  int isBaseRouter;
   void (^get)(const char *path, requestHandler);
   void (^post)(const char *path, requestHandler);
   void (^put)(const char *path, requestHandler);

@@ -1149,12 +1149,18 @@ static route_handler_t matchRouteHandler(request_t *req, router_t *router) {
       continue;
     }
 
-    if (strcmp(routeHandlerFullPath, req->pathMatch) == 0) {
+    if (strcmp(routeHandlerFullPath, req->pathMatch) == 0 &&
+        router->routeHandlers[i].regex) {
       free(routeHandlerFullPath);
       return router->routeHandlers[i];
     }
 
     if (strcmp(routeHandlerFullPath, req->path) == 0) {
+      free(routeHandlerFullPath);
+      return router->routeHandlers[i];
+    }
+
+    if (strcmp(routeHandlerFullPath, "") == 0 && strcmp(req->path, "/") == 0) {
       free(routeHandlerFullPath);
       return router->routeHandlers[i];
     }
@@ -1652,6 +1658,7 @@ router_t *expressRouter() {
   __block router_t *router = malloc(sizeof(router_t));
 
   router->basePath = NULL;
+  router->isBaseRouter = 0;
   router->routeHandlers = malloc(sizeof(route_handler_t));
   router->routeHandlerCount = 0;
   router->middlewares = malloc(sizeof(middleware_t));
@@ -1662,30 +1669,30 @@ router_t *expressRouter() {
   router->appCleanupCount = 0;
 
   int (^isBaseRouter)(void) = ^{
-    return router->basePath && strlen(router->basePath) == 0;
+    return router->isBaseRouter;
   };
 
-  void (^addRouteHandler)(const char *, const char *, requestHandler) = ^(
-      const char *method, const char *path, requestHandler handler) {
-    int regex = strchr(path, ':') != NULL;
-    router->routeHandlers =
-        realloc(router->routeHandlers,
-                sizeof(route_handler_t) * (router->routeHandlerCount + 1));
-    size_t pathLen = strlen(path);
+  void (^addRouteHandler)(const char *, const char *, requestHandler) =
+      ^(const char *method, const char *path, requestHandler handler) {
+        route_handler_t routeHandler = {
+            .method = method,
+            .path = !isBaseRouter() && strcmp(path, "/") == 0 ? "" : path,
+            .regex = strchr(path, ':') != NULL,
+            .handler = handler,
+        };
 
-    route_handler_t routeHandler = {
-        .method = method,
-        .path = !isBaseRouter() && pathLen == 1 && path[0] == '/' ? "" : path,
-        .regex = regex,
-        .handler = handler,
-    };
-    if (isBaseRouter()) {
-      routeHandler.basePath = (char *)router->basePath;
-      routeHandler.paramMatch =
-          regex ? paramMatch(router->basePath, path) : NULL;
-    }
-    router->routeHandlers[router->routeHandlerCount++] = routeHandler;
-  };
+        router->routeHandlers =
+            realloc(router->routeHandlers,
+                    sizeof(route_handler_t) * (router->routeHandlerCount + 1));
+
+        if (isBaseRouter()) {
+          routeHandler.basePath = (char *)router->basePath;
+          routeHandler.paramMatch =
+              routeHandler.regex ? paramMatch(router->basePath, path) : NULL;
+        }
+
+        router->routeHandlers[router->routeHandlerCount++] = routeHandler;
+      };
 
   router->get = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("GET", path, handler);
@@ -1858,6 +1865,7 @@ app_t express() {
 
   baseRouter->basePath = "";
   baseRouter->mountPath = "";
+  baseRouter->isBaseRouter = 1;
 
   app.get = baseRouter->get;
   app.post = baseRouter->post;

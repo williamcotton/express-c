@@ -43,8 +43,8 @@ int main() {
   });
 
   /* Controllers */
-  app.useRouter("/api/v1", apiController(pgUri));
   app.useRouter("/", todosController(embeddedFiles));
+  app.useRouter("/api/v1", apiController(pgUri));
 
   /* Clean up */
   app.cleanup(^{

@@ -218,6 +218,10 @@ void runTests(int runAndExit, app_t app) {
         t->strEqual("custom request middleware", curlGet("/base/params/blip/m"),
                     "super-params-router test blip");
       });
+
+      t->test("Root router", ^(tape_t *t) {
+        t->strEqual("root route", curlGet("/root"), "Hello Root Router!");
+      });
     });
   });
 
@@ -543,6 +547,17 @@ int main() {
     free(id);
   });
 
+  router_t *rootRouter = expressRouter();
+
+  rootRouter->get("/", ^(UNUSED request_t *req, response_t *res) {
+    res->send("Hello Root Router!");
+  });
+
+  rootRouter->get("/root", ^(UNUSED request_t *req, response_t *res) {
+    res->send("Hello Root Router!");
+  });
+
+  app.useRouter("/", rootRouter);
   router->useRouter("/params/:id", paramsRouter);
   app.useRouter("/base", router);
   router->useRouter("/nested", nestedRouter);
