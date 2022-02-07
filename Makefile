@@ -38,10 +38,23 @@ test:
 	clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
+test-coverage-html:
+	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/coverage
+	$(shell brew --prefix llvm)/bin/clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
+	$(shell brew --prefix llvm)/bin/llvm-profdata merge -sparse build/test.profraw -o build/test.profdata
+	$(shell brew --prefix llvm)/bin/llvm-cov show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > $(BUILD_DIR)/coverage.html
+	open $(BUILD_DIR)/coverage.html
+
 test-coverage:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) --coverage
-	$(BUILD_DIR)/$@
+	mkdir -p $(BUILD_DIR)/coverage
+	$(shell brew --prefix llvm)/bin/clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
+	$(shell brew --prefix llvm)/bin/llvm-profdata merge -sparse build/test.profraw -o build/test.profdata
+	$(shell brew --prefix llvm)/bin/llvm-cov report $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
+	rm *.gc*
 
 lint:
 ifeq ($(PLATFORM),LINUX)
