@@ -30,4 +30,16 @@ typedef struct pg_t {
   void (^close)();
 } pg_t;
 
-middlewareHandler postgresMiddlewareFactory(const char *pgUri);
+typedef struct postgres_connection_t {
+  const char *uri;
+  pg_t **pool;
+  dispatch_semaphore_t semaphore;
+  dispatch_queue_t queue;
+  int poolSize;
+} postgres_connection_t;
+
+postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
+
+void freePostgresConnection(postgres_connection_t *postgres);
+
+middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);

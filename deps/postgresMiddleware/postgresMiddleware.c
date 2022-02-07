@@ -26,66 +26,91 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define POOL_SIZE 30
+void freePostgresConnection(postgres_connection_t *postgres) {
+  for (int i = 0; i < postgres->poolSize; i++) {
+    Block_release(postgres->pool[i]->exec);
+    Block_release(postgres->pool[i]->close);
+    PQfinish(postgres->pool[i]->connection);
+    free(postgres->pool[i]);
+  }
+  free(postgres->pool);
+  dispatch_release(postgres->semaphore);
+  dispatch_release(postgres->queue);
+  free(postgres);
+}
 
-middlewareHandler postgresMiddlewareFactory(const char *pgUri) {
-  /* Test connection */
-  PGconn *connection = PQconnectdb(pgUri);
-  check(PQstatus(connection) == CONNECTION_OK,
-        "Failed to connect to postgres: %s (%s)", PQerrorMessage(connection),
-        pgUri);
-  PQfinish(connection);
+postgres_connection_t *initPostgressConnection(const char *pgUri,
+                                               int poolSize) {
+  postgres_connection_t *postgres = malloc(sizeof(postgres_connection_t));
+  check(postgres, "Failed to allocate postgres connection pool");
 
-  /* Create pool */
-  pg_t **connectionPool = malloc(sizeof(pg_t *) * POOL_SIZE);
-  dispatch_semaphore_t connectionPoolSemaphore =
-      dispatch_semaphore_create(POOL_SIZE);
-  for (int i = 0; i < POOL_SIZE; i++) {
-    connectionPool[i] = malloc(sizeof(pg_t));
-    connectionPool[i]->connection = PQconnectdb(pgUri);
-    connectionPool[i]->used = 0;
-    connectionPool[i]->exec = Block_copy(^(const char *sql) {
-      PGresult *pgres = PQexec(connectionPool[i]->connection, sql);
+  postgres->uri = pgUri;
+
+  postgres->poolSize = poolSize;
+
+  postgres->pool = malloc(sizeof(pg_t *) * postgres->poolSize);
+  check(postgres->pool, "Failed to allocate postgres connection pool");
+
+  postgres->semaphore = dispatch_semaphore_create(postgres->poolSize);
+
+  postgres->queue = dispatch_queue_create("postgres", NULL);
+
+  for (int i = 0; i < postgres->poolSize; i++) {
+    postgres->pool[i] = malloc(sizeof(pg_t));
+    postgres->pool[i]->connection = PQconnectdb(postgres->uri);
+    postgres->pool[i]->used = 0;
+    postgres->pool[i]->exec = Block_copy(^(const char *sql) {
+      PGresult *pgres = PQexec(postgres->pool[i]->connection, sql);
       return pgres;
     });
-    connectionPool[i]->close = Block_copy(^{
-      PQfinish(connectionPool[i]->connection);
+    postgres->pool[i]->close = Block_copy(^{
+      PQfinish(postgres->pool[i]->connection);
     });
   }
 
-  /* Create sync queue for mutex */
-  dispatch_queue_t postgresQueue = dispatch_queue_create("postgresQueue", NULL);
+  return postgres;
+error:
+  return NULL;
+}
+
+middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
+  /* Test connection */
+  PGconn *connection = PQconnectdb(postgres->uri);
+  check(PQstatus(connection) == CONNECTION_OK,
+        "Failed to connect to postgres: %s (%s)", PQerrorMessage(connection),
+        postgres->uri);
+  PQfinish(connection);
 
   /* Create middleware, getting a postgress connection at the beginning of every
    * request and releasing it after the request has finished */
   return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
                       void (^next)(), void (^cleanup)(cleanupHandler)) {
     /* Wait for a connection */
-    dispatch_semaphore_wait(connectionPoolSemaphore, DISPATCH_TIME_FOREVER);
+    dispatch_semaphore_wait(postgres->semaphore, DISPATCH_TIME_FOREVER);
 
-    __block pg_t *postgres;
+    __block pg_t *pg;
 
     /* Get connection */
-    dispatch_sync(postgresQueue, ^{
-      for (int i = 0; i < POOL_SIZE; i++) {
-        if (connectionPool[i]->used == 0) {
-          connectionPool[i]->used = 1;
-          postgres = connectionPool[i];
+    dispatch_sync(postgres->queue, ^{
+      for (int i = 0; i < postgres->poolSize; i++) {
+        if (postgres->pool[i]->used == 0) {
+          postgres->pool[i]->used = 1;
+          pg = postgres->pool[i];
           break;
         }
       }
     });
 
-    req->mSet("pg", postgres);
+    req->mSet("pg", pg);
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
       /* Release connection */
-      dispatch_sync(postgresQueue, ^{
-        postgres->used = 0;
+      dispatch_sync(postgres->queue, ^{
+        pg->used = 0;
       });
 
       /* Signal a release */
-      dispatch_semaphore_signal(connectionPoolSemaphore);
+      dispatch_semaphore_signal(postgres->semaphore);
     }));
 
     next();

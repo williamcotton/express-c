@@ -2,10 +2,14 @@
 #include <Block.h>
 #include <postgresMiddleware/postgresMiddleware.h>
 
+#define POOL_SIZE 30
+
 router_t *apiController(const char *pgUri) {
   router_t *router = expressRouter();
 
-  router->use(postgresMiddlewareFactory(pgUri));
+  postgres_connection_t *postgres = initPostgressConnection(pgUri, POOL_SIZE);
+
+  router->use(postgresMiddlewareFactory(postgres));
 
   router->get("/todos", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
@@ -23,6 +27,10 @@ router_t *apiController(const char *pgUri) {
     res->json(json);
     PQclear(pgres);
   });
+
+  router->cleanup(Block_copy(^{
+    freePostgresConnection(postgres);
+  }));
 
   return router;
 }
