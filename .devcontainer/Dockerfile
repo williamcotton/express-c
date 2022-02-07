@@ -18,3 +18,6 @@ WORKDIR /vscode/swift-corelibs-libdispatch
 RUN ls -al
 RUN cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ .
 RUN ninja install
+
+RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
+RUN chmod +x /usr/local/bin/dbmate

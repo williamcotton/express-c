@@ -18,10 +18,10 @@ int main() {
 
   /* Environment variables */
   char *PORT = getenv("PORT");
-  char *POSTGRES_URI = getenv("POSTGRES_URI");
+  char *DATABASE_URL = getenv("DATABASE_URL");
   int port = PORT ? atoi(PORT) : 3000;
   const char *pgUri =
-      POSTGRES_URI ? POSTGRES_URI : "postgresql://localhost/express-demo";
+      DATABASE_URL ? DATABASE_URL : "postgresql://localhost/express-demo";
 
   /* Close app on Ctrl+C */
   signal(SIGINT, SIG_IGN);
