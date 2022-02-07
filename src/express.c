@@ -1817,6 +1817,7 @@ router_t *expressRouter() {
     /* Free app cleanup blocks */
     for (int i = 0; i < router->appCleanupCount; i++) {
       router->appCleanupBlocks[i]();
+      Block_release(router->appCleanupBlocks[i]);
     }
     free(router->appCleanupBlocks);
 
