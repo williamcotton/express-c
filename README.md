@@ -137,7 +137,7 @@ Take a look at the [Todo store middleware](https://github.com/williamcotton/expr
 ### OS X
 
 ```
-$ brew install llvm clib fswatch
+$ brew install llvm clib fswatch dbmate
 ```
 
 ### Linux
