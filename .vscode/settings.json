@@ -70,4 +70,16 @@
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "database": "express-demo",
+      "username": "postgres",
+      "password": "postgres",
+      "name": "express-demo"
+    }
+  ],
 }
