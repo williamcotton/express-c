@@ -31,7 +31,10 @@
 		"vadimcn.vscode-lldb",
 		"github.copilot-nightly",
 		"mtxr.sqltools",
-		"mtxr.sqltools-driver-pg"
+		"mtxr.sqltools-driver-pg",
+		"mikestead.dotenv",
+		"dawhite.mustache",
+		"xaver.clang-format"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [

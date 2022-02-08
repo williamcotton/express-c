@@ -4,6 +4,9 @@
     "ms-vscode.cpptools-themes",
     "ms-vscode.cpptools-extension-pack",
     "vadimcn.vscode-lldb",
-    "github.copilot-nightly"
+    "github.copilot-nightly",
+    "mikestead.dotenv",
+    "dawhite.mustache",
+    "xaver.clang-format"
   ]
 }
