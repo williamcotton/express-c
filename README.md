@@ -21,114 +21,59 @@ Please [open an issue](https://github.com/williamcotton/express-c/issues/new) or
 ## Basic Usage
 
 ```c
-...
+#include "../src/express.h"
+#include <dotenv-c/dotenv.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-int main()
-{
-  env_load(".", false);
+char *styles = "<link rel='stylesheet' href='/demo/public/app.css'>";
 
+char *createTodoForm =
+    "<form method='POST' action='/todo/create'>"
+    "  <p><label>Title: <input type='text' name='title'></label></p>"
+    "  <p><label>Body: <input type='text' name='body'></label></p>"
+    "  </p><input type='submit' value='Create'></p>"
+    "</form>";
+
+int main() {
   app_t app = express();
-  int port = getenv("PORT") ? atoi(getenv("PORT")) : 3000;
 
+  /* Load .env file */
+  env_load(".", false);
+  char *PORT = getenv("PORT");
+  int port = PORT ? atoi(PORT) : 3000;
+
+  /* Load static files */
+  embedded_files_data_t embeddedFiles = {0};
   char *staticFilesPath = cwdFullPath("demo/public");
-  app.use(expressStatic("demo/public", staticFilesPath));
-  app.use(cJSONCookieSessionMiddlewareFactory());
-  app.use(todoStoreMiddleware());
-  app.use(cJSONMustacheMiddleware("demo/views"));
+  app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
-  app.get("/", ^(request_t *req, response_t *res) {
-    char *queryFilter = req->query("filter");
-    char *filter = queryFilter ? queryFilter : "all";
-    todo_store_t *todoStore = req->m("todoStore");
-
-    __block int completedCount = 0;
-    __block int total = 0;
-
-    collection_t *todosCollection = todoStore->filter(^(void *item) {
-      todo_t *todo = (todo_t *)item;
-      total++;
-      if (todo->completed)
-        completedCount++;
-      return strcmp(filter, "all") == 0 ||
-             (strcmp(filter, "active") == 0 && !todo->completed) ||
-             (strcmp(filter, "completed") == 0 && todo->completed);
-    });
-
-    int uncompletedCount = total - completedCount;
-
-    cJSON *json = cJSON_CreateObject();
-    cJSON *todos = cJSON_AddArrayToObject(json, "todos");
-
-    cJSON_AddStringToObject(json, "filterAll", strcmp(filter, "all") == 0 ? "selected" : "");
-    cJSON_AddStringToObject(json, "filterActive", strcmp(filter, "active") == 0 ? "selected" : "");
-    cJSON_AddStringToObject(json, "filterCompleted", strcmp(filter, "completed") == 0 ? "selected" : "");
-
-    todosCollection->each(^(void *item) {
-      todo_t *todo = item;
-      cJSON_AddItemToArray(todos, todo->toJSON());
-    });
-
-    cJSON_AddNumberToObject(json, "uncompletedCount", uncompletedCount);
-
-    uncompletedCount == 1 ? cJSON_AddTrueToObject(json, "hasUncompletedSingular") : cJSON_AddFalseToObject(json, "hasUncompletedSingular");
-    completedCount > 0 ? cJSON_AddTrueToObject(json, "hasCompleted") : cJSON_AddFalseToObject(json, "hasCompleted");
-    total == 0 ? cJSON_AddTrueToObject(json, "noTodos") : cJSON_AddFalseToObject(json, "noTodos");
-
-    res->render("index", json);
-
-    if (strcmp(filter, "all") != 0)
-      free(filter);
+  /* Route handlers */
+  app.get("/", ^(UNUSED request_t *req, response_t *res) {
+    res->sendf("%s<h1>Todo App</h1><p>%s</p>", styles, createTodoForm);
   });
 
-  app.post("/todo", ^(request_t *req, response_t *res) {
-    todo_store_t *todoStore = req->m("todoStore");
-    char *title = req->body("title");
-
-    todo_t *newTodo = todoStore->new (title);
-    todoStore->create(newTodo);
-    res->redirect("back");
-
-    free(title);
+  app.post("/todo/create", ^(request_t *req, response_t *res) {
+    res->status = 201;
+    res->sendf("%s<h1>%s</h1><p>%s</p>", styles, req->body("title"), req->body("body"));
   });
 
-  app.put("/todo/:id", ^(request_t *req, response_t *res) {
-    todo_store_t *todoStore = req->m("todoStore");
-    char *idString = req->params("id");
-
-    int id = atoi(idString);
-    todo_t *todo = todoStore->find(id);
-    if (todo != NULL)
-    {
-      todo->completed = !todo->completed;
-      todoStore->update(todo);
-    }
-    res->redirect("back");
-
-    free(idString);
-  });
-
-...
-
-  app.cleanup(^{
-    free(staticFilesPath);
-  });
-
+  /* Start server */
   app.listen(port, ^{
-    printf("TodoMVC app listening at http://localhost:%d\n", port);
+    printf("express-c app listening at http://localhost:%d\n", port);
   });
-
-  return 0;
 }
-
 ```
 
-See the rest of the TodoMVC [demo](https://github.com/williamcotton/express-c/tree/master/demo) for more.
+Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tree/master/demo) for a more complete example that includes [Mustache templates middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONMustacheMiddleware), [cookie-based sessions middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONCookieSessionMiddleware), [thread-safe postgress middleware](https://github.com/williamcotton/express-c/tree/master/deps/postgresMiddleware), and more.
 
 ### Request-Based Memory Management
 
 Features `req.malloc` and `req.blockCopy` to allocate memory which is automatically freed when the request is done.
 
 Middleware is given a `cleanup` callback which is also called at completion of request.
+
+Apps and routers are also given `cleanup` callback stacks which are handled during `app.closeServer()`.
 
 Take a look at the [Todo store middleware](https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c) for an example.
 
@@ -220,6 +165,22 @@ Uses the native `leaks` command line application. Build `make build-test-trace` 
 
 Uses `valgrind` with `--tool=memcheck` and `--leak-check=full` options.
 
+### Linting
+
+Linting using `clang-tidy` with `-warnings-as-errors=*`:
+
+```
+$ make test-lint
+```
+
+### Code formatting
+
+Formatting using `clang-format --dry-run --Werror`:
+
+```
+$ make test-format
+```
+
 ### Watch
 
 To recompile and rerun the tests when a file changes:
@@ -227,6 +188,15 @@ To recompile and rerun the tests when a file changes:
 ```
 $ make test-watch
 ```
+
+### Continuous Integration
+
+There is a [GitHub Actions](https://github.com/williamcotton/express-c/actions) workflow for continuous integration. It builds and runs the a number of tests on both Ubuntu and OS X.
+
+- `make format`
+- `make lint`
+- `make test-leaks`
+- `make test`
 
 ## Dependencies
 
