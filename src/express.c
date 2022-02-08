@@ -195,6 +195,36 @@ static char *getStatusMessage(int status) {
   }
 }
 
+static void removeWhitespace(char *str) {
+  char *p = str;
+  char *q = str;
+  while (*p) {
+    if (*p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') {
+      *q++ = *p;
+    }
+    p++;
+  }
+  *q = '\0';
+}
+
+static const char **split(char *str, char *delim, int *count) {
+  char **result = NULL;
+  char *token = NULL;
+  int i = 0;
+
+  token = strtok(str, delim);
+  while (token != NULL) {
+    result = realloc(result, sizeof(char *) * (i + 1));
+    removeWhitespace(token);
+    result[i] = token;
+    i++;
+    token = strtok(NULL, delim);
+  }
+
+  *count = i;
+  return (const char **)result;
+}
+
 static size_t getFileSize(const char *filePath) {
   struct stat st;
   check(stat(filePath, &st) >= 0, "Could not stat file %s", filePath);
@@ -1113,6 +1143,17 @@ static request_t buildRequest(client_t client, router_t *baseRouter) {
   req.secure = strcmp(req.protocol, "https") == 0;
   char *XRequestedWith = req.get("X-Requested-With");
   req.xhr = XRequestedWith && strcmp(XRequestedWith, "XMLHttpRequest") == 0;
+  char *XForwardedFor = req.get("X-Forwarded-For");
+  req.ipsCount = 0;
+  req.ips = XForwardedFor ? split(XForwardedFor, ",", &req.ipsCount)
+                          : (const char **)NULL;
+  req.subdomainsCount = 0;
+  req.subdomains = req.hostname
+                       ? split((char *)req.hostname, ".", &req.subdomainsCount)
+                       : (const char **)NULL;
+  if (req.subdomainsCount > 2) {
+    req.subdomainsCount -= 2;
+  }
 
   req.middlewareStackCount = 0;
 
@@ -1194,6 +1235,8 @@ static void freeRequest(request_t req) {
   free(req.paramMatch);
   free((void *)req.hostname);
   free((void *)req.cookiesString);
+  free((void *)req.ips);
+  free((void *)req.subdomains);
   for (int i = 0; i < req.mallocCount; i++) {
     free(req.mallocs[i].ptr);
   }

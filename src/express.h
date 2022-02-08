@@ -150,12 +150,14 @@ typedef struct request_t {
   const char *originalUrl;
   const char *hostname;
   const char *ip;
-  const char **ips; // TODO: add req.ips
+  int ipsCount;
+  const char **ips;
   const char *protocol;
   int secure;
   void *route;
   int xhr;
-  const char **subdomains; // TODO: add req.subdomains
+  int subdomainsCount;
+  const char **subdomains;
   key_value_t queryKeyValues[100];
   size_t queryKeyValueCount;
   const char *queryString;

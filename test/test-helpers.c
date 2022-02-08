@@ -18,8 +18,19 @@ char *curl(char *cmd) {
 // TODO: refactor curlGet and curlDelete
 char *curlGet(char *url) {
   char *curlCmd =
-      "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o "
-      "./test/test-response.html http://127.0.0.1:3032";
+      "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
+      " -o ./test/test-response.html http://127.0.0.1:3032";
+  char cmd[1024];
+  sprintf(cmd, "%s%s", curlCmd, url);
+  return curl(cmd);
+}
+
+char *curlGetHeaders(char *url) {
+  char *curlCmd =
+      "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
+      " -H \"X-Forwarded-For: 1.1.1.1, 2.2.2.2, 3.3.3.3\""
+      " -H \"Host: one.two.three.test.com\""
+      " -o ./test/test-response.html http://127.0.0.1:3032";
   char cmd[1024];
   sprintf(cmd, "%s%s", curlCmd, url);
   return curl(cmd);

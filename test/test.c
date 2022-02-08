@@ -160,8 +160,10 @@ void runTests(int runAndExit, app_t app) {
 
     t->test("Header", ^(tape_t *t) {
       t->strEqual(
-          "headers", curlGet("/headers"),
-          "<h1>Headers</h1><p>Host: 127.0.0.1:3032</p><p>Accept: */*</p>");
+          "headers", curlGetHeaders("/headers"),
+          "<h1>Headers</h1><p>Host: one.two.three.test.com</p><p>Accept: "
+          "*/*</p><p>3 Subdomains: one two three</p><p>3 IPs: 1.1.1.1 2.2.2.2 "
+          "3.3.3.3</p>");
       t->strEqual("set header", curlGet("/set_header"), "test1");
     });
 
@@ -299,8 +301,13 @@ int main() {
   app.get("/headers", ^(request_t *req, response_t *res) {
     char *host = req->get("Host");
     char *accept = req->get("Accept");
-    res->sendf("<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p>", host,
-               accept);
+    const char **subdomains = req->subdomains;
+    const char **ips = req->ips;
+    res->sendf(
+        "<h1>Headers</h1><p>Host: %s</p><p>Accept: %s</p><p>%d Subdomains: "
+        "%s %s %s</p><p>%d IPs: %s %s %s</p>",
+        host, accept, req->subdomainsCount, subdomains[0], subdomains[1],
+        subdomains[2], req->ipsCount, ips[0], ips[1], ips[2]);
     free(host);
     free(accept);
   });
