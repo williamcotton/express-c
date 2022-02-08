@@ -21,6 +21,8 @@ WORKDIR /app
 COPY --from=buildstage /app/sdeps/lib /usr/lib
 COPY --from=buildstage /app/sdeps/usr/local/lib /usr/lib
 COPY --from=buildstage /app/build/TodoMVC /app/build/TodoMVC
+
+COPY --from=buildstage /app/db/migrations /app/db/migrations
 COPY --from=buildstage /usr/local/bin/dbmate /usr/local/bin/dbmate
 
 CMD /app/build/TodoMVC

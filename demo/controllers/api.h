@@ -1,3 +1,3 @@
 #include "../../src/express.h"
 
-router_t *apiController(const char *pgUri);
+router_t *apiController(const char *pgUri, int poolSize);

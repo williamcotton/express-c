@@ -2,12 +2,10 @@
 #include <Block.h>
 #include <postgresMiddleware/postgresMiddleware.h>
 
-#define POOL_SIZE 30
-
-router_t *apiController(const char *pgUri) {
+router_t *apiController(const char *pgUri, int poolSize) {
   router_t *router = expressRouter();
 
-  postgres_connection_t *postgres = initPostgressConnection(pgUri, POOL_SIZE);
+  postgres_connection_t *postgres = initPostgressConnection(pgUri, poolSize);
 
   router->use(postgresMiddlewareFactory(postgres));
 

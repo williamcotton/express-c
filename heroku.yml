@@ -4,5 +4,6 @@ build:
 run:
   web: /app/build/TodoMVC
 release:
+  image: web
   command:
-    - dbmate up
+    - dbmate --migrations-dir /app/db/migrations up
