@@ -11,6 +11,9 @@ RUN make TodoMVC-prod
 RUN ldd /app/build/TodoMVC | tr -s '[:blank:]' '\n' | grep '^/' | \
   xargs -I % sh -c 'mkdir -p $(dirname sdeps%); cp % sdeps%;'
 
+RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
+RUN chmod +x /usr/local/bin/dbmate
+
 FROM ubuntu:hirsute AS deploystage
 
 WORKDIR /app
@@ -18,5 +21,6 @@ WORKDIR /app
 COPY --from=buildstage /app/sdeps/lib /usr/lib
 COPY --from=buildstage /app/sdeps/usr/local/lib /usr/lib
 COPY --from=buildstage /app/build/TodoMVC /app/build/TodoMVC
+COPY --from=buildstage /usr/local/bin/dbmate /usr/local/bin/dbmate
 
 CMD /app/build/TodoMVC

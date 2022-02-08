@@ -3,3 +3,6 @@ build:
     web: Dockerfile.deploy
 run:
   web: /app/build/TodoMVC
+release:
+  command:
+    - dbmate up
