@@ -43,7 +43,7 @@ int main() {
   char *PORT = getenv("PORT");
   int port = PORT ? atoi(PORT) : 3000;
 
-  /* Load static files */
+  /* Load static files middleware */
   embedded_files_data_t embeddedFiles = {0};
   char *staticFilesPath = cwdFullPath("demo/public");
   app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
@@ -65,7 +65,7 @@ int main() {
 }
 ```
 
-Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tree/master/demo) for a more complete example that includes [Mustache templates middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONMustacheMiddleware), [cookie-based sessions middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONCookieSessionMiddleware), [thread-safe postgress middleware](https://github.com/williamcotton/express-c/tree/master/deps/postgresMiddleware), and more.
+Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tree/master/demo) for a more complete example that includes [Mustache templates middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONMustacheMiddleware), [cookie-based sessions middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONCookieSessionMiddleware), [thread-safe postgres middleware](https://github.com/williamcotton/express-c/tree/master/deps/postgresMiddleware), and more.
 
 ### Request-Based Memory Management
 
@@ -75,7 +75,7 @@ Middleware is given a `cleanup` callback which is also called at completion of r
 
 Apps and routers are also given `cleanup` callback stacks which are handled during `app.closeServer()`.
 
-Take a look at the [Todo store middleware](https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c) for an example.
+Take a look at the [todo store middleware](https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c) for an example.
 
 ## Installation
 
@@ -149,7 +149,7 @@ Uses a very simple testing harness to launch a test app and run integration test
 $ make test
 ```
 
-### Memory Leak Testing
+### Memory Leaks
 
 To test for memory leaks:
 
@@ -173,7 +173,7 @@ Linting using `clang-tidy` with `-warnings-as-errors=*`:
 $ make test-lint
 ```
 
-### Code formatting
+### Code Formatting
 
 Formatting using `clang-format --dry-run --Werror`:
 
