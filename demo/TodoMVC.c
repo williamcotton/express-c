@@ -41,9 +41,6 @@ int main() {
 
   /* Health check */
   app.get("/healthz", ^(UNUSED request_t *req, response_t *res) {
-    debug("ip %s", req->ip);
-    debug("X-Forwarded-For: %s", req->get("X-Forwarded-For"));
-    debug("Hostname %s %s", req->get("Hostname"), req->hostname);
     res->send("OK");
   });
 
