@@ -1,3 +1,4 @@
+# Start with the express-c development image
 FROM ghcr.io/williamcotton/express-c:release AS buildstage
 
 ENV LD_LIBRARY_PATH /usr/local/lib
@@ -6,23 +7,32 @@ WORKDIR /app
 
 COPY . .
 
+# Build the production app
 RUN make TodoMVC-prod
 
+# Copy the shared objects to the /app/sdeps directory
 RUN ldd /app/build/TodoMVC | tr -s '[:blank:]' '\n' | grep '^/' | \
   xargs -I % sh -c 'mkdir -p $(dirname sdeps%); cp % sdeps%;'
 
+# Download dbmate
 RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
 RUN chmod +x /usr/local/bin/dbmate
 
+# Grab a fresh copy of our linux image
 FROM ubuntu:hirsute AS deploystage
 
 WORKDIR /app
 
+# Copy the shared objects to our new image
 COPY --from=buildstage /app/sdeps/lib /usr/lib
 COPY --from=buildstage /app/sdeps/usr/local/lib /usr/lib
+
+# Copy the app executable
 COPY --from=buildstage /app/build/TodoMVC /app/build/TodoMVC
 
+# Copy our database migrations
 COPY --from=buildstage /app/db/migrations /app/db/migrations
 COPY --from=buildstage /usr/local/bin/dbmate /usr/local/bin/dbmate
 
+# Run the app
 CMD /app/build/TodoMVC

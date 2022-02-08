@@ -14,7 +14,7 @@ Please [open an issue](https://github.com/williamcotton/express-c/issues/new) or
 
 ## Features
 
-- User-friendly API using blocks modeled after [express](https://expressjs.com/)
+- User-friendly API using blocks modeled on [expressjs](https://expressjs.com/)
 - Uses libdispatch for concurrency
 - Request-based memory management for middleware
 
@@ -67,7 +67,7 @@ int main() {
 
 Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tree/master/demo) for a more complete example that includes [Mustache templates middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONMustacheMiddleware), [cookie-based sessions middleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONCookieSessionMiddleware), [thread-safe postgres middleware](https://github.com/williamcotton/express-c/tree/master/deps/postgresMiddleware), and more.
 
-### Request-Based Memory Management
+### Request-based Memory Management
 
 Features `req.malloc` and `req.blockCopy` to allocate memory which is automatically freed when the request is done.
 
@@ -75,7 +75,7 @@ Middleware is given a `cleanup` callback which is also called at completion of r
 
 Apps and routers are also given `cleanup` callback stacks which are handled during `app.closeServer()`.
 
-Take a look at the [todo store middleware](https://github.com/williamcotton/express-c/blob/master/demo/models/todo.c) for an example.
+Take a look at the [Todo store](https://github.com/williamcotton/express-c/tree/master/demo/models#request-based-memory-management) for an example.
 
 ## Installation
 
@@ -91,7 +91,7 @@ The primary requirements are `clang`, `libbsd`, `libblocksruntime` and `libdispa
 
 The easiest way is to open this in a GitHub Codespace.
 
-Otherwise see the Dockerfile in .devcontainer for full system requirements.
+Otherwise see the [Dockerfile](https://github.com/williamcotton/express-c/blob/master/Dockerfile) for instructions on how to build the dependencies.
 
 ## Demo App
 

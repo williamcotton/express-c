@@ -1,31 +1,20 @@
-/*
-  Copyright (c) 2022 William Cotton
+# Postgres Middleware
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in
-  all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-  THE SOFTWARE.
-*/
-
+```c
 #include "postgresMiddleware.h"
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
+```
 
+### Initialize Connection
+
+Given a postgres database URI, eg, `postgresql://postgres:postgres@localhost:5432/express-demo?sslmode=disable`, and a pool size, eg, `5`.
+
+Our connection pool is thread-safe through the use of a [`libdispatch`](https://apple.github.io/swift-corelibs-libdispatch/tutorial/) semaphore and serial queue.
+
+```c
 postgres_connection_t *initPostgressConnection(const char *pgUri,
                                                int poolSize) {
   postgres_connection_t *postgres = malloc(sizeof(postgres_connection_t));
@@ -59,7 +48,11 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
 error:
   return NULL;
 }
+```
 
+### Free Connection
+
+```c
 void freePostgresConnection(postgres_connection_t *postgres) {
   for (int i = 0; i < postgres->poolSize; i++) {
     Block_release(postgres->pool[i]->exec);
@@ -72,7 +65,13 @@ void freePostgresConnection(postgres_connection_t *postgres) {
   dispatch_release(postgres->queue);
   free(postgres);
 }
+```
 
+### Middleware Factory
+
+Before returning our middleware we check that we can connect to the database.
+
+```c
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
   /* Test connection */
   PGconn *connection = PQconnectdb(postgres->uri);
@@ -80,7 +79,21 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
         "Failed to connect to postgres: %s (%s)", PQerrorMessage(connection),
         postgres->uri);
   PQfinish(connection);
+```
 
+### Middleware
+
+On each request we acquire a connection from the pool and release it upon completion.
+
+First we call `dispatch_semaphore_wait` to wait for a connection to become available.
+
+Once we have a connection we obtain a mutex using `dispatch_sync` on our serial dispatch queue and then mark the connection as in use.
+
+We then set the middleware on the request.
+
+In the cleanup block we obtain another mutex, mark the connection as available, and then signal a release using `dispatch_semaphore_signal`.
+
+```c
   /* Create middleware, getting a postgress connection at the beginning of every
    * request and releasing it after the request has finished */
   return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
@@ -115,7 +128,13 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
 
     next();
   });
+```
 
+### Error Handling
+
+If there was no postgres connection available we free the connection and return an empty middlware.
+
+```c
 error:
   PQfinish(connection);
   return ^(UNUSED request_t *req, UNUSED response_t *res, void (^next)(),
@@ -125,3 +144,4 @@ error:
     next();
   };
 }
+```
