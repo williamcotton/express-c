@@ -394,8 +394,6 @@ int main() {
                                 .expires = "55",
                                 .maxAge = 1000});
     res->send("ok");
-    curl_free(session);
-    curl_free(user);
   });
 
   app.get("/get_cookie", ^(request_t *req, response_t *res) {

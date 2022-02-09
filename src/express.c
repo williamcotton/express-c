@@ -381,12 +381,15 @@ static getBlock reqQueryFactory(request_t *req) {
       if (strncmp(decodedKey, key, keyLen) == 0) {
         curl_free(decodedKey);
         char *value =
-            malloc(sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
+            req->malloc(sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
         strlcpy(value, req->queryKeyValues[i].value,
                 req->queryKeyValues[i].valueLen + 1);
-        char *decodedValue = curl_easy_unescape(
+        char *decodedCurlValue = curl_easy_unescape(
             req->curl, value, req->queryKeyValues[i].valueLen, NULL);
-        free(value);
+        char *decodedValue =
+            req->malloc(sizeof(char) * strlen(decodedCurlValue) + 1);
+        strncpy(decodedValue, decodedCurlValue, strlen(decodedCurlValue) + 1);
+        curl_free(decodedCurlValue);
         return decodedValue;
       }
       curl_free(decodedKey);
@@ -1055,8 +1058,6 @@ static void buildRequest(request_t *req, client_t client,
   req->rawRequestSize = 0;
 
   req->malloc = reqMallocFactory(req);
-  req->blockCopy = reqBlockCopyFactory(req);
-  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
 
   char *method, *originalUrl;
   int parseBytes = 0, minorVersion;
@@ -1102,6 +1103,9 @@ static void buildRequest(request_t *req, client_t client,
 
   long long maxBodyLen = (MAX_REQUEST_SIZE)-parseBytes;
   check(req->contentLength <= maxBodyLen, "Request body too large");
+
+  req->blockCopy = reqBlockCopyFactory(req);
+  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
 
   req->curl = curl_easy_init(); // TODO: move to global scope
 
@@ -1175,6 +1179,10 @@ static void buildRequest(request_t *req, client_t client,
   return;
 error:
   req->method = NULL;
+  for (int i = 0; i < req->mallocCount; i++) {
+    free(req->mallocs[i].ptr);
+  }
+  Block_release(req->malloc);
   if (parseBytes > 0)
     Block_release(req->get);
   return;
