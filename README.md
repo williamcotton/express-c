@@ -69,7 +69,9 @@ Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tre
 
 ### Request-based Memory Management
 
-Features `req.malloc` and `req.blockCopy` to allocate memory which is automatically freed when the request is done.
+Features `req->malloc` and `req->blockCopy` to allocate memory which is automatically freed when the request is done.
+
+These are used internally meaning that calls to `req->params`, `req->body`, `req->get`, `req->query`, and `req->cookie` will return a pointer to the memory which is automatically freed when the request is done.
 
 Middleware is given a `cleanup` callback which is also called at completion of request.
 
