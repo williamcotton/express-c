@@ -461,7 +461,8 @@ static getBlock reqGetFactory(request_t *req) {
     for (size_t i = 0; i != req->numHeaders; ++i) {
       if (strncmp(req->headers[i].name, headerKey, req->headers[i].name_len) ==
           0) {
-        char *value = malloc(sizeof(char) * (req->headers[i].value_len + 1));
+        char *value =
+            req->malloc(sizeof(char) * (req->headers[i].value_len + 1));
         sprintf(value, "%.*s", (int)req->headers[i].value_len,
                 req->headers[i].value);
         return value;
@@ -485,7 +486,7 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
     if (match) {
       int pathMatchLen = strlen(regExRouteHandlers[i].basePath) +
                          strlen(regExRouteHandlers[i].path) + 1;
-      req->pathMatch = malloc(sizeof(char) * pathMatchLen);
+      req->pathMatch = req->malloc(sizeof(char) * pathMatchLen);
       snprintf((char *)req->pathMatch, pathMatchLen, "%s%s",
                regExRouteHandlers[i].basePath, regExRouteHandlers[i].path);
       req->paramKeyValueCount = regExRouteHandlers[i].paramMatch->count;
@@ -502,7 +503,7 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
       size_t keyLen = strlen(key);
       if (strncmp(req->paramKeyValues[j].key, key, keyLen) == 0) {
         char *value =
-            malloc(sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
+            req->malloc(sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
         strlcpy(value, req->paramKeyValues[j].value,
                 req->paramKeyValues[j].valueLen + 1);
         return (char *)value;
@@ -603,7 +604,6 @@ static getBlock reqBodyFactory(request_t *req) {
       } else if (strncmp(contentType, "multipart/form-data", 20) == 0) {
         // printf("multipart/form-data: %s\n", req->bodyString);
       }
-      free(contentType);
     } else {
       req->bodyString[0] = '\0';
     }
@@ -616,7 +616,7 @@ static getBlock reqBodyFactory(request_t *req) {
                              req->bodyKeyValues[i].keyLen, NULL);
       if (strncmp(decodedKey, key, keyLen) == 0) {
         char *value =
-            malloc(sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
+            req->malloc(sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
         strlcpy(value, req->bodyKeyValues[i].value,
                 req->bodyKeyValues[i].valueLen + 1);
         int j = 0;
@@ -625,9 +625,12 @@ static getBlock reqBodyFactory(request_t *req) {
             value[j] = ' ';
           j++;
         }
-        char *decodedValue = curl_easy_unescape(
+        char *decodedCurlValue = curl_easy_unescape(
             req->curl, value, req->bodyKeyValues[i].valueLen, NULL);
-        free(value);
+        char *decodedValue =
+            req->malloc(sizeof(char) * strlen(decodedCurlValue) + 1);
+        strncpy(decodedValue, decodedCurlValue, strlen(decodedCurlValue) + 1);
+        curl_free(decodedCurlValue);
         curl_free(decodedKey);
         return decodedValue;
       }
@@ -1050,6 +1053,11 @@ static void buildRequest(request_t *req, client_t client,
                          router_t *baseRouter) {
   memset(req->rawRequest, 0, sizeof(req->rawRequest));
   req->rawRequestSize = 0;
+
+  req->malloc = reqMallocFactory(req);
+  req->blockCopy = reqBlockCopyFactory(req);
+  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
+
   char *method, *originalUrl;
   int parseBytes = 0, minorVersion;
   size_t prevBufferLen = 0, methodLen, originalUrlLen;
@@ -1084,7 +1092,6 @@ static void buildRequest(request_t *req, client_t client,
         while ((read(client.socket, req->rawRequest + req->rawRequestSize,
                      sizeof(req->rawRequest) - req->rawRequestSize)) == -1)
           ;
-      free(contentLength);
       break;
     } else if (parseBytes == -1)
       sentinel("Parse error");
@@ -1096,9 +1103,6 @@ static void buildRequest(request_t *req, client_t client,
   long long maxBodyLen = (MAX_REQUEST_SIZE)-parseBytes;
   check(req->contentLength <= maxBodyLen, "Request body too large");
 
-  req->malloc = reqMallocFactory(req);
-  req->blockCopy = reqBlockCopyFactory(req);
-  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
   req->curl = curl_easy_init(); // TODO: move to global scope
 
   req->method = malloc(sizeof(char) * (methodLen + 1));
@@ -1227,12 +1231,6 @@ UNUSED static void freeRequest(request_t *req) {
     free((void *)req->method);
   free((void *)req->url);
   free(req->session);
-  if (strlen(req->pathMatch) > 0)
-    free((void *)req->pathMatch);
-  free((void *)req->hostname);
-  free((void *)req->cookiesString);
-  free((void *)req->XRequestedWith);
-  free((void *)req->XForwardedFor);
   free((void *)req->ips);
   free((void *)req->subdomains);
   for (int i = 0; i < req->mallocCount; i++) {

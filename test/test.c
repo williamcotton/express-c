@@ -294,8 +294,6 @@ int main() {
     char *value2 = req->query("value2");
     res->sendf("<h1>Query String</h1><p>Value 1: %s</p><p>Value 2: %s</p>",
                value1, value2);
-    curl_free(value1);
-    curl_free(value2);
   });
 
   app.get("/headers", ^(request_t *req, response_t *res) {
@@ -308,8 +306,6 @@ int main() {
         "%s %s %s</p><p>%d IPs: %s %s %s</p>",
         host, accept, req->subdomainsCount, subdomains[0], subdomains[1],
         subdomains[2], req->ipsCount, ips[0], ips[1], ips[2]);
-    free(host);
-    free(accept);
   });
 
   app.get("/file", ^(UNUSED request_t *req, response_t *res) {
@@ -322,9 +318,6 @@ int main() {
     char *three = req->params("three");
     res->sendf("<h1>Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
                one, two, three);
-    free(one);
-    free(two);
-    free(three);
   });
 
   app.get("/form", ^(UNUSED request_t *req, response_t *res) {
@@ -341,20 +334,18 @@ int main() {
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1,
                param2);
-    curl_free(param1);
-    curl_free(param2);
   });
 
   app.post("/session", ^(request_t *req, response_t *res) {
     char *param1 = req->body("param1");
-    req->session->set("param1", param1);
+    req->session->set("param1", strdup(param1));
     res->send("ok");
   });
 
   app.get("/session", ^(request_t *req, response_t *res) {
     char *param1 = req->session->get("param1");
     res->send(param1);
-    curl_free(param1);
+    free(param1);
   });
 
   app.put("/put/:form", ^(request_t *req, response_t *res) {
@@ -363,8 +354,6 @@ int main() {
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1,
                param2);
-    curl_free(param1);
-    curl_free(param2);
   });
 
   app.patch("/patch/:form", ^(request_t *req, response_t *res) {
@@ -373,14 +362,11 @@ int main() {
     res->status = 201;
     res->sendf("<h1>Form</h1><p>Param 1: %s</p><p>Param 2: %s</p>", param1,
                param2);
-    curl_free(param1);
-    curl_free(param2);
   });
 
   app.delete("/delete/:id", ^(request_t *req, response_t *res) {
     char *id = req->params("id");
     res->sendf("<h1>Delete</h1><p>ID: %s</p>", id);
-    free(id);
   });
 
   app.get("/m", ^(request_t *req, response_t *res) {
@@ -456,9 +442,6 @@ int main() {
         res->sendf(
             "<h1>Base Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
             one, two, three);
-        free(one);
-        free(two);
-        free(three);
       });
 
   router->get("/m", ^(request_t *req, response_t *res) {
@@ -496,9 +479,6 @@ int main() {
     res->sendf(
         "<h1>Nested Params</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
         one, two, three);
-    free(one);
-    free(two);
-    free(three);
   });
 
   nestedRouter->get("/m", ^(request_t *req, response_t *res) {
@@ -523,13 +503,11 @@ int main() {
   paramsRouter->get("/", ^(UNUSED request_t *req, response_t *res) {
     char *id = req->params("id");
     res->sendf("Hello Params %s Router!", id);
-    free(id);
   });
 
   paramsRouter->get("/test", ^(UNUSED request_t *req, response_t *res) {
     char *id = req->params("id");
     res->sendf("Testing Nested %s Router!", id);
-    free(id);
   });
 
   paramsRouter->get("/one/:one/two/:two/:three.jpg", ^(request_t *req,
@@ -541,17 +519,12 @@ int main() {
     res->sendf(
         "<h1>Nested Params %s</h1><p>One: %s</p><p>Two: %s</p><p>Three: %s</p>",
         id, one, two, three);
-    free(id);
-    free(one);
-    free(two);
-    free(three);
   });
 
   paramsRouter->get("/m", ^(request_t *req, response_t *res) {
     char *id = req->params("id");
     super_t *super = req->m("super-params-router");
     res->sendf("%s %s", super->uuid, id);
-    free(id);
   });
 
   router_t *rootRouter = expressRouter();

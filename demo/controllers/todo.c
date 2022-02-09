@@ -66,9 +66,6 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
                : cJSON_AddFalseToObject(json, "noTodos");
 
     res->render("index", json);
-
-    if (strcmp(filter, "all") != 0)
-      free(filter);
   });
 
   router->post("/todo", ^(request_t *req, response_t *res) {
@@ -78,8 +75,6 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
     todo_t *newTodo = todoStore->new (title);
     todoStore->create(newTodo);
     res->redirect("back");
-
-    free(title);
   });
 
   router->put("/todo/:id", ^(request_t *req, response_t *res) {
@@ -93,8 +88,6 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
       todoStore->update(todo);
     }
     res->redirect("back");
-
-    free(idString);
   });
 
   router->delete ("/todo/:id", ^(request_t *req, response_t *res) {
@@ -104,8 +97,6 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
     int id = atoi(idString);
     todoStore->delete (id);
     res->redirect("back");
-
-    free(idString);
   });
 
   router->post("/todo_clear_all_completed", ^(request_t *req, response_t *res) {
