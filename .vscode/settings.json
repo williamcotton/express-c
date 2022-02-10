@@ -67,7 +67,8 @@
     "cjsoncookiesessionmiddleware.h": "c",
     "todo.h": "c",
     "postgresmiddleware.h": "c",
-    "status-message.h": "c"
+    "status-message.h": "c",
+    "tape.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

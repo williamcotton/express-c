@@ -85,6 +85,10 @@ tape_t *tape() {
     return 1;
   };
 
+  tape->mockFail = ^(UNUSED char *name) {
+    return;
+  };
+
   return tape;
 }
 

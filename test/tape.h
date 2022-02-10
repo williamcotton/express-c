@@ -20,6 +20,9 @@
   THE SOFTWARE.
 */
 
+#ifndef TAPE_H
+#define TAPE_H
+
 #define UNUSED __attribute__((unused))
 
 typedef struct tape_t {
@@ -29,6 +32,9 @@ typedef struct tape_t {
   int (^ok)(char *, int);
   int (^strEqual)(char *, char *, char *);
   int (^test)(char *, void (^)(struct tape_t *));
+  void (^mockFail)(char *);
 } tape_t;
 
 tape_t *tape();
+
+#endif // TAPE_H
