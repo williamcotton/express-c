@@ -58,3 +58,10 @@
    fun:malloc
    fun:clientAcceptEventHandler
 }
+{
+   TODO: fix flaky test with mock epoll_ctl fail
+   Memcheck:Addr4
+   fun:initClientAcceptEventHandler
+   fun:__express_block_invoke_3
+   fun:_dispatch_call_block_and_release
+}

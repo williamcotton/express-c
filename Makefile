@@ -3,6 +3,8 @@ ifneq (,$(wildcard ./.env))
 	export
 endif
 
+PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
+
 CC = clang
 PROFDATA = llvm-profdata
 COV = llvm-cov
@@ -25,7 +27,6 @@ TEST_CFLAGS = -Werror
 SRC = src/express.c src/status_message.c
 SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
 BUILD_DIR = build
-PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
 ifeq ($(PLATFORM),LINUX)
 	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
@@ -67,7 +68,7 @@ test-coverage-html:
 	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
-	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > test/code-coverage.html
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > $(BUILD_DIR)/code-coverage.html
 
 test-coverage:
 	mkdir -p $(BUILD_DIR)
@@ -76,7 +77,6 @@ test-coverage:
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
 	$(COV) report $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
-	rm *.gc*
 
 lint:
 ifeq ($(PLATFORM),LINUX)

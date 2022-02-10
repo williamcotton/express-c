@@ -13,6 +13,12 @@ jobs:
       - run: make lint
       - run: make test-leaks
       - run: make test
+      - run: make test-coverage-html
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v2
+        with:
+          name: code-coverage-report
+          path: build/code-coverage.html
   test-mac:
     runs-on: macos-latest
     steps:

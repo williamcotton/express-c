@@ -246,6 +246,7 @@ typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(),
 
 char *generateUuid();
 int writePid(char *pidFile);
+unsigned long readPid(char *pidFile);
 char *cwdFullPath(const char *path);
 char *matchEmbeddedFile(const char *path, embedded_files_data_t embeddedFiles);
 
@@ -328,6 +329,7 @@ typedef struct server_t {
 /* express */
 
 typedef struct app_t {
+  server_t *server;
   void (^get)(const char *path, requestHandler);
   void (^post)(const char *path, requestHandler);
   void (^put)(const char *path, requestHandler);
