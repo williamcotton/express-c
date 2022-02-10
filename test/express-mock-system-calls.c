@@ -10,10 +10,12 @@
 static void shutdownBrokenApp(app_t *app) {
   app->server->close();
   usleep(100);
+  app->server->free();
+  usleep(100);
   Block_release(app->listen);
   Block_release(app->closeServer);
   Block_release(app->free);
-  app->server->free();
+  usleep(100);
   free(app->server);
   free(app);
 };
