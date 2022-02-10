@@ -106,7 +106,7 @@ Using the `dotenv-c` library, we can read the environment variables from the `.e
 
 ```c
 int main() {
-  app_t app = express();
+  app_t *app = express();
 
   /* Load .env file */
   env_load(".", false);
@@ -132,7 +132,7 @@ A common development pattern is to terminate the application on a SIGINT (Ctrl-C
   dispatch_source_t sig_src = dispatch_source_create(
       DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
   dispatch_source_set_event_handler(sig_src, ^{
-    app.closeServer();
+    app->closeServer();
     exit(0);
   });
   dispatch_resume(sig_src);
@@ -145,7 +145,7 @@ Here we define the middleware that will be used by the application. The only app
 ```c
   /* Load static files */
   char *staticFilesPath = cwdFullPath("demo/public");
-  app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
+  app->use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 ```
 
 ### Basic Routes
@@ -154,7 +154,7 @@ Not much to see here other than a standard health check.
 
 ```c
   /* Health check */
-  app.get("/healthz", ^(UNUSED request_t *req, response_t *res) {
+  app->get("/healthz", ^(UNUSED request_t *req, response_t *res) {
     res->send("OK");
   });
 ```
@@ -165,8 +165,8 @@ Here we wire up the routers for the [Todos controller](https://github.com/willia
 
 ```c
   /* Controllers */
-  app.useRouter("/", todosController(embeddedFiles));
-  app.useRouter("/api/v1", apiController(databaseUrl, databasePoolSize));
+  app->useRouter("/", todosController(embeddedFiles));
+  app->useRouter("/api/v1", apiController(databaseUrl, databasePoolSize));
 ```
 
 ### Cleanup
@@ -175,7 +175,7 @@ Here we free the dynamically allocated memory used by the application.
 
 ```c
   /* Clean up */
-  app.cleanup(^{
+  app->cleanup(^{
     free(staticFilesPath);
   });
 ```
@@ -185,7 +185,7 @@ Here we free the dynamically allocated memory used by the application.
 Finally, we start the server.
 
 ```c
-  app.listen(port, ^{
+  app->listen(port, ^{
     printf("TodoMVC app listening at http://localhost:%d\n", port);
     writePid("server.pid");
   });

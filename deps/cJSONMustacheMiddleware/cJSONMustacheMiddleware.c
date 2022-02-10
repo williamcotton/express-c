@@ -82,8 +82,8 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
     return template;
   };
 
-  void (^loadPartials)(cJSON *data, char *templateFile) = ^(
-      cJSON *data, char *templateFile) {
+  void (^loadPartials)(cJSON *data, char *templateFile, request_t *req) = ^(
+      cJSON *data, char *templateFile, request_t *req) {
     if (embeddedFiles.count > 0) {
       char *templateName = strtok(templateFile, ".");
       for (int i = 0; i < embeddedFiles.count; i++) {
@@ -114,11 +114,11 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
     while ((de = readdir(dr)) != NULL) {
       if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile)) {
         char *partial = loadTemplate(de->d_name);
-        char *partialName = strdup(de->d_name);
+        char *partialName = req->malloc(strlen(de->d_name) + 1);
+        strcpy(partialName, de->d_name);
         char *partialNameSplit = strtok(partialName, ".");
         cJSON_AddStringToObject(data, partialNameSplit, partial);
         free(partial);
-        free(partialName);
       }
     }
     closedir(dr);
@@ -139,7 +139,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
       if (template) {
         size_t length;
         char *renderedTemplate;
-        loadPartials(json, (char *)templateFile);
+        loadPartials(json, (char *)templateFile, req);
         int result =
             mustach_cJSON_mem(template, 0, json, 0, &renderedTemplate, &length);
         if (result == 0) {

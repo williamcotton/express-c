@@ -11,7 +11,7 @@ embedded_files_data_t embeddedFiles = {0};
 #endif // EMBEDDED_FILES
 
 int main() {
-  app_t app = express();
+  app_t *app = express();
 
   /* Load .env file */
   env_load(".", false);
@@ -30,30 +30,30 @@ int main() {
   dispatch_source_t sig_src = dispatch_source_create(
       DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
   dispatch_source_set_event_handler(sig_src, ^{
-    app.closeServer();
+    app->closeServer();
     exit(0);
   });
   dispatch_resume(sig_src);
 
   /* Load static files */
   char *staticFilesPath = cwdFullPath("demo/public");
-  app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
+  app->use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
   /* Health check */
-  app.get("/healthz", ^(UNUSED request_t *req, response_t *res) {
+  app->get("/healthz", ^(UNUSED request_t *req, response_t *res) {
     res->send("OK");
   });
 
   /* Controllers */
-  app.useRouter("/", todosController(embeddedFiles));
-  app.useRouter("/api/v1", apiController(databaseUrl, databasePoolSize));
+  app->useRouter("/", todosController(embeddedFiles));
+  app->useRouter("/api/v1", apiController(databaseUrl, databasePoolSize));
 
   /* Clean up */
-  app.cleanup(^{
+  app->cleanup(^{
     free(staticFilesPath);
   });
 
-  app.listen(port, ^{
+  app->listen(port, ^{
     printf("TodoMVC app listening at http://localhost:%d\n", port);
     writePid("server.pid");
   });

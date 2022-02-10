@@ -26,6 +26,7 @@ DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
 EXPRESS_SRC = src/express.c src/status_message.c
 SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
+TEST_SRC = test/test.c test/tape.c test/test-helpers.c test/test-harness.c
 BUILD_DIR = build
 
 ifeq ($(PLATFORM),LINUX)
@@ -51,13 +52,13 @@ $(TARGETS)-prod: demo/embeddedFiles.h
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
 test-coverage-output:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage
-	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
 	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
@@ -65,7 +66,7 @@ test-coverage-output:
 test-coverage-html:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage
-	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
 	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > $(BUILD_DIR)/code-coverage.html
@@ -73,7 +74,7 @@ test-coverage-html:
 test-coverage:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage
-	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
 	$(COV) report $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
@@ -107,7 +108,7 @@ test-watch:
 
 build-test-trace:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/test test/test.c test/test-helpers.c test/tape.c $(SRC) $(TEST_CFLAGS) $(CFLAGS) -g -O0
+	$(CC) -o $(BUILD_DIR)/test $(TEST_SRC) $(SRC) $(TEST_CFLAGS) $(CFLAGS) -g -O0
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/test
 endif
@@ -121,7 +122,7 @@ endif
 
 test-threads:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
 	$(BUILD_DIR)/$@
 
 manual-test-trace: build-test-trace

@@ -1409,7 +1409,7 @@ static int initClientAcceptEventHandler(server_t *server,
   });
   dispatch_resume(acceptSource);
 
-  return 0;
+  return 1;
 }
 #endif
 
@@ -1795,8 +1795,8 @@ static server_t *expressServer() {
 
 /* express */
 
-app_t express() {
-  app_t app;
+app_t *express() {
+  app_t *app = malloc(sizeof(app_t));
 
   server_t *server = expressServer();
   router_t *baseRouter = expressRouter();
@@ -1805,17 +1805,17 @@ app_t express() {
   baseRouter->mountPath = "";
   baseRouter->isBaseRouter = 1;
 
-  app.get = baseRouter->get;
-  app.post = baseRouter->post;
-  app.put = baseRouter->put;
-  app.patch = baseRouter->patch;
-  app.delete = baseRouter->delete;
-  app.use = baseRouter->use;
-  app.useRouter = baseRouter->useRouter;
-  app.cleanup = baseRouter->cleanup;
-  app.server = server;
+  app->get = baseRouter->get;
+  app->post = baseRouter->post;
+  app->put = baseRouter->put;
+  app->patch = baseRouter->patch;
+  app->delete = baseRouter->delete;
+  app->use = baseRouter->use;
+  app->useRouter = baseRouter->useRouter;
+  app->cleanup = baseRouter->cleanup;
+  app->server = server;
 
-  app.closeServer = Block_copy(^() {
+  app->closeServer = Block_copy(^() {
     printf("\nClosing server...\n");
 
     baseRouter->free();
@@ -1825,7 +1825,7 @@ app_t express() {
     free(server);
   });
 
-  app.listen = Block_copy(^(int port, void (^callback)()) {
+  app->listen = Block_copy(^(int port, void (^callback)()) {
     check(initServerSocket(server) >= 0, "Failed to initialize server socket");
     check(initServerListen(port, server) >= 0, "Failed to listen on port %d",
           port);

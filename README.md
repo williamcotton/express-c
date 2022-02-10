@@ -36,7 +36,7 @@ char *createTodoForm =
     "</form>";
 
 int main() {
-  app_t app = express();
+  app_t *app = express();
 
   /* Load .env file */
   env_load(".", false);
@@ -46,20 +46,20 @@ int main() {
   /* Load static files middleware */
   embedded_files_data_t embeddedFiles = {0};
   char *staticFilesPath = cwdFullPath("demo/public");
-  app.use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
+  app->use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
 
   /* Route handlers */
-  app.get("/", ^(UNUSED request_t *req, response_t *res) {
+  app->get("/", ^(UNUSED request_t *req, response_t *res) {
     res->sendf("%s<h1>Todo App</h1><p>%s</p>", styles, createTodoForm);
   });
 
-  app.post("/todo/create", ^(request_t *req, response_t *res) {
+  app->post("/todo/create", ^(request_t *req, response_t *res) {
     res->status = 201;
     res->sendf("%s<h1>%s</h1><p>%s</p>", styles, req->body("title"), req->body("body"));
   });
 
   /* Start server */
-  app.listen(port, ^{
+  app->listen(port, ^{
     printf("express-c app listening at http://localhost:%d\n", port);
   });
 }

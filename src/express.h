@@ -345,6 +345,6 @@ typedef struct app_t {
   void (^closeServer)();
 } app_t;
 
-app_t express();
+app_t *express();
 
 #endif // EXPRESS_H
