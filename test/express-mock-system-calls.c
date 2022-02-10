@@ -1,7 +1,6 @@
 #ifdef __linux__
 
 #include "../src/express.h"
-#include "../src/status-message.h"
 #include "tape.h"
 #include "test-helpers.h"
 #include <Block.h>

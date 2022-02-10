@@ -1,21 +1,9 @@
 #include "../src/express.h"
-#include "../src/status-message.h"
 #include "tape.h"
 #include "test-helpers.h"
 #include <Block.h>
 #include <stdlib.h>
 #include <string.h>
-
-static char *errorHTML = "<!DOCTYPE html>\n"
-                         "<html lang=\"en\">\n"
-                         "<head>\n"
-                         "<meta charset=\"utf-8\">\n"
-                         "<title>Error</title>\n"
-                         "</head>\n"
-                         "<body>\n"
-                         "<pre>Cannot GET %s</pre>\n"
-                         "</body>\n"
-                         "</html>\n";
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"

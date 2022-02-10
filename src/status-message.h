@@ -1,1 +1,0 @@
-char *getStatusMessage(int status);

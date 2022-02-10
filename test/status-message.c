@@ -1,9 +1,11 @@
-#include "../src/status-message.h"
+#include "../src/express.h"
 #include "tape.h"
 #include <string.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
+
+char *getStatusMessage(int status);
 
 void statusMessageTests(tape_t *t) {
   t->test("statusMessage", ^(tape_t *t) {

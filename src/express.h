@@ -23,12 +23,30 @@
 #ifndef EXPRESS_H
 #define EXPRESS_H
 
+#include <Block.h>
+#include <MegaMimes/MegaMimes.h>
+#include <arpa/inet.h>
+#include <assert.h>
 #include <curl/curl.h>
 #include <dispatch/dispatch.h>
 #include <errno.h>
 #include <picohttpparser/picohttpparser.h>
+#include <regex.h>
+#include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <uuid/uuid.h>
+
+#ifdef __linux__
+#include <bsd/string.h>
+#include <pthread.h>
+#include <sys/epoll.h>
+#endif
 
 #define MAX_REQUEST_SIZE 4096
 #define READ_TIMEOUT_SECS 30
@@ -86,6 +104,8 @@
     errno = 0;                                                                 \
     goto error;                                                                \
   }
+
+extern char *errorHTML;
 
 /* Primitives */
 
@@ -242,6 +262,21 @@ typedef void (^errorHandler)(error_t err, request_t *req, response_t *res,
 typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(),
                              const char *paramValue);
 
+/* Function signatures */
+
+typedef char * (^getBlock)(const char *key);
+typedef void * (^mallocBlock)(size_t);
+typedef void * (^copyBlock)(void *);
+typedef void (^getMiddlewareSetBlock)(const char *key, void *middleware);
+typedef void * (^getMiddlewareBlock)(const char *key);
+typedef void (^sendBlock)(const char *body);
+typedef void (^sendfBlock)(const char *format, ...);
+typedef void (^sendStatusBlock)(int status);
+typedef void (^downloadBlock)(const char *filePath, const char *name);
+typedef void (^setBlock)(const char *key, const char *value);
+typedef void (^setCookie)(const char *cookieKey, const char *cookieValue,
+                          cookie_opts_t opts);
+
 /* Public functions */
 
 char *generateUuid();
@@ -324,7 +359,17 @@ typedef struct server_t {
   int port;
   dispatch_queue_t serverQueue;
   void (^close)();
+  int (^listen)(int port);
+  int (^initSocket)();
+  void (^free)();
 } server_t;
+
+/* client */
+
+typedef struct client_t {
+  int socket;
+  char *ip;
+} client_t;
 
 /* express */
 
