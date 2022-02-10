@@ -68,6 +68,16 @@ int __wrap_socket(int domain, int type, int protocol) {
     return __real_socket(domain, type, protocol);
   }
 }
+
+int listen_fail = 0;
+int __real_listen(int sockfd, int backlog);
+int __wrap_listen(int sockfd, int backlog) {
+  if (listen_fail) {
+    return -1;
+  } else {
+    return __real_listen(sockfd, backlog);
+  }
+}
 #endif
 
 #pragma clang diagnostic push
@@ -137,6 +147,18 @@ void runTests(int runAndExit, test_harness_t *testHarness) {
         usleep(1);
         free(app3.server);
         epoll_ctl_fail = 0;
+
+        app_t app4 = express();
+        listen_fail = 1;
+        app4.listen(0, ^{
+                    });
+        t->ok("server listen fail", 1);
+        Block_release(app4.listen);
+        Block_release(app4.closeServer);
+        app4.server->close();
+        usleep(1);
+        free(app4.server);
+        listen_fail = 0;
       });
 
       t->test("file failures", ^(tape_t *t) {
