@@ -24,8 +24,8 @@ CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir)
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-SRC = src/express.c src/status_message.c
-SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
+EXPRESS_SRC = src/express.c src/status_message.c
+SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
 BUILD_DIR = build
 
 ifeq ($(PLATFORM),LINUX)
@@ -149,7 +149,7 @@ $(TARGETS)-analyze:
 	$(CC) --analyze demo/$(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
 
 $(BUILD_DIR)/libexpress.so:
-	$(CC) -shared -o $@ src/express.c $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
+	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
 .PHONY: demo/embeddedFiles.h
 demo/embeddedFiles.h:
