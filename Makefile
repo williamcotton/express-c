@@ -3,18 +3,33 @@ ifneq (,$(wildcard ./.env))
 	export
 endif
 
+CC = clang
+PROFDATA = llvm-profdata
+COV = llvm-cov
+TIDY = clang-tidy
+FORMAT = clang-format
+
+ifeq ($(PLATFORM),DARWIN)
+	CC = $(shell brew --prefix llvm)/bin/clang
+	PROFDATA = $(shell brew --prefix llvm)/bin/profdata
+	COV = $(shell brew --prefix llvm)/bin/llvm-cov
+	TIDY = $(shell brew --prefix llvm)/bin/clang-tidy
+	FORMAT = $(shell brew --prefix llvm)/bin/clang-format
+endif
+
 TARGETS := $(notdir $(patsubst %.c,%,$(wildcard demo/*.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir)
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-SRC = src/express.c
+SRC = src/express.c src/status_message.c
 SRC += $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
 BUILD_DIR = build
 PLATFORM := $(shell sh -c 'uname -s 2>/dev/null | tr 'a-z' 'A-Z'')
 
 ifeq ($(PLATFORM),LINUX)
 	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
+	TEST_CFLAGS += -Wl,--wrap=stat -Wl,--wrap=regcomp -Wl,--wrap=accept -Wl,--wrap=socket -Wl,--wrap=epoll_ctl
 	PROD_CFLAGS = -Ofast
 else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability
@@ -26,49 +41,52 @@ all: $(TARGETS)
 .PHONY: $(TARGETS)
 $(TARGETS):
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS)
+	$(CC) -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS)
 
 $(TARGETS)-prod: demo/embeddedFiles.h
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
+	$(CC) -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 
 .PHONY: test
 test:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
+	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
+
+test-coverage-output:
+	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/coverage
+	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
+	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
 
 test-coverage-html:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage
-	$(shell brew --prefix llvm)/bin/clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
-	$(shell brew --prefix llvm)/bin/llvm-profdata merge -sparse build/test.profraw -o build/test.profdata
-	$(shell brew --prefix llvm)/bin/llvm-cov show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > $(BUILD_DIR)/coverage.html
-	open $(BUILD_DIR)/coverage.html
+	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > test/code-coverage.html
 
 test-coverage:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage
-	$(shell brew --prefix llvm)/bin/clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
-	$(shell brew --prefix llvm)/bin/llvm-profdata merge -sparse build/test.profraw -o build/test.profdata
-	$(shell brew --prefix llvm)/bin/llvm-cov report $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
+	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
+	$(COV) report $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
 	rm *.gc*
 
 lint:
 ifeq ($(PLATFORM),LINUX)
-	clang-tidy --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -warnings-as-errors=* src/express.c
+	$(TIDY) --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -warnings-as-errors=* src/express.c
 else ifeq ($(PLATFORM),DARWIN)
-	$(shell brew --prefix llvm)/bin/clang-tidy -warnings-as-errors=* src/express.c
+	$(TIDY) -warnings-as-errors=* src/express.c
 endif
 
 format:
-ifeq ($(PLATFORM),LINUX)
-	clang-format --dry-run --Werror $(SRC)
-else ifeq ($(PLATFORM),DARWIN)
-	$(shell brew --prefix llvm)/bin/clang-format --dry-run --Werror $(SRC)
-endif
+	$(FORMAT) --dry-run --Werror $(SRC)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -89,7 +107,7 @@ test-watch:
 
 build-test-trace:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/test test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) -g -O0
+	$(CC) -o $(BUILD_DIR)/test test/test.c test/test-helpers.c test/tape.c $(SRC) $(TEST_CFLAGS) $(CFLAGS) -g -O0
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/test
 endif
@@ -103,7 +121,7 @@ endif
 
 test-threads:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
+	$(CC) -o $(BUILD_DIR)/$@ test/test.c test/test-helpers.c test/tape.c $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
 	$(BUILD_DIR)/$@
 
 manual-test-trace: build-test-trace
@@ -112,26 +130,26 @@ manual-test-trace: build-test-trace
 .PHONY: test-tape
 test-tape:
 	mkdir -p $(BUILD_DIR)
-	clang -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
+	$(CC) -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
 
 $(TARGETS)-trace:
-	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) -g -O0
+	$(CC) -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) -g -O0
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
 endif
 
 $(TARGETS)-prod-trace:
-	clang -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
+	$(CC) -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
 endif
 
 $(TARGETS)-analyze:
-	clang --analyze demo/$(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
+	$(CC) --analyze demo/$(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
 
 $(BUILD_DIR)/libexpress.so:
-	clang -shared -o $@ src/express.c $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
+	$(CC) -shared -o $@ src/express.c $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
 .PHONY: demo/embeddedFiles.h
 demo/embeddedFiles.h:

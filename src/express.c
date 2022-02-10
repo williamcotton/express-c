@@ -21,6 +21,7 @@
 */
 
 #include "express.h"
+#include "status_message.h"
 #include <Block.h>
 #include <MegaMimes/MegaMimes.h>
 #include <arpa/inet.h>
@@ -58,139 +59,6 @@ static char *errorHTML = "<!DOCTYPE html>\n"
                          "</body>\n"
                          "</html>\n";
 
-static char *getStatusMessage(int status) {
-  switch (status) {
-  case 100:
-    return "Continue";
-  case 101:
-    return "Switching Protocols";
-  case 102:
-    return "Processing";
-  case 103:
-    return "Early Hints";
-  case 200:
-    return "OK";
-  case 201:
-    return "Created";
-  case 202:
-    return "Accepted";
-  case 203:
-    return "Non-Authoritative Information";
-  case 204:
-    return "No Content";
-  case 205:
-    return "Reset Content";
-  case 206:
-    return "Partial Content";
-  case 207:
-    return "Multi-Status";
-  case 208:
-    return "Already Reported";
-  case 226:
-    return "IM Used";
-  case 300:
-    return "Multiple Choices";
-  case 301:
-    return "Moved Permanently";
-  case 302:
-    return "Found";
-  case 303:
-    return "See Other";
-  case 304:
-    return "Not Modified";
-  case 305:
-    return "Use Proxy";
-  case 306:
-    return "Switch Proxy";
-  case 307:
-    return "Temporary Redirect";
-  case 308:
-    return "Permanent Redirect";
-  case 400:
-    return "Bad Request";
-  case 401:
-    return "Unauthorized";
-  case 402:
-    return "Payment Required";
-  case 403:
-    return "Forbidden";
-  case 404:
-    return "Not Found";
-  case 405:
-    return "Method Not Allowed";
-  case 406:
-    return "Not Acceptable";
-  case 407:
-    return "Proxy Authentication Required";
-  case 408:
-    return "Request Timeout";
-  case 409:
-    return "Conflict";
-  case 410:
-    return "Gone";
-  case 411:
-    return "Length Required";
-  case 412:
-    return "Precondition Failed";
-  case 413:
-    return "Payload Too Large";
-  case 414:
-    return "URI Too Long";
-  case 415:
-    return "Unsupported Media Type";
-  case 416:
-    return "Range Not Satisfiable";
-  case 417:
-    return "Expectation Failed";
-  case 418:
-    return "I'm a teapot";
-  case 421:
-    return "Misdirected Request";
-  case 422:
-    return "Unprocessable Entity";
-  case 423:
-    return "Locked";
-  case 424:
-    return "Failed Dependency";
-  case 425:
-    return "Too Early";
-  case 426:
-    return "Upgrade Required";
-  case 428:
-    return "Precondition Required";
-  case 429:
-    return "Too Many Requests";
-  case 431:
-    return "Request Header Fields Too Large";
-  case 451:
-    return "Unavailable For Legal Reasons";
-  case 500:
-    return "Internal Server Error";
-  case 501:
-    return "Not Implemented";
-  case 502:
-    return "Bad Gateway";
-  case 503:
-    return "Service Unavailable";
-  case 504:
-    return "Gateway Timeout";
-  case 505:
-    return "HTTP Version Not Supported";
-  case 506:
-    return "Variant Also Negotiates";
-  case 507:
-    return "Insufficient Storage";
-  case 508:
-    return "Loop Detected";
-  case 510:
-    return "Not Extended";
-  case 511:
-    return "Network Authentication Required";
-  default:
-    return "Unknown";
-  }
-}
-
 static void removeWhitespace(char *str) {
   char *p = str;
   char *q = str;
@@ -226,7 +94,7 @@ static size_t getFileSize(const char *filePath) {
   check(stat(filePath, &st) >= 0, "Could not stat file %s", filePath);
   return st.st_size;
 error:
-  return -1;
+  return 0;
 }
 
 static char *getFileName(const char *filePath) {
@@ -284,6 +152,7 @@ static param_match_t *paramMatch(const char *basePath, const char *route) {
   param_match_t *pm = malloc(sizeof(param_match_t));
   pm->keys = malloc(sizeof(char *));
   pm->count = 0;
+  pm->regexRoute = NULL;
   char regexRoute[4096];
   regexRoute[0] = '\0';
   size_t basePathRouteLen = strlen(basePath) + strlen(route) + 1;
@@ -302,8 +171,7 @@ static param_match_t *paramMatch(const char *basePath, const char *route) {
   if (regcomp(&regexCompiled, regexString, REG_EXTENDED)) {
     log_err("regcomp() failed");
     free(basePathRoute);
-    free(pm);
-    return NULL;
+    return pm;
   };
 
   cursor = (char *)source;
@@ -732,10 +600,11 @@ static sendBlock resSendFileFactory(client_t client, request_t *req,
                        "\r\nContent-Length: \r\n\r\n") +
                 20));
     // TODO: use res.set() and refactor header building
+    size_t fileSize = getFileSize(path);
     sprintf(response,
             "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: "
             "%s\r\nContent-Length: %zu\r\n\r\n",
-            mimetype, getFileSize(path));
+            mimetype, fileSize);
     res->didSend = 1;
     write(client.socket, response, strlen(response));
     // TODO: use sendfile
@@ -777,15 +646,15 @@ static jsonBlock resJsonFactory(response_t *res) {
 }
 
 typedef void (^downloadBlock)(const char *filePath, const char *name);
-static downloadBlock resDownloadFactory(response_t *res) {
+static downloadBlock resDownloadFactory(request_t *req, response_t *res) {
   return Block_copy(^(const char *filePath, const char *fileName) {
     if (fileName == NULL)
       fileName = (char *)getFileName(filePath);
 
-    char *contentDisposition =
-        malloc(sizeof(char) *
-               (strlen("Content-Disposition: attachment; filename=\"\"\r\n") +
-                strlen(fileName) + 1));
+    char *contentDisposition = req->malloc(
+        sizeof(char) *
+        (strlen("Content-Disposition: attachment; filename=\"\"\r\n") +
+         strlen(fileName) + 1));
     sprintf(contentDisposition,
             "Content-Disposition: attachment; filename=\"%s\"\r\n", fileName);
     res->set("Content-Disposition", contentDisposition);
@@ -1028,7 +897,8 @@ static void paramMatchFree(param_match_t *paramMatch) {
     free(paramMatch->keys[i]);
   }
   free(paramMatch->keys);
-  free(paramMatch->regexRoute);
+  if (paramMatch->regexRoute)
+    free(paramMatch->regexRoute);
 }
 
 static int initServerListen(int port, server_t *server) {
@@ -1233,9 +1103,7 @@ UNUSED static void freeRequest(request_t *req) {
     Block_release(middlewareCleanupBlocks[i]);
   }
   free(req->middlewareCleanupBlocks);
-  if (req->_method != NULL)
-    curl_free((void *)req->_method);
-  else
+  if (req->_method == NULL)
     free((void *)req->method);
   free((void *)req->url);
   free(req->session);
@@ -1296,7 +1164,7 @@ static void buildResponse(client_t client, request_t *req, response_t *res) {
   res->redirect = resRedirectFactory(req, res);
   res->type = resTypeFactory(res);
   res->json = resJsonFactory(res);
-  res->download = resDownloadFactory(res);
+  res->download = resDownloadFactory(req, res);
   res->didSend = 0;
 }
 
@@ -1336,12 +1204,14 @@ void *clientAcceptEventHandler(void *args) {
   int nfds;
 
   while (1) {
+    // next:
     nfds = epoll_wait(epollFd, events, MAX_EVENTS, -1);
 
     if (nfds <= 0) {
       log_err("epoll_wait() failed");
       continue;
     }
+
     for (int n = 0; n < nfds; ++n) {
       if (events[n].data.fd == server->socket) {
         while (1) {
@@ -1582,6 +1452,18 @@ int writePid(char *pidFile) {
   int fd = open(pidFile, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   snprintf(buf, 100, "%ld\n", (long)getpid());
   return (unsigned long)write(fd, buf, strlen(buf)) == (unsigned long)strlen;
+}
+
+unsigned long readPid(char *pidFile) {
+  int fd = open(pidFile, O_RDONLY);
+  if (fd < 0)
+    return -1;
+  char buf[100];
+  unsigned long pid = 0;
+  while (read(fd, buf, 1) > 0) {
+    pid = pid * 10 + (buf[0] - '0');
+  }
+  return pid;
 }
 
 char *generateUuid() {
@@ -1931,6 +1813,7 @@ app_t express() {
   app.use = baseRouter->use;
   app.useRouter = baseRouter->useRouter;
   app.cleanup = baseRouter->cleanup;
+  app.server = server;
 
   app.closeServer = Block_copy(^() {
     printf("\nClosing server...\n");
@@ -1947,11 +1830,18 @@ app_t express() {
     check(initServerListen(port, server) >= 0, "Failed to listen on port %d",
           port);
     dispatch_async(server->serverQueue, ^{
-      initClientAcceptEventHandler(server, baseRouter);
+      check(initClientAcceptEventHandler(server, baseRouter),
+            "Failed to initialize client accept event handler");
+    error:
+      return;
     });
     callback();
-    dispatch_main();
+    if (port > 0)
+      dispatch_main();
   error:
+    baseRouter->free();
+    free(baseRouter);
+
     return;
   });
 
