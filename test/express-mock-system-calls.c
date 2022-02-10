@@ -13,6 +13,7 @@ static void shutdownBrokenApp(app_t *app) {
   Block_release(app->listen);
   Block_release(app->closeServer);
   Block_release(app->free);
+  app->server->free();
   free(app->server);
   free(app);
 };
