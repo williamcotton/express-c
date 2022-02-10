@@ -26,7 +26,7 @@ DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
 EXPRESS_SRC = src/express.c src/status-message.c
 SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
-TEST_SRC = test/test.c test/tape.c test/test-helpers.c test/test-harness.c test/express.c test/status-message.c
+TEST_SRC = test/test.c test/tape.c test/test-helpers.c test/test-harness.c test/express.c test/status-message.c test/express-mock-system-calls.c test/express-fuzz.c
 BUILD_DIR = build
 
 ifeq ($(PLATFORM),LINUX)

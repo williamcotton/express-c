@@ -32,7 +32,7 @@ typedef struct tape_t {
   int (^ok)(char *, int);
   int (^strEqual)(char *, char *, char *);
   int (^test)(char *, void (^)(struct tape_t *));
-  void (^mockFail)(char *);
+  void (^mockFailOnce)(char *);
 } tape_t;
 
 tape_t *tape();

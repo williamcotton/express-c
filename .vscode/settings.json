@@ -68,7 +68,8 @@
     "todo.h": "c",
     "postgresmiddleware.h": "c",
     "status-message.h": "c",
-    "tape.h": "c"
+    "tape.h": "c",
+    "megamimes.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

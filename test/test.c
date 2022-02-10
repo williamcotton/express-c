@@ -13,10 +13,6 @@ void runTests(int runAndExit, test_harness_t *testHarness) {
 
   int testStatus = test->test("express", ^(tape_t *t) {
     clearState();
-
-    void statusMessageTests(tape_t * t);
-    statusMessageTests(t);
-
     void expressTests(tape_t * t);
     expressTests(t);
   });

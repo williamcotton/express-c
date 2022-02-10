@@ -3,13 +3,8 @@
 #include "tape.h"
 #include "test-helpers.h"
 #include <Block.h>
-#include <regex.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef __linux__
-#include <sys/epoll.h>
-#endif
 
 static char *errorHTML = "<!DOCTYPE html>\n"
                          "<html lang=\"en\">\n"
@@ -22,219 +17,27 @@ static char *errorHTML = "<!DOCTYPE html>\n"
                          "</body>\n"
                          "</html>\n";
 
-void shutdownBrokenApp(app_t *app) {
-  app->server->close();
-  usleep(100);
-  Block_release(app->listen);
-  Block_release(app->closeServer);
-  Block_release(app->free);
-  free(app->server);
-  free(app);
-};
-
-  /* mocks */
-
-#ifdef __linux__
-int stat_fail = 0;
-int __real_stat(const char *path, struct stat *buf);
-int __wrap_stat(const char *path, struct stat *buf) {
-  if (stat_fail) {
-    return -1;
-  } else {
-    return __real_stat(path, buf);
-  }
-}
-
-int regcomp_fail = 0;
-int __real_regcomp(regex_t *preg, const char *regex, int cflags);
-int __wrap_regcomp(regex_t *preg, const char *regex, int cflags) {
-  if (regcomp_fail) {
-    return -1;
-  } else {
-    return __real_regcomp(preg, regex, cflags);
-  }
-}
-
-int accept_fail = 0;
-int __real_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-int __wrap_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
-  if (accept_fail) {
-    return -1;
-  } else {
-    return __real_accept(sockfd, addr, addrlen);
-  }
-}
-
-int epoll_ctl_fail = 0;
-int __real_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
-int __wrap_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
-  if (epoll_ctl_fail) {
-    debug("epoll_ctl failed");
-    return -1;
-  } else {
-    return __real_epoll_ctl(epfd, op, fd, event);
-  }
-}
-
-int socket_fail = 0;
-int __real_socket(int domain, int type, int protocol);
-int __wrap_socket(int domain, int type, int protocol) {
-  if (socket_fail) {
-    return -1;
-  } else {
-    return __real_socket(domain, type, protocol);
-  }
-}
-
-int listen_fail = 0;
-int __real_listen(int sockfd, int backlog);
-int __wrap_listen(int sockfd, int backlog) {
-  if (listen_fail) {
-    return -1;
-  } else {
-    return __real_listen(sockfd, backlog);
-  }
-}
-#endif
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wunused-variable"
 
 void expressTests(tape_t *t) {
+  /* Mock system call failures */
 #ifdef __linux__
-  t->test("mocked system calls", ^(tape_t *t) {
-    t->test("server fail", ^(tape_t *t) {
-      app_t *app1 = express();
-      socket_fail = 1;
-      app1->listen(5000, ^{
-                   });
-      t->ok("server socket fail", 1);
-      shutdownBrokenApp(app1);
-      socket_fail = 0;
-
-      app_t *app2 = express();
-      regcomp_fail = 1;
-      app2->get("/test/:params", ^(request_t *req, response_t *res) {
-        res->send("test");
-      });
-      app2->listen(0, ^{
-                   });
-      t->ok("server regcomp fail", 1);
-      shutdownBrokenApp(app2);
-      regcomp_fail = 0;
-
-      app_t *app3 = express();
-      epoll_ctl_fail = 1;
-      app3->listen(0, ^{
-                   });
-      t->ok("server epoll fail", 1);
-      shutdownBrokenApp(app3);
-      epoll_ctl_fail = 0;
-
-      app_t *app4 = express();
-      listen_fail = 1;
-      app4->listen(0, ^{
-                   });
-      t->ok("server listen fail", 1);
-      shutdownBrokenApp(app4);
-      listen_fail = 0;
-    });
-
-    t->test("file failures", ^(tape_t *t) {
-      stat_fail = 1;
-      t->strEqual("stat fail", curlGet("/file"), "");
-      stat_fail = 0;
-
-      regcomp_fail = 1;
-      t->strEqual("regcomp fail", curlGet("/file"), "hello, world!\n");
-      regcomp_fail = 0;
-    });
-
-    t->test("client failures", ^(tape_t *t) {
-      regcomp_fail = 1;
-      t->strEqual("regcomp fail", curlGet("/"), "Hello World!");
-      regcomp_fail = 0;
-
-      // TODO: this hangs
-      // accept_fail = 1;
-      // t->strEqual("root, accept fail", curlGet("/"), "Hello World!");
-      // accept_fail = 0;
-    });
-  });
+  void expressMockSystemCalls(tape_t * t);
+  expressMockSystemCalls(t);
 #endif
 
-  t->test("send garbage", ^(tape_t *t) {
-    sendData("garbage\r\n\r\n");
-    sendData("GET / HTTP1.1\r\n\r\n");
-    sendData("GETSDFDFDF / HTTP/1.1\r\n\r\n");
-    sendData("GET HTTP/1.1\r\n\r\n");
-    sendData("GET --- HTTP/1.1\r\n\r\n");
-    sendData("\r\n\r\n");
-    sendData("\r\n");
-    sendData("");
-    sendData("POST / HTTP/1.1\r\nContent-Type: "
-             "application/json\r\nContent-Length: 50\r\n\r\ngarbage");
-    sendData("POST / HTTP/1.1\r\nContent-Type: "
-             "application/json\r\nContent-Length: "
-             "9999999999999999999999999999\r\n\r\ngarbage");
-    sendData(
-        "POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
-    sendData("POST / HTTP/1.1\r\n\r\ngarbage");
-    sendData("GET /qs?g=&a-?-&r&=b=a&ge HTTP1.1\r\n\r\n");
+  /* Fuzz testing */
+  void expressFuzz(tape_t * t);
+  expressFuzz(t);
 
-    t->test("send lots of garbage", ^(tape_t *t) {
-      int multipliers[2] = {1, 64};
+  /* HTTP status codes */
+  void statusMessageTests(tape_t * t);
+  statusMessageTests(t);
 
-      for (int i = 0; i < 2; i++) {
-        size_t longStringLen = 1024 * multipliers[i];
-        log_info("Testing with %zu bytes", longStringLen);
-
-        char *longString = malloc(longStringLen);
-
-        randomString(longString, longStringLen);
-        sendData(longString);
-
-        memcpy(longString, "GET / HTTP/1.1\r\n", 16);
-        sendData(longString);
-
-        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
-        sendData(longString);
-
-        memcpy(longString,
-               "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
-        sendData(longString);
-
-        memcpy(longString,
-               "POST / HTTP/1.1\r\nContent-Type: "
-               "application/json\r\nContent-Length: 50\r\n\r\n",
-               71);
-        sendData(longString);
-
-        memcpy(longString,
-               "POST / HTTP/1.1\r\nContent-Type: "
-               "application/json\r\nContent-Length: 16384\r\n\r\n",
-               74);
-        sendData(longString);
-
-        randomString(longString, longStringLen);
-        memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
-        memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
-
-        randomString(longString, longStringLen);
-        memcpy(longString, "GET / HTTP/1.1\r\nCookie: ", 24);
-        memcpy(longString + (longStringLen - 24), "\r\n\r\n", 4);
-
-        randomString(longString, longStringLen);
-        memcpy(longString, "GET /qs?", 8);
-        memcpy(longString + (longStringLen - 26), " HTTP/1.1\r\n\r\n", 13);
-
-        free(longString);
-      }
-    });
-  });
-
+  /* Helper functions */
   t->test("matchEmbeddedFile", ^(tape_t *t) {
     unsigned char demo_public_app_css[] = {0x68};
     // unsigned int demo_public_app_css_len = 1;
@@ -259,6 +62,7 @@ void expressTests(tape_t *t) {
     unlink(pidFile);
   });
 
+  /* Express */
   t->test("GET", ^(tape_t *t) {
     t->strEqual("root", curlGet("/"), "Hello World!");
     t->strEqual("basic route", curlGet("/test"), "Testing, testing!");
