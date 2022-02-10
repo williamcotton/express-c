@@ -1,6 +1,7 @@
 #include "test-harness.h"
 #include "../src/express.h"
 #include <Block.h>
+#include <stdlib.h>
 
 test_harness_t *testHarnessFactory() {
   __block app_t *app = express();
@@ -320,7 +321,7 @@ test_harness_t *testHarnessFactory() {
   test_harness_t *testHarness = malloc(sizeof(test_harness_t));
 
   testHarness->teardown = Block_copy(^{
-    app->closeServer();
+    shutdownAndFreeApp(app);
   });
 
   testHarness->setup = Block_copy(^(void (^callback)()) {

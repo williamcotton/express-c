@@ -1793,6 +1793,13 @@ static server_t *expressServer() {
   return server;
 }
 
+void shutdownAndFreeApp(app_t *app) {
+  app->closeServer();
+  usleep(100);
+  app->free();
+  free(app);
+}
+
 /* express */
 
 app_t *express() {
@@ -1817,12 +1824,7 @@ app_t *express() {
 
   app->closeServer = Block_copy(^() {
     printf("\nClosing server...\n");
-
-    baseRouter->free();
-    free(baseRouter);
-
     server->close();
-    free(server);
   });
 
   app->listen = Block_copy(^(int port, void (^callback)()) {
@@ -1843,6 +1845,15 @@ app_t *express() {
     free(baseRouter);
 
     return;
+  });
+
+  app->free = Block_copy(^() {
+    free(server);
+    baseRouter->free();
+    free(baseRouter);
+    Block_release(app->closeServer);
+    Block_release(app->listen);
+    Block_release(app->free);
   });
 
   return app;

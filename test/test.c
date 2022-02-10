@@ -99,6 +99,16 @@ static char *errorHTML = "<!DOCTYPE html>\n"
                          "</body>\n"
                          "</html>\n";
 
+void shutdownBrokenApp(app_t *app) {
+  app->server->close();
+  usleep(100);
+  Block_release(app->listen);
+  Block_release(app->closeServer);
+  Block_release(app->free);
+  free(app->server);
+  free(app);
+};
+
 void runTests(int runAndExit, test_harness_t *testHarness) {
   tape_t *t = tape();
 
@@ -108,56 +118,39 @@ void runTests(int runAndExit, test_harness_t *testHarness) {
 #ifdef __linux__
     t->test("mocked system calls", ^(tape_t *t) {
       t->test("server fail", ^(tape_t *t) {
-        app_t app1 = express();
-
+        app_t *app1 = express();
         socket_fail = 1;
-        app1.listen(5000, ^{
-                    });
+        app1->listen(5000, ^{
+                     });
         t->ok("server socket fail", 1);
-        Block_release(app1.listen);
-        Block_release(app1.closeServer);
-        app1.server->close();
-        usleep(1);
-        free(app1.server);
+        shutdownBrokenApp(app1);
         socket_fail = 0;
 
-        app_t app2 = express();
+        app_t *app2 = express();
         regcomp_fail = 1;
-        app2.get("/test/:params", ^(request_t *req, response_t *res) {
+        app2->get("/test/:params", ^(request_t *req, response_t *res) {
           res->send("test");
         });
-        app2.listen(0, ^{
-                    });
+        app2->listen(0, ^{
+                     });
         t->ok("server regcomp fail", 1);
-        Block_release(app2.listen);
-        Block_release(app2.closeServer);
-        app2.server->close();
-        usleep(1);
-        free(app2.server);
+        shutdownBrokenApp(app2);
         regcomp_fail = 0;
 
-        app_t app3 = express();
+        app_t *app3 = express();
         epoll_ctl_fail = 1;
-        app3.listen(0, ^{
-                    });
+        app3->listen(0, ^{
+                     });
         t->ok("server epoll fail", 1);
-        Block_release(app3.listen);
-        Block_release(app3.closeServer);
-        app3.server->close();
-        usleep(1);
-        free(app3.server);
+        shutdownBrokenApp(app3);
         epoll_ctl_fail = 0;
 
-        app_t app4 = express();
+        app_t *app4 = express();
         listen_fail = 1;
-        app4.listen(0, ^{
-                    });
+        app4->listen(0, ^{
+                     });
         t->ok("server listen fail", 1);
-        Block_release(app4.listen);
-        Block_release(app4.closeServer);
-        app4.server->close();
-        usleep(1);
-        free(app4.server);
+        shutdownBrokenApp(app4);
         listen_fail = 0;
       });
 

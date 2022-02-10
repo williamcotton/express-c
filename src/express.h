@@ -343,7 +343,10 @@ typedef struct app_t {
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);
   void (^closeServer)();
+  void (^free)();
 } app_t;
+
+void shutdownAndFreeApp(app_t *app);
 
 app_t *express();
 
