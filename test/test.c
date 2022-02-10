@@ -1,5 +1,5 @@
 #include "../src/express.h"
-#include "../src/status_message.h"
+#include "../src/status-message.h"
 #include "tape.h"
 #include "test-harness.h"
 #include "test-helpers.h"

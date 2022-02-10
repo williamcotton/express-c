@@ -24,7 +24,7 @@ CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir)
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-EXPRESS_SRC = src/express.c src/status_message.c
+EXPRESS_SRC = src/express.c src/status-message.c
 SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
 TEST_SRC = test/test.c test/tape.c test/test-helpers.c test/test-harness.c
 BUILD_DIR = build

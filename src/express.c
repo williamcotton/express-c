@@ -21,7 +21,7 @@
 */
 
 #include "express.h"
-#include "status_message.h"
+#include "status-message.h"
 #include <Block.h>
 #include <MegaMimes/MegaMimes.h>
 #include <arpa/inet.h>
