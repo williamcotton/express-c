@@ -366,6 +366,7 @@ router_t *expressRouter() {
     Block_release(router->put);
     Block_release(router->patch);
     Block_release(router->delete);
+    Block_release(router->all);
     Block_release(router->use);
     Block_release(router->mountTo);
     Block_release(router->useRouter);
