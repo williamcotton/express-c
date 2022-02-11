@@ -24,9 +24,6 @@
 
 int initClientAcceptEventHandler(server_t *server, router_t *router);
 
-server_t *expressServer();
-router_t *expressRouter();
-
 app_t *express() {
   app_t *app = malloc(sizeof(app_t));
 
@@ -42,6 +39,7 @@ app_t *express() {
   app->put = router->put;
   app->patch = router->patch;
   app->delete = router->delete;
+  app->all = router->all;
   app->use = router->use;
   app->useRouter = router->useRouter;
   app->param = router->param;

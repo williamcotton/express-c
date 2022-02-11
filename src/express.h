@@ -339,7 +339,7 @@ typedef struct router_t {
   void (^put)(const char *path, requestHandler);
   void (^patch)(const char *path, requestHandler);
   void (^delete)(const char *path, requestHandler);
-  void (^all)(const char *path, requestHandler); // TODO: add router.all
+  void (^all)(const char *path, requestHandler);
   void (^use)(middlewareHandler);
   void (^useRouter)(char *mountPath, struct router_t *routerToMount);
   void (^mountTo)(struct router_t *baseRouter);
@@ -373,6 +373,8 @@ typedef struct server_t {
   void (^free)();
 } server_t;
 
+server_t *expressServer();
+
 /* client */
 
 typedef struct client_t {
@@ -389,7 +391,7 @@ typedef struct app_t {
   void (^put)(const char *path, requestHandler);
   void (^patch)(const char *path, requestHandler);
   void (^delete)(const char *path, requestHandler);
-  void (^all)(const char *path, requestHandler); // TODO: add app.all
+  void (^all)(const char *path, requestHandler);
   void (^listen)(int port, void (^callback)());
   void (^use)(middlewareHandler);
   void (^useRouter)(char *mountPath, struct router_t *routerToMount);

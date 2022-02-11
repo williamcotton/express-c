@@ -181,6 +181,10 @@ test_harness_t *testHarnessFactory() {
     res->redirect("back");
   });
 
+  app->all("/all", ^(UNUSED request_t *req, response_t *res) {
+    res->send("all");
+  });
+
   router_t *router = expressRouter();
 
   router->use(^(request_t *req, UNUSED response_t *res, void (^next)(),

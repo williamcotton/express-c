@@ -138,6 +138,14 @@ void expressTests(tape_t *t) {
                 "session: 123 - user: (null)");
   });
 
+  t->test("All", ^(tape_t *t) {
+    t->strEqual("get", curlGet("/all"), "all");
+    t->strEqual("post", curlPost("/all", "param1=all"), "all");
+    t->strEqual("put", curlPut("/all", "param1=all"), "all");
+    t->strEqual("patch", curlPatch("/all", "param1=all"), "all");
+    t->strEqual("delete", curlDelete("/all"), "all");
+  });
+
   t->test("Redirect", ^(tape_t *t) {
     t->strEqual("redirect", curlGet("/redirect"), "Redirecting to /redirected");
     t->strEqual("redirect back", curlGet("/redirect/back"),

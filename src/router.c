@@ -227,6 +227,14 @@ router_t *expressRouter() {
     addRouteHandler("DELETE", path, handler);
   });
 
+  router->all = Block_copy(^(const char *path, requestHandler handler) {
+    addRouteHandler("GET", path, handler);
+    addRouteHandler("POST", path, handler);
+    addRouteHandler("PUT", path, handler);
+    addRouteHandler("PATCH", path, handler);
+    addRouteHandler("DELETE", path, handler);
+  });
+
   router->param = Block_copy(^(const char *paramKey, paramHandler handler) {
     router->paramHandlers =
         realloc(router->paramHandlers,
