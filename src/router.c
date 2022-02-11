@@ -81,6 +81,7 @@ static void paramMatchFree(param_match_t *paramMatch) {
 
 static void runParamHandlers(int index, request_t *req, response_t *res,
                              router_t *router, void (^next)()) {
+  const char *paramValue = NULL;
   if (index < router->paramHandlerCount) {
     void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
       req->middlewareCleanupBlocks = realloc( // NOLINT
@@ -89,13 +90,18 @@ static void runParamHandlers(int index, request_t *req, response_t *res,
       req->middlewareCleanupBlocks[req->middlewareStackCount++] =
           (void *)cleanupBlock;
     };
-    const char *paramValue = req->params(router->paramHandlers[index].paramKey);
-    router->paramHandlers[index].handler(
-        req, res, paramValue,
-        ^{
-          runParamHandlers(index + 1, req, res, router, next);
-        },
-        cleanup);
+    if (router->paramHandlers[index].paramKey) {
+      paramValue = req->params(router->paramHandlers[index].paramKey);
+      router->paramHandlers[index].handler(
+          req, res, paramValue,
+          ^{
+            runParamHandlers(index + 1, req, res, router, next);
+          },
+          cleanup);
+    } else {
+      runParamHandlers(index + 1, req, res, router, next);
+    }
+
   } else {
     next();
   }

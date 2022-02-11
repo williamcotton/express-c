@@ -197,9 +197,9 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
   collectRegexRouteHandlers(baseRouter, regExRouteHandlers,
                             &regExRouteHandlerCount);
   req->pathMatch = "";
+  req->paramKeyValueCount = 0;
   for (int i = 0; i < regExRouteHandlerCount; i++) {
     int match = 0;
-
     routeMatch(req->path, regExRouteHandlers[i].paramMatch->regexRoute,
                req->paramKeyValues, &match);
     if (match) {
