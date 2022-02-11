@@ -222,6 +222,20 @@ test_harness_t *testHarnessFactory() {
     res->send(super->uuid);
   });
 
+  router->error(^(error_t *err, UNUSED request_t *req, response_t *res,
+                  UNUSED void (^next)()) {
+    debug("Error handler\n");
+    res->status = err->status;
+    res->send(err->message);
+  });
+
+  router->get("/error", ^(UNUSED request_t *req, response_t *res) {
+    error_t *err = req->malloc(sizeof(error_t));
+    err->status = 500;
+    err->message = "fubar";
+    res->error(err);
+  });
+
   router_t *nestedRouter = expressRouter();
 
   nestedRouter->use(^(request_t *req, UNUSED response_t *res, void (^next)(),

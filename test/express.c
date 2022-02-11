@@ -105,7 +105,7 @@ void expressTests(tape_t *t) {
   t->test("File", ^(tape_t *t) {
     t->strEqual("file", curlGet("/file"), "hello, world!\n");
     char error[1024];
-    sprintf(error, errorHTML, "/test/test3.txt");
+    sprintf(error, errorHTML, "Cannot GET /test/test3.txt");
     t->strEqual("file not found", curlGet("/test/test3.txt"), error);
     t->strEqual("download", curlGet("/download"), "hello, world!\n");
     char *missingFile = curlGet("/download_missing");
@@ -154,8 +154,9 @@ void expressTests(tape_t *t) {
 
   t->test("Error", ^(tape_t *t) {
     char error[1024];
-    sprintf(error, errorHTML, "/error");
+    sprintf(error, errorHTML, "Cannot GET /error");
     t->strEqual("error", curlGet("/error"), error);
+    t->strEqual("custom error handler", curlGet("/base/error"), "fubar");
   });
 
   t->test("Router", ^(tape_t *t) {

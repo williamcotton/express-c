@@ -1,5 +1,7 @@
 #include "express.h"
 
+error_t *error404(request_t *req);
+
 static char *matchFilepath(request_t *req, const char *path) {
   regex_t regex;
   int reti;
@@ -70,14 +72,16 @@ middlewareHandler expressStatic(const char *path, const char *fullPath,
     if (isTraversal) {
       if (filePath != NULL)
         free(filePath);
-      res->status = 403;
-      res->sendf(errorHTML, req->path);
+      error_t *err = error404(req);
+      res->error(err);
       return;
     }
 
     if (filePath != NULL) {
       res->sendFile(filePath);
       free(filePath);
+      if (res->err)
+        next();
     } else {
       next();
     }

@@ -22,6 +22,17 @@
 
 #include "express.h"
 
+char *errorHTML = "<!DOCTYPE html>\n"
+                  "<html lang=\"en\">\n"
+                  "<head>\n"
+                  "<meta charset=\"utf-8\">\n"
+                  "<title>Error</title>\n"
+                  "</head>\n"
+                  "<body>\n"
+                  "<pre>%s</pre>\n"
+                  "</body>\n"
+                  "</html>\n";
+
 int initClientAcceptEventHandler(server_t *server, router_t *router);
 
 app_t *express() {
@@ -41,10 +52,17 @@ app_t *express() {
   app->delete = router->delete;
   app->all = router->all;
   app->use = router->use;
+  app->error = router->error;
   app->useRouter = router->useRouter;
   app->param = router->param;
   app->cleanup = router->cleanup;
   app->server = server;
+
+  app->error(^(error_t *err, UNUSED request_t *req, response_t *res,
+               UNUSED void (^next)()) {
+    res->status = err->status;
+    res->sendf(errorHTML, err->message);
+  });
 
   app->closeServer = Block_copy(^() {
     printf("\nClosing server...\n");

@@ -1,5 +1,10 @@
 #include "express.h"
 
+error_t *error404(request_t *req);
+
+null nullop = ^{
+};
+
 static param_match_t *paramMatch(const char *basePath, const char *route) {
   param_match_t *pm = malloc(sizeof(param_match_t));
   pm->keys = malloc(sizeof(char *));
@@ -79,6 +84,19 @@ static void paramMatchFree(param_match_t *paramMatch) {
     free(paramMatch->regexRoute);
 }
 
+static void runErrorHandlers(int index, request_t *req, response_t *res,
+                             router_t *router, void (^next)()) {
+  if (res->err) {
+    if (index < router->errorHandlerCount) {
+      router->errorHandlers[index](res->err, req, res, ^{
+        runErrorHandlers(index + 1, req, res, router, next);
+      });
+    } else {
+      next();
+    }
+  }
+}
+
 static void runParamHandlers(int index, request_t *req, response_t *res,
                              router_t *router, void (^next)()) {
   const char *paramValue = NULL;
@@ -98,6 +116,7 @@ static void runParamHandlers(int index, request_t *req, response_t *res,
             runParamHandlers(index + 1, req, res, router, next);
           },
           cleanup);
+      runErrorHandlers(0, req, res, router, nullop);
     } else {
       runParamHandlers(index + 1, req, res, router, next);
     }
@@ -123,6 +142,7 @@ static void runMiddleware(int index, request_t *req, response_t *res,
           runMiddleware(index + 1, req, res, router, next);
         },
         cleanup);
+    runErrorHandlers(0, req, res, router, nullop);
   } else {
     next();
   }
@@ -180,6 +200,8 @@ router_t *expressRouter() {
   router->appCleanupCount = 0;
   router->paramHandlers = malloc(sizeof(param_handler_t));
   router->paramHandlerCount = 0;
+  router->errorHandlers = malloc(sizeof(errorHandler));
+  router->errorHandlerCount = 0;
 
   int (^isBaseRouter)(void) = ^{
     return router->isBaseRouter;
@@ -233,6 +255,13 @@ router_t *expressRouter() {
     addRouteHandler("PUT", path, handler);
     addRouteHandler("PATCH", path, handler);
     addRouteHandler("DELETE", path, handler);
+  });
+
+  router->error = Block_copy(^(errorHandler handler) {
+    router->errorHandlers =
+        realloc(router->errorHandlers,
+                sizeof(errorHandler) * (router->errorHandlerCount + 1));
+    router->errorHandlers[router->errorHandlerCount++] = handler;
   });
 
   router->param = Block_copy(^(const char *paramKey, paramHandler handler) {
@@ -295,7 +324,7 @@ router_t *expressRouter() {
     runMiddleware(0, req, res, router, ^{
       runParamHandlers(0, req, res, router, ^{
         route_handler_t routeHandler = matchRouteHandler(req, router);
-        if (routeHandler.handler != NULL) {
+        if (routeHandler.handler != NULL && res->err == NULL) {
           req->baseUrl = routeHandler.basePath;
           req->route = (void *)&routeHandler;
           routeHandler.handler(req, res);
@@ -309,9 +338,13 @@ router_t *expressRouter() {
     }
 
     if (isBaseRouter() && res->didSend == 0) {
-      res->status = 404;
-      res->sendf(errorHTML, req->path);
+      if (res->err == NULL) {
+        error_t *err = error404(req);
+        res->error(err);
+      }
     }
+
+    runErrorHandlers(0, req, res, router, nullop);
   });
 
   router->cleanup = Block_copy(^(appCleanupHandler handler) {
@@ -353,6 +386,12 @@ router_t *expressRouter() {
     }
     free(router->routers);
 
+    /* Free error handlers */
+    for (int i = 0; i < router->errorHandlerCount; i++) {
+      Block_release(router->errorHandlers[i]);
+    }
+    free(router->errorHandlers);
+
     /* Free app cleanup blocks */
     for (int i = 0; i < router->appCleanupCount; i++) {
       router->appCleanupBlocks[i]();
@@ -368,6 +407,7 @@ router_t *expressRouter() {
     Block_release(router->delete);
     Block_release(router->all);
     Block_release(router->use);
+    Block_release(router->error);
     Block_release(router->mountTo);
     Block_release(router->useRouter);
     Block_release(router->param);

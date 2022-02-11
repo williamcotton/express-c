@@ -105,6 +105,8 @@
     goto error;                                                                \
   }
 
+typedef void (^null)();
+
 extern char *errorHTML;
 
 /* Primitives */
@@ -230,6 +232,8 @@ typedef struct response_t {
   void (^sendf)(const char *, ...);
   void (^sendFile)(const char *);
   void (^render)(void *, void *);
+  error_t *err;
+  void (^error)(error_t *err);
   void *headersHash;
   void (^set)(const char *, const char *);
   char * (^get)(const char *);
@@ -257,7 +261,7 @@ typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^middlewareHandler)(request_t *req, response_t *res,
                                   void (^next)(),
                                   void (^cleanup)(cleanupHandler));
-typedef void (^errorHandler)(error_t err, request_t *req, response_t *res,
+typedef void (^errorHandler)(error_t *err, request_t *req, response_t *res,
                              void (^next)());
 typedef void (^paramHandler)(request_t *req, response_t *res,
                              const char *paramValue, void (^next)(),
@@ -275,6 +279,7 @@ typedef void (^sendfBlock)(const char *format, ...);
 typedef void (^sendStatusBlock)(int status);
 typedef void (^downloadBlock)(const char *filePath, const char *name);
 typedef void (^setBlock)(const char *key, const char *value);
+typedef void (^setError)(error_t *err);
 typedef void (^setCookie)(const char *cookieKey, const char *cookieValue,
                           cookie_opts_t opts);
 typedef void (^clearCookieBlock)(const char *key, cookie_opts_t opts);
@@ -344,6 +349,7 @@ typedef struct router_t {
   void (^useRouter)(char *mountPath, struct router_t *routerToMount);
   void (^mountTo)(struct router_t *baseRouter);
   void (^param)(const char *paramKey, paramHandler);
+  void (^error)(errorHandler);
   void (^handler)(request_t *req, response_t *res);
   void (^cleanup)(appCleanupHandler);
   void (^free)();
@@ -357,6 +363,8 @@ typedef struct router_t {
   int appCleanupCount;
   param_handler_t *paramHandlers;
   int paramHandlerCount;
+  errorHandler *errorHandlers;
+  int errorHandlerCount;
 } router_t;
 
 router_t *expressRouter();
@@ -397,7 +405,7 @@ typedef struct app_t {
   void (^useRouter)(char *mountPath, struct router_t *routerToMount);
   void (^param)(const char *paramKey, paramHandler);
   void (^engine)(const char *ext, const void *engine);
-  void (^error)(errorHandler); // TODO: add app.error
+  void (^error)(errorHandler);
   void (^cleanup)(appCleanupHandler);
   void (^closeServer)();
   void (^free)();

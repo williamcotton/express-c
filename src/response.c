@@ -1,17 +1,18 @@
 #include "express.h"
 
-char *errorHTML = "<!DOCTYPE html>\n"
-                  "<html lang=\"en\">\n"
-                  "<head>\n"
-                  "<meta charset=\"utf-8\">\n"
-                  "<title>Error</title>\n"
-                  "</head>\n"
-                  "<body>\n"
-                  "<pre>Cannot GET %s</pre>\n"
-                  "</body>\n"
-                  "</html>\n";
-
 char *getStatusMessage(int status);
+
+error_t *error404(request_t *req) {
+  size_t errorMessageLen =
+      strlen(req->path) + strlen(req->method) + strlen("Cannot  ") + 1;
+  char *errorMessage = req->malloc(sizeof(char) * errorMessageLen);
+  snprintf(errorMessage, errorMessageLen, "Cannot %s %s", req->method,
+           req->path);
+  error_t *err = req->malloc(sizeof(error_t));
+  err->status = 404;
+  err->message = errorMessage;
+  return err;
+}
 
 static size_t getFileSize(const char *filePath) {
   struct stat st;
@@ -102,8 +103,9 @@ static sendBlock resSendFileFactory(client_t client, request_t *req,
       return;
     FILE *file = fopen(path, "r");
     if (file == NULL) {
-      res->status = 404;
-      res->sendf(errorHTML, req->path);
+      error_t *err = error404(req);
+      debug("%s", err->message);
+      res->error(err);
       return;
     }
     char *mimetype =
@@ -314,6 +316,14 @@ static sendBlock resRedirectFactory(UNUSED request_t *req, response_t *res) {
   });
 }
 
+static setError resErrorFactory(response_t *res) {
+  res->err = NULL;
+  return Block_copy(^(error_t *err) {
+    debug("Setting error: %s", err->message);
+    res->err = err;
+  });
+}
+
 void freeResponse(response_t *res) {
   Block_release(res->send);
   Block_release(res->sendFile);
@@ -328,6 +338,7 @@ void freeResponse(response_t *res) {
   Block_release(res->download);
   Block_release(res->type);
   Block_release(res->json);
+  Block_release(res->error);
   free(res);
 }
 
@@ -346,5 +357,6 @@ void buildResponse(client_t client, request_t *req, response_t *res) {
   res->type = resTypeFactory(res);
   res->json = resJsonFactory(res);
   res->download = resDownloadFactory(req, res);
+  res->error = resErrorFactory(res);
   res->didSend = 0;
 }
