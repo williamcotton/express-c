@@ -291,6 +291,20 @@ test_harness_t *testHarnessFactory() {
     res->sendf("%s %s", super->uuid, id);
   });
 
+  paramsRouter->param("id", ^(request_t *req, UNUSED response_t *res,
+                              const char *paramValue, void (^next)(),
+                              void (^cleanup)(cleanupHandler)) {
+    req->mSet("param-value", (void *)paramValue);
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+    }));
+    next();
+  });
+
+  paramsRouter->get("/param_value", ^(request_t *req, response_t *res) {
+    char *pv = req->m("param-value");
+    res->sendf("%s", pv);
+  });
+
   router_t *rootRouter = expressRouter();
 
   rootRouter->get("/", ^(UNUSED request_t *req, response_t *res) {

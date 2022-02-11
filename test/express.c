@@ -179,6 +179,8 @@ void expressTests(tape_t *t) {
                   "Hello Params blip Router!");
       t->strEqual("custom request middleware", curlGet("/base/params/blip/m"),
                   "super-params-router test blip");
+      t->strEqual("param value", curlGet("/base/params/hip/param_value"),
+                  "hip");
     });
 
     t->test("Root router", ^(tape_t *t) {

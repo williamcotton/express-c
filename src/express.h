@@ -259,8 +259,9 @@ typedef void (^middlewareHandler)(request_t *req, response_t *res,
                                   void (^cleanup)(cleanupHandler));
 typedef void (^errorHandler)(error_t err, request_t *req, response_t *res,
                              void (^next)());
-typedef void (^paramHandler)(request_t *req, response_t *res, void (^next)(),
-                             const char *paramValue);
+typedef void (^paramHandler)(request_t *req, response_t *res,
+                             const char *paramValue, void (^next)(),
+                             void (^cleanup)(cleanupHandler));
 
 /* Function signatures */
 
@@ -323,6 +324,11 @@ typedef struct middleware_t {
   middlewareHandler handler;
 } middleware_t;
 
+typedef struct param_handler_t {
+  const char *paramKey;
+  paramHandler handler;
+} param_handler_t;
+
 typedef struct router_t {
   const char *basePath;
   const char *mountPath;
@@ -336,7 +342,7 @@ typedef struct router_t {
   void (^use)(middlewareHandler);
   void (^useRouter)(char *mountPath, struct router_t *routerToMount);
   void (^mountTo)(struct router_t *baseRouter);
-  void (^param)(const char *param, paramHandler); // TODO: add router.param
+  void (^param)(const char *paramKey, paramHandler);
   void (^handler)(request_t *req, response_t *res);
   void (^cleanup)(appCleanupHandler);
   void (^free)();
@@ -348,6 +354,8 @@ typedef struct router_t {
   int routerCount;
   appCleanupHandler *appCleanupBlocks;
   int appCleanupCount;
+  param_handler_t *paramHandlers;
+  int paramHandlerCount;
 } router_t;
 
 router_t *expressRouter();
@@ -384,6 +392,7 @@ typedef struct app_t {
   void (^listen)(int port, void (^callback)());
   void (^use)(middlewareHandler);
   void (^useRouter)(char *mountPath, struct router_t *routerToMount);
+  void (^param)(const char *paramKey, paramHandler);
   void (^engine)(const char *ext, const void *engine);
   void (^error)(errorHandler); // TODO: add app.error
   void (^cleanup)(appCleanupHandler);

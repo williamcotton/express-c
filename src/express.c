@@ -44,6 +44,7 @@ app_t *express() {
   app->delete = router->delete;
   app->use = router->use;
   app->useRouter = router->useRouter;
+  app->param = router->param;
   app->cleanup = router->cleanup;
   app->server = server;
 

@@ -79,6 +79,28 @@ static void paramMatchFree(param_match_t *paramMatch) {
     free(paramMatch->regexRoute);
 }
 
+static void runParamHandlers(int index, request_t *req, response_t *res,
+                             router_t *router, void (^next)()) {
+  if (index < router->paramHandlerCount) {
+    void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
+      req->middlewareCleanupBlocks = realloc( // NOLINT
+          req->middlewareCleanupBlocks,
+          sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
+      req->middlewareCleanupBlocks[req->middlewareStackCount++] =
+          (void *)cleanupBlock;
+    };
+    const char *paramValue = req->params(router->paramHandlers[index].paramKey);
+    router->paramHandlers[index].handler(
+        req, res, paramValue,
+        ^{
+          runParamHandlers(index + 1, req, res, router, next);
+        },
+        cleanup);
+  } else {
+    next();
+  }
+}
+
 static void runMiddleware(int index, request_t *req, response_t *res,
                           router_t *router, void (^next)()) {
   if (index < router->middlewareCount) {
@@ -150,6 +172,8 @@ router_t *expressRouter() {
   router->routerCount = 0;
   router->appCleanupBlocks = malloc(sizeof(appCleanupHandler));
   router->appCleanupCount = 0;
+  router->paramHandlers = malloc(sizeof(param_handler_t));
+  router->paramHandlerCount = 0;
 
   int (^isBaseRouter)(void) = ^{
     return router->isBaseRouter;
@@ -195,6 +219,16 @@ router_t *expressRouter() {
 
   router->delete = Block_copy(^(const char *path, requestHandler handler) {
     addRouteHandler("DELETE", path, handler);
+  });
+
+  router->param = Block_copy(^(const char *paramKey, paramHandler handler) {
+    router->paramHandlers =
+        realloc(router->paramHandlers,
+                sizeof(param_handler_t) * (router->paramHandlerCount + 1));
+    router->paramHandlers[router->paramHandlerCount++] = (param_handler_t){
+        .paramKey = paramKey,
+        .handler = handler,
+    };
   });
 
   router->use = Block_copy(^(middlewareHandler handler) {
@@ -245,13 +279,15 @@ router_t *expressRouter() {
   router->handler = Block_copy(^(request_t *req, response_t *res) {
     // TODO: only run middleware if the request is for this router
     runMiddleware(0, req, res, router, ^{
-      route_handler_t routeHandler = matchRouteHandler(req, router);
-      if (routeHandler.handler != NULL) {
-        req->baseUrl = routeHandler.basePath;
-        req->route = (void *)&routeHandler;
-        routeHandler.handler(req, res);
-        return;
-      }
+      runParamHandlers(0, req, res, router, ^{
+        route_handler_t routeHandler = matchRouteHandler(req, router);
+        if (routeHandler.handler != NULL) {
+          req->baseUrl = routeHandler.basePath;
+          req->route = (void *)&routeHandler;
+          routeHandler.handler(req, res);
+          return;
+        }
+      });
     });
 
     for (int i = 0; i < router->routerCount; i++) {
@@ -289,6 +325,12 @@ router_t *expressRouter() {
     }
     free(router->middlewares);
 
+    /* Free param handlers */
+    for (int i = 0; i < router->paramHandlerCount; i++) {
+      Block_release(router->paramHandlers[i].handler);
+    }
+    free(router->paramHandlers);
+
     /* Free routers */
     for (int i = 0; i < router->routerCount; i++) {
       router->routers[i]->free();
@@ -313,6 +355,7 @@ router_t *expressRouter() {
     Block_release(router->use);
     Block_release(router->mountTo);
     Block_release(router->useRouter);
+    Block_release(router->param);
     Block_release(router->handler);
     Block_release(router->cleanup);
     Block_release(router->free);
