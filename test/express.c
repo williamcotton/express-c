@@ -133,6 +133,9 @@ void expressTests(tape_t *t) {
                 "ok");
     t->strEqual("get cookie", curlGet("/get_cookie"),
                 "session: 123 - user: test");
+    t->strEqual("clear cookie", curlGet("/clear_cookie"), "ok");
+    t->strEqual("get cleared cookie", curlGet("/get_cookie"),
+                "session: 123 - user: (null)");
   });
 
   t->test("Redirect", ^(tape_t *t) {

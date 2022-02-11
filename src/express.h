@@ -238,7 +238,7 @@ typedef struct response_t {
   size_t cookieHeadersLength;
   char cookieHeaders[4096];
   void (^cookie)(const char *, const char *, cookie_opts_t);
-  void (^clearCookie)(const char *, cookie_opts_t); // TODO: add res.clearCookie
+  void (^clearCookie)(const char *, cookie_opts_t);
   void (^json)(const char *);
   void (^location)(const char *);
   void (^redirect)(const char *);
@@ -277,6 +277,7 @@ typedef void (^downloadBlock)(const char *filePath, const char *name);
 typedef void (^setBlock)(const char *key, const char *value);
 typedef void (^setCookie)(const char *cookieKey, const char *cookieValue,
                           cookie_opts_t opts);
+typedef void (^clearCookieBlock)(const char *key, cookie_opts_t opts);
 
 /* Public functions */
 

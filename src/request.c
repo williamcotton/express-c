@@ -261,7 +261,7 @@ static getBlock reqCookieFactory(request_t *req) {
 
   return Block_copy(^(const char *key) {
     check_silent(req->cookiesKeyValueCount > 0, "No cookies found");
-    for (size_t j = req->cookiesKeyValueCount - 1; j >= 0; j--) {
+    for (int j = req->cookiesKeyValueCount - 1; j >= 0; j--) {
       check_silent(req->cookiesKeyValues[j].key != NULL, "No cookies found");
       size_t keyLen = strlen(key);
       if (strncmp(req->cookiesKeyValues[j].key, key, keyLen) == 0) {

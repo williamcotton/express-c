@@ -168,6 +168,11 @@ test_harness_t *testHarnessFactory() {
     res->sendf("session: %s - user: %s", session, user);
   });
 
+  app->get("/clear_cookie", ^(UNUSED request_t *req, response_t *res) {
+    res->clearCookie("user", (cookie_opts_t){});
+    res->send("ok");
+  });
+
   app->get("/redirect", ^(UNUSED request_t *req, response_t *res) {
     res->redirect("/redirected");
   });

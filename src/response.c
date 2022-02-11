@@ -282,6 +282,12 @@ static setCookie resCookieFactory(response_t *res) {
   });
 }
 
+static clearCookieBlock resClearCookieFactory(response_t *res) {
+  return Block_copy(^(const char *key, cookie_opts_t opts) {
+    res->cookie(key, "; expires=Thu, 01 Jan 1970 00:00:00 GMT", opts);
+  });
+}
+
 static sendBlock resLocationFactory(request_t *req, response_t *res) {
   return Block_copy(^(const char *url) {
     if (strncmp(url, "back", 4) == 0) {
@@ -316,6 +322,7 @@ void freeResponse(response_t *res) {
   Block_release(res->set);
   Block_release(res->get);
   Block_release(res->cookie);
+  Block_release(res->clearCookie);
   Block_release(res->location);
   Block_release(res->redirect);
   Block_release(res->download);
@@ -333,6 +340,7 @@ void buildResponse(client_t client, request_t *req, response_t *res) {
   res->set = resSetFactory(res);
   res->get = resGetFactory(res);
   res->cookie = resCookieFactory(res);
+  res->clearCookie = resClearCookieFactory(res);
   res->location = resLocationFactory(req, res);
   res->redirect = resRedirectFactory(req, res);
   res->type = resTypeFactory(res);
