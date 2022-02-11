@@ -224,7 +224,6 @@ test_harness_t *testHarnessFactory() {
 
   router->error(^(error_t *err, UNUSED request_t *req, response_t *res,
                   UNUSED void (^next)()) {
-    debug("Error handler\n");
     res->status = err->status;
     res->send(err->message);
   });

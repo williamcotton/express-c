@@ -104,7 +104,6 @@ static sendBlock resSendFileFactory(client_t client, request_t *req,
     FILE *file = fopen(path, "r");
     if (file == NULL) {
       error_t *err = error404(req);
-      debug("%s", err->message);
       res->error(err);
       return;
     }
@@ -319,7 +318,6 @@ static sendBlock resRedirectFactory(UNUSED request_t *req, response_t *res) {
 static setError resErrorFactory(response_t *res) {
   res->err = NULL;
   return Block_copy(^(error_t *err) {
-    debug("Setting error: %s", err->message);
     res->err = err;
   });
 }
