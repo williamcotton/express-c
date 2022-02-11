@@ -30,6 +30,7 @@
 #include <curl/curl.h>
 #include <dispatch/dispatch.h>
 #include <errno.h>
+#include <execinfo.h>
 #include <picohttpparser/picohttpparser.h>
 #include <regex.h>
 #include <signal.h>
@@ -51,6 +52,7 @@
 #define MAX_REQUEST_SIZE 4096
 #define READ_TIMEOUT_SECS 30
 #define ACCEPT_TIMEOUT_SECS 30
+#define BT_BUF_SIZE 100
 
 /* Helpers */
 

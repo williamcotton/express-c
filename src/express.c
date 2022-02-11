@@ -33,6 +33,33 @@ char *errorHTML = "<!DOCTYPE html>\n"
                   "</body>\n"
                   "</html>\n";
 
+char *errorMessage(error_t *err) {
+#ifdef ERR_STACKTRACE
+  void *buffer[BT_BUF_SIZE];
+  char **strings;
+  int nptrs = backtrace(buffer, BT_BUF_SIZE);
+  strings = backtrace_symbols(buffer, nptrs);
+  if (strings == NULL) {
+    return err->message;
+  }
+  char backtraceStr[1024 * 10];
+  memset(backtraceStr, 0, 1024 * 10);
+  strcat(backtraceStr, err->message);
+  strcat(backtraceStr, "\n\n");
+  for (int i = 0; i < nptrs; ++i) {
+    strcat(backtraceStr, strings[i]);
+    strcat(backtraceStr, "\n");
+  }
+  free(strings);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-stack-address"
+  return backtraceStr;
+#pragma clang diagnostic pop
+#else
+  return err->message;
+#endif // ERR_STACKTRACE
+}
+
 int initClientAcceptEventHandler(server_t *server, router_t *router);
 
 app_t *express() {
@@ -61,7 +88,7 @@ app_t *express() {
   app->error(^(error_t *err, UNUSED request_t *req, response_t *res,
                UNUSED void (^next)()) {
     res->status = err->status;
-    res->sendf(errorHTML, err->message);
+    res->sendf(errorHTML, errorMessage(err));
   });
 
   app->closeServer = Block_copy(^() {

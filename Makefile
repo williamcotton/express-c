@@ -43,7 +43,7 @@ all: $(TARGETS)
 .PHONY: $(TARGETS)
 $(TARGETS):
 	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS)
+	$(CC) -o $(BUILD_DIR)/$@ demo/$@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS) -DERR_STACKTRACE
 
 $(TARGETS)-prod: demo/embeddedFiles.h
 	mkdir -p $(BUILD_DIR)
