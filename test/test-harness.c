@@ -337,6 +337,51 @@ test_harness_t *testHarnessFactory() {
     res->send("Hello Root Router!");
   });
 
+  paramsRouter->get("/m-isolated", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-nested-router");
+    if (super) {
+      res->send(super->uuid);
+    } else {
+      res->send("No super-nested-router");
+    }
+  });
+
+  nestedRouter->get("/m-isolated", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-params-router");
+    if (super) {
+      res->send(super->uuid);
+    } else {
+      res->send("No super-params-router");
+    }
+  });
+
+  router->get("/m-isolated", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-nested-router");
+    if (super) {
+      res->send(super->uuid);
+    } else {
+      res->send("No super-nested-router");
+    }
+  });
+
+  app->get("/m-isolated", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-nested-router");
+    if (super) {
+      res->send(super->uuid);
+    } else {
+      res->send("No super-nested-router");
+    }
+  });
+
+  rootRouter->get("/m-isolated", ^(request_t *req, response_t *res) {
+    super_t *super = req->m("super-nested-router");
+    if (super) {
+      res->send(super->uuid);
+    } else {
+      res->send("No super-nested-router");
+    }
+  });
+
   app->useRouter("/", rootRouter);
   router->useRouter("/params/:id", paramsRouter);
   app->useRouter("/base", router);

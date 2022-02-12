@@ -185,6 +185,29 @@ static route_handler_t matchRouteHandler(request_t *req, router_t *router) {
   return (route_handler_t){.method = NULL, .path = NULL, .handler = NULL};
 }
 
+int routerMatchesRequest(router_t *router, request_t *req) {
+  if (strchr(router->basePath, ':') != NULL) {
+    param_match_t *pm = paramMatch(router->basePath, "");
+    regex_t regexCompiled;
+    regmatch_t groupArray[2];
+    int regexRouteLen = strlen(pm->regexRoute);
+    pm->regexRoute[regexRouteLen - 1] = '\0';
+    if (regcomp(&regexCompiled, pm->regexRoute, REG_EXTENDED)) {
+      log_err("regcomp() failed");
+      return 0;
+    };
+    if (regexec(&regexCompiled, req->path, 10, groupArray, 0))
+      return 0;
+  } else {
+    if (router->basePath && strlen(router->basePath) && req->path) {
+      int minLength = min(strlen(router->basePath), strlen(req->path));
+      if (strncmp(router->basePath, req->path, minLength) != 0)
+        return 0;
+    }
+  }
+  return 1;
+}
+
 router_t *expressRouter() {
   __block router_t *router = malloc(sizeof(router_t));
 
@@ -320,7 +343,9 @@ router_t *expressRouter() {
   });
 
   router->handler = Block_copy(^(request_t *req, response_t *res) {
-    // TODO: only run middleware if the request is for this router
+    if (!routerMatchesRequest(router, req))
+      return;
+
     runMiddleware(0, req, res, router, ^{
       runParamHandlers(0, req, res, router, ^{
         route_handler_t routeHandler = matchRouteHandler(req, router);
@@ -367,7 +392,6 @@ router_t *expressRouter() {
 
     /* Free middleware */
     for (int i = 0; i < router->middlewareCount; i++) {
-      free((void *)router->middlewares[i].path);
       Block_release(router->middlewares[i].handler);
     }
     free(router->middlewares);

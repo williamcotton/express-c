@@ -100,6 +100,15 @@ void expressTests(tape_t *t) {
     t->strEqual("static file middleware", curlGet("/test/test2.txt"),
                 "this is a test!!!");
     t->strEqual("custom request middleware", curlGet("/m"), "super test");
+    t->strEqual("custom request middleware",
+                curlGet("/base/params/bloop/m-isolated"),
+                "No super-nested-router");
+    t->strEqual("custom request middleware", curlGet("/base/nested/m-isolated"),
+                "No super-params-router");
+    t->strEqual("custom request middleware", curlGet("/base/m-isolated"),
+                "No super-nested-router");
+    t->strEqual("custom request middleware", curlGet("/m-isolated"),
+                "No super-nested-router");
   });
 
   t->test("File", ^(tape_t *t) {

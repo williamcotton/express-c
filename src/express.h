@@ -107,6 +107,20 @@
     goto error;                                                                \
   }
 
+#define max(a, b)                                                              \
+  ({                                                                           \
+    __typeof__(a) _a = (a);                                                    \
+    __typeof__(b) _b = (b);                                                    \
+    _a > _b ? _a : _b;                                                         \
+  })
+
+#define min(a, b)                                                              \
+  ({                                                                           \
+    __typeof__(a) _a = (a);                                                    \
+    __typeof__(b) _b = (b);                                                    \
+    _a < _b ? _a : _b;                                                         \
+  })
+
 typedef void (^null)();
 
 extern char *errorHTML;
@@ -328,7 +342,6 @@ typedef struct route_handler_t {
 } route_handler_t;
 
 typedef struct middleware_t {
-  const char *path;
   middlewareHandler handler;
 } middleware_t;
 
