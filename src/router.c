@@ -189,15 +189,21 @@ int routerMatchesRequest(router_t *router, request_t *req) {
   if (strchr(router->basePath, ':') != NULL) {
     param_match_t *pm = paramMatch(router->basePath, "");
     regex_t regexCompiled;
-    regmatch_t groupArray[2];
     int regexRouteLen = strlen(pm->regexRoute);
     pm->regexRoute[regexRouteLen - 1] = '\0';
     if (regcomp(&regexCompiled, pm->regexRoute, REG_EXTENDED)) {
       log_err("regcomp() failed");
       return 0;
     };
-    if (regexec(&regexCompiled, req->path, 10, groupArray, 0))
+    if (regexec(&regexCompiled, req->path, 0, NULL, 0)) {
+      regfree(&regexCompiled);
+      paramMatchFree(pm);
+      free(pm);
       return 0;
+    }
+    regfree(&regexCompiled);
+    paramMatchFree(pm);
+    free(pm);
   } else {
     if (router->basePath && strlen(router->basePath) && req->path) {
       int minLength = min(strlen(router->basePath), strlen(req->path));
