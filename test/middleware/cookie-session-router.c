@@ -17,7 +17,9 @@ router_t *cookieSessionRouter() {
 
   router->get("/get", ^(UNUSED request_t *req, response_t *res) {
     cJSON *json = req->session->get("test");
-    res->send(cJSON_PrintUnformatted(json));
+    char *str = cJSON_PrintUnformatted(json);
+    res->send(str);
+    free(str);
   });
 
   return router;

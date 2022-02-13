@@ -69,6 +69,7 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
       va_end(args);
       PGresult *pgres = PQexecParams(postgres->pool[i]->connection, sql,
                                      nParams, NULL, paramValues, NULL, NULL, 0);
+      free(paramValues);
       return pgres;
     });
 
