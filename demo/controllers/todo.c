@@ -1,16 +1,16 @@
 #include "../models/todo.h"
-#include "../../src/express.h"
 #include <cJSON/cJSON.h>
-#include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
-#include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
+#include <express.h>
+#include <middleware/cookie-session-middleware.h>
+#include <middleware/mustache-middleware.h>
 #include <stdlib.h>
 
 router_t *todosController(embedded_files_data_t embeddedFiles) {
   router_t *router = expressRouter();
 
-  router->use(cJSONCookieSessionMiddlewareFactory());
+  router->use(cookieSessionMiddlewareFactory());
   router->use(todoStoreMiddleware());
-  router->use(cJSONMustacheMiddleware("demo/views", embeddedFiles));
+  router->use(mustacheMiddleware("demo/views", embeddedFiles));
 
   /*
     TODO: return a CSS class for when a todo was changed on the last request

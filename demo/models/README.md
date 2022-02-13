@@ -1,6 +1,6 @@
 # Todo Store and Model
 
-A model and store built on top of [cJSON](https://github.com/DaveGamble/cJSON) and the [cJSONCookieSessionMiddleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONCookieSessionMiddleware).
+A model and store built on top of [cJSON](https://github.com/DaveGamble/cJSON) and the [cookie session middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/cookie-session-middleware).
 
 ```c
 #include "todo.h"

@@ -24,9 +24,9 @@ CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir)
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-EXPRESS_SRC = $(wildcard src/*.c)
+EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)
 SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(wildcard demo/*/*.c)
-TEST_SRC = $(wildcard test/*.c)
+TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
 BUILD_DIR = build
 
 ifeq ($(PLATFORM),LINUX)

@@ -1,5 +1,6 @@
 -std=gnu2x
 -Ideps
+-Isrc
 -fno-common
 -fblocks
 -Wall

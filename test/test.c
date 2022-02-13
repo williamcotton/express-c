@@ -7,12 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void expressTests(tape_t *t);
+
 void runTests(int runAndExit, test_harness_t *testHarness) {
   tape_t *test = tape();
 
   int testStatus = test->test("express", ^(tape_t *t) {
     clearState();
-    void expressTests(tape_t * t);
     expressTests(t);
   });
 

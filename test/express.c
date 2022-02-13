@@ -25,6 +25,14 @@ void expressTests(tape_t *t) {
   void statusMessageTests(tape_t * t);
   statusMessageTests(t);
 
+  /* Middleware */
+  void postgresMiddlewareTests(tape_t * t);
+  postgresMiddlewareTests(t);
+  void mustacheMiddlewareTests(tape_t * t);
+  mustacheMiddlewareTests(t);
+  void cookieSessionMiddlewareTests(tape_t * t);
+  cookieSessionMiddlewareTests(t);
+
   /* Helper functions */
   t->test("matchEmbeddedFile", ^(tape_t *t) {
     unsigned char demo_public_app_css[] = {0x68};
@@ -97,7 +105,7 @@ void expressTests(tape_t *t) {
   });
 
   t->test("Middleware", ^(tape_t *t) {
-    t->strEqual("static file middleware", curlGet("/test/test2.txt"),
+    t->strEqual("static file middleware", curlGet("/test/files/test2.txt"),
                 "this is a test!!!");
     t->strEqual("custom request middleware", curlGet("/m"), "super test");
     t->strEqual("custom request middleware",
@@ -171,9 +179,9 @@ void expressTests(tape_t *t) {
   t->test("Router", ^(tape_t *t) {
     t->strEqual("root", curlGet("/base"), "Hello Router!");
     t->strEqual("basic route", curlGet("/base/test"), "Testing Router!");
-    t->strEqual("route params", curlGet("/base/one/123/two/345/567.jpg"),
-                "<h1>Base Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: "
-                "567</p>");
+    t->strEqual(
+        "route params", curlGet("/base/one/123/two/345/567.jpg"),
+        "<h1>Base Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
     t->strEqual("custom request middleware", curlGet("/base/m"),
                 "super-router test");
 

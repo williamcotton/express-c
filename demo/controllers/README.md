@@ -8,8 +8,8 @@ A [Todos controller](https://github.com/williamcotton/express-c/tree/master/demo
 #include "../models/todo.h"
 #include "../../src/express.h"
 #include <cJSON/cJSON.h>
-#include <cJSONCookieSessionMiddleware/cJSONCookieSessionMiddleware.h>
-#include <cJSONMustacheMiddleware/cJSONMustacheMiddleware.h>
+#include <middleware/cookie-session-middleware.h>
+#include <middleware/mustache-middleware.h>
 #include <stdlib.h>
 ```
 
@@ -22,14 +22,14 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
 
 ### Middleware
 
-The application is built on top of the [cJSONCookieSessionMiddleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONCookieSessionMiddleware), [cJSONMustacheMiddleware](https://github.com/williamcotton/express-c/tree/master/deps/cJSONMustacheMiddleware) and [todo model](https://github.com/williamcotton/express-c/tree/master/demo/models) middleware.
+The application is built on top of the [cookie session middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/cookie-session-middleware), [mustache middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/mustache-middleware) and [todo model](https://github.com/williamcotton/express-c/tree/master/demo/models) middleware.
 
 In production the mustache views are compiled into C binary data. In development we load the views from the file system for a streamlined experience.
 
 ```c
-  router->use(cJSONCookieSessionMiddlewareFactory());
+  router->use(cookieSessionMiddlewareFactory());
   router->use(todoStoreMiddleware());
-  router->use(cJSONMustacheMiddleware("demo/views", embeddedFiles));
+  router->use(mustacheMiddleware("demo/views", embeddedFiles));
 ```
 
 ### Front Page
@@ -170,7 +170,7 @@ The `express-c` framework provides `req->query("filter")` where as the todo mode
 ```c
 #include "../../src/express.h"
 #include <Block.h>
-#include <postgresMiddleware/postgresMiddleware.h>
+#include <postgres-middleware/postgres-middleware.h>
 ```
 
 ### Postgres Database
@@ -184,7 +184,7 @@ router_t *apiController(const char *pgUri, int poolSize) {
 
 ### Middleware
 
-Our API is built on top of the [postgresMiddleware](https://github.com/williamcotton/express-c/tree/master/deps/postgresMiddleware) library.
+Our API is built on top of the [postgres middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/postgres-middleware) library.
 
 We first get an instance of the postgres connection with a given URI and pool size.
 

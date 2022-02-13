@@ -21,25 +21,6 @@
 */
 
 #include "../src/express.h"
-#include <libpq-fe.h>
 
-typedef struct pg_t {
-  PGconn *connection;
-  int used;
-  PGresult * (^exec)(const char *);
-  void (^close)();
-} pg_t;
-
-typedef struct postgres_connection_t {
-  const char *uri;
-  pg_t **pool;
-  dispatch_semaphore_t semaphore;
-  dispatch_queue_t queue;
-  int poolSize;
-} postgres_connection_t;
-
-postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
-
-void freePostgresConnection(postgres_connection_t *postgres);
-
-middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
+middlewareHandler mustacheMiddleware(char *viewsPath,
+                                     embedded_files_data_t embeddedFiles);

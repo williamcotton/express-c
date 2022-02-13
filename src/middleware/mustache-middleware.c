@@ -58,8 +58,8 @@ static char *mustacheErrorMessage(int result) {
   }
 }
 
-middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
-                                          embedded_files_data_t embeddedFiles) {
+middlewareHandler mustacheMiddleware(char *viewsPath,
+                                     embedded_files_data_t embeddedFiles) {
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;
     char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);

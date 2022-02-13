@@ -1,6 +1,6 @@
-#include "../../src/express.h"
 #include <Block.h>
-#include <postgresMiddleware/postgresMiddleware.h>
+#include <express.h>
+#include <middleware/postgres-middleware.h>
 
 router_t *apiController(const char *pgUri, int poolSize) {
   router_t *router = expressRouter();

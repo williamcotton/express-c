@@ -21,5 +21,27 @@
 */
 
 #include "../src/express.h"
+#include <libpq-fe.h>
 
-middlewareHandler cJSONCookieSessionMiddlewareFactory();
+typedef struct pg_t {
+  PGconn *connection;
+  int used;
+  PGresult * (^exec)(const char *, ...);
+  PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
+                           const int *, const int *, int);
+  void (^close)();
+} pg_t;
+
+typedef struct postgres_connection_t {
+  const char *uri;
+  pg_t **pool;
+  dispatch_semaphore_t semaphore;
+  dispatch_queue_t queue;
+  int poolSize;
+} postgres_connection_t;
+
+postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
+
+void freePostgresConnection(postgres_connection_t *postgres);
+
+middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);

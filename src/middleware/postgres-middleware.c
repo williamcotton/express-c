@@ -20,11 +20,21 @@
   THE SOFTWARE.
 */
 
-#include "postgresMiddleware.h"
+#include "postgres-middleware.h"
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+int paramCount(const char *query) {
+  int count = 0;
+  for (size_t i = 0; i < strlen(query); i++) {
+    if (query[i] == '$') {
+      count++;
+    }
+  }
+  return count;
+}
 
 postgres_connection_t *initPostgressConnection(const char *pgUri,
                                                int poolSize) {
@@ -46,10 +56,32 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
     postgres->pool[i] = malloc(sizeof(pg_t));
     postgres->pool[i]->connection = PQconnectdb(postgres->uri);
     postgres->pool[i]->used = 0;
-    postgres->pool[i]->exec = Block_copy(^(const char *sql) {
-      PGresult *pgres = PQexec(postgres->pool[i]->connection, sql);
+
+    postgres->pool[i]->exec = Block_copy(^(const char *sql, ...) {
+      int nParams = paramCount(sql);
+      va_list args;
+      va_start(args, sql);
+
+      const char **paramValues = malloc(sizeof(char *) * nParams);
+      for (int j = 0; j < nParams; j++) {
+        paramValues[j] = va_arg(args, const char *);
+      }
+      va_end(args);
+      PGresult *pgres = PQexecParams(postgres->pool[i]->connection, sql,
+                                     nParams, NULL, paramValues, NULL, NULL, 0);
       return pgres;
     });
+
+    postgres->pool[i]->execParams =
+        Block_copy(^(const char *sql, int nParams, const Oid *paramTypes,
+                     const char *const *paramValues, const int *paramLengths,
+                     const int *paramFormats, int resultFormat) {
+          PGresult *pgres = PQexecParams(
+              postgres->pool[i]->connection, sql, nParams, paramTypes,
+              paramValues, paramLengths, paramFormats, resultFormat);
+          return pgres;
+        });
+
     postgres->pool[i]->close = Block_copy(^{
       PQfinish(postgres->pool[i]->connection);
     });
@@ -62,9 +94,10 @@ error:
 
 void freePostgresConnection(postgres_connection_t *postgres) {
   for (int i = 0; i < postgres->poolSize; i++) {
+    postgres->pool[i]->close();
     Block_release(postgres->pool[i]->exec);
+    Block_release(postgres->pool[i]->execParams);
     Block_release(postgres->pool[i]->close);
-    PQfinish(postgres->pool[i]->connection);
     free(postgres->pool[i]);
   }
   free(postgres->pool);

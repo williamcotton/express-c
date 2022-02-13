@@ -1,4 +1,4 @@
-# cJSON Mustache Middleware
+# Mustache Middleware
 
 Built on top of [cJSON](https://github.com/DaveGamble/cJSON) and [mustach](https://gitlab.com/jobol/mustach/-/tree/master), this middleware allows you to render JSON data into a mustache template.
 
@@ -44,14 +44,14 @@ static char *mustacheErrorMessage(int result) {
 
 ### Middleware Factory
 
-A factory function that returns a `cJSONMustacheMiddleware` instance. It supports views that are compiled into C binary data in the `embeddedFiles` struct.
+A factory function that returns a `mustacheMiddleware` instance. It supports views that are compiled into C binary data in the `embeddedFiles` struct.
 
 It has a couple of helper functions to load the views from either the file system or the `embeddedFiles` struct.
 
 All mustache files in the `views` directory are included as mustache partials.
 
 ```c
-middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
+middlewareHandler mustacheMiddleware(char *viewsPath,
                                           embedded_files_data_t embeddedFiles) {
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;

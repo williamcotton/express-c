@@ -1,32 +1,34 @@
-/*
-  Copyright (c) 2022 William Cotton
+# Cookie Session Middleware
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+Session middleware built on top of [cJSON](https://github.com/DaveGamble/cJSON) and uses the express-c framework `req->session` and `req->cookie` features to provide a simple cookie-based session management system.
 
-  The above copyright notice and this permission notice shall be included in
-  all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-  THE SOFTWARE.
-*/
-
-#include "cJSONCookieSessionMiddleware.h"
+```c
+#include "cookie-session-middleware.h"
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
+```
 
-middlewareHandler cJSONCookieSessionMiddlewareFactory() {
+### Middleware
+
+The `express-c` framework defines a basic session_t type that is used to store session data.
+
+```c
+typedef struct session_t {
+  const char *uuid;
+  void *store;
+  void * (^get)(const char *key);
+  void (^set)(const char *key, void *value);
+} session_t;
+```
+
+The type is defined using void pointers to allow for different session store implementations.
+
+For this implementation we typecasy the `req->session->store` to a cJSON object that we serialize to a cookie.
+
+```c
+middlewareHandler cookieSessionMiddlewareFactory() {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
     if (req->cookie("sessionUuid") == NULL) {
@@ -82,3 +84,4 @@ middlewareHandler cJSONCookieSessionMiddlewareFactory() {
     next();
   });
 }
+```

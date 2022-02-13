@@ -1,7 +1,7 @@
 # Postgres Middleware
 
 ```c
-#include "postgresMiddleware.h"
+#include "postgres-middleware.h"
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include <stdio.h>
