@@ -25,9 +25,11 @@ void expressTests(tape_t *t) {
   void statusMessageTests(tape_t * t);
   statusMessageTests(t);
 
-  /* Middleware */
+/* Middleware */
+#ifdef __linux__
   void postgresMiddlewareTests(tape_t * t);
   postgresMiddlewareTests(t);
+#endif
   void mustacheMiddlewareTests(tape_t * t);
   mustacheMiddlewareTests(t);
   void cookieSessionMiddlewareTests(tape_t * t);

@@ -50,13 +50,13 @@ $(TARGETS)-prod: demo/embeddedFiles.h
 	$(CC) -o $(BUILD_DIR)/$(TARGETS) demo/$(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 
 .PHONY: test
-test:
+test: test-database-create
 	mkdir -p $(BUILD_DIR)
 	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
 test-database-create:
-	dbmate -e TEST_DATABASE_URL create
+	-dbmate -e TEST_DATABASE_URL create
 
 test-coverage-output:
 	mkdir -p $(BUILD_DIR)
@@ -116,7 +116,7 @@ ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/test
 endif
 
-test-leaks: build-test-trace
+test-leaks: build-test-trace test-database-create
 ifeq ($(PLATFORM),LINUX)
 	valgrind --tool=memcheck --leak-check=full --suppressions=express.supp --gen-suppressions=all --error-exitcode=1 --num-callers=30 -s $(BUILD_DIR)/test
 else ifeq ($(PLATFORM),DARWIN)

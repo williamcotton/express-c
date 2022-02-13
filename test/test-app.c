@@ -1,10 +1,17 @@
 #include "../src/express.h"
+#include <dotenv-c/dotenv.h>
 
 router_t *postgresRouter(const char *pgUri, int poolSize);
 router_t *mustacheRouter();
 router_t *cookieSessionRouter();
 
 app_t *testApp() {
+
+  env_load(".", false);
+
+  /* Environment variables */
+  char *TEST_DATABASE_URL = getenv("TEST_DATABASE_URL");
+
   __block app_t *app = express();
 
   char *staticFilesPath = cwdFullPath("test/files");
@@ -18,10 +25,8 @@ app_t *testApp() {
       dispatch_queue_create("memSessionQueue", NULL);
   app->use(memSessionMiddlewareFactory(memSession, memSessionQueue));
 
-  const char *pgUri =
-      "postgresql://postgres:postgres@localhost:5432/express-test";
   int poolSize = 3;
-  router_t *pgRouter = postgresRouter(pgUri, poolSize);
+  router_t *pgRouter = postgresRouter(TEST_DATABASE_URL, poolSize);
   app->useRouter("/pg", pgRouter);
 
   app->useRouter("/mustache", mustacheRouter());
