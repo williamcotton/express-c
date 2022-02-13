@@ -22,7 +22,7 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
 
 ### Middleware
 
-The application is built on top of the [cookie session middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/cookie-session-middleware), [mustache middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/mustache-middleware) and [todo model](https://github.com/williamcotton/express-c/tree/master/demo/models) middleware.
+The application is built on top of the [cookie session middleware](https://github.com/williamcotton/express-c/blob/master/src/middleware/cookie-session-middleware.md), [mustache middleware](https://github.com/williamcotton/express-c/blob/master/src/middleware/mustache-middleware.md) and [todo model](https://github.com/williamcotton/express-c/tree/master/demo/models) middleware.
 
 In production the mustache views are compiled into C binary data. In development we load the views from the file system for a streamlined experience.
 
@@ -184,7 +184,7 @@ router_t *apiController(const char *pgUri, int poolSize) {
 
 ### Middleware
 
-Our API is built on top of the [postgres middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/postgres-middleware) library.
+Our API is built on top of the [postgres middleware](https://github.com/williamcotton/express-c/blob/master/src/middleware/postgres-middleware.md) library.
 
 We first get an instance of the postgres connection with a given URI and pool size.
 

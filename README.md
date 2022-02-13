@@ -65,7 +65,7 @@ int main() {
 }
 ```
 
-Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tree/master/demo) for a more complete example that includes [Mustache templates middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/mustache-middleware), [cookie-based sessions middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/cookie-session-middleware), [thread-safe postgres middleware](https://github.com/williamcotton/express-c/tree/master/src/middleware/postgres-middleware), and more.
+Take a look at the [TodoMVC demo](https://github.com/williamcotton/express-c/tree/master/demo) for a more complete example that includes [Mustache templates middleware](https://github.com/williamcotton/express-c/blob/master/src/middleware/mustache-middleware.md), [cookie-based sessions middleware](https://github.com/williamcotton/express-c/blob/master/src/middleware/cookie-session-middleware.md), [thread-safe postgres middleware](https://github.com/williamcotton/express-c/blob/master/src/middleware/postgres-middleware.md), and more.
 
 ### Request-based Memory Management
 
