@@ -55,6 +55,9 @@ test:
 	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
 	$(BUILD_DIR)/$@
 
+test-database-create:
+	dbmate -e TEST_DATABASE_URL create
+
 test-coverage-output:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage
