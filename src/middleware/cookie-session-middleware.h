@@ -20,6 +20,11 @@
   THE SOFTWARE.
 */
 
+#ifndef COOKIE_SESSION_MIDDLEWARE_H
+#define COOKIE_SESSION_MIDDLEWARE_H
+
 #include <express.h>
 
 middlewareHandler cookieSessionMiddlewareFactory();
+
+#endif // COOKIE_SESSION_MIDDLEWARE_H

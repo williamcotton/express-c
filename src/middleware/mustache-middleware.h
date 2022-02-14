@@ -20,7 +20,12 @@
   THE SOFTWARE.
 */
 
+#ifndef MUSTACHE_MIDDLEWARE_H
+#define MUSTACHE_MIDDLEWARE_H
+
 #include <express.h>
 
 middlewareHandler mustacheMiddleware(char *viewsPath,
                                      embedded_files_data_t embeddedFiles);
+
+#endif // MUSTACHE_MIDDLEWARE_H

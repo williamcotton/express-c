@@ -20,6 +20,9 @@
   THE SOFTWARE.
 */
 
+#ifndef POSTGRES_MIDDLEWARE_H
+#define POSTGRES_MIDDLEWARE_H
+
 #include <express.h>
 #include <libpq-fe.h>
 
@@ -45,3 +48,5 @@ postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
 void freePostgresConnection(postgres_connection_t *postgres);
 
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
+
+#endif // POSTGRES_MIDDLEWARE_H
