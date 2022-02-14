@@ -37,7 +37,6 @@ COPY --from=buildstage /app/build/TodoMVC /app/build/TodoMVC
 
 # Copy our database migrations
 COPY --from=buildstage /app/db/migrations /app/db/migrations
-COPY --from=buildstage /usr/local/bin/dbmate /usr/local/bin/dbmate
 
 # Run the app
 CMD /app/build/TodoMVC

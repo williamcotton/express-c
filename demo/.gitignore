@@ -1,0 +1,10 @@
+.DS_Store
+build/
+*.dSYM/
+*.trace/
+vgcore.*
+.env
+valgrind-suppressions.log
+test/test-cookies.txt
+server.pid
+embeddedFiles.h

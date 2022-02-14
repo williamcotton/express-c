@@ -28,7 +28,7 @@ RUN chmod +x /usr/local/bin/dbmate
 # Copy scripts
 COPY scripts /usr/local/bin
 
-WORKDIR /app
+WORKDIR /base
 
 COPY . .
 
