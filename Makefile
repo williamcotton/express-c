@@ -127,6 +127,6 @@ install: $(BUILD_DIR)/libexpress.so
 	mkdir -p /usr/local/bin
 	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
 	cp src/express.h /usr/local/include/express.h
-	cp -Rp src /usr/local/include/
-	cp -Rp deps /usr/local/include/
-	cp -a scripts /usr/local/bin/
+	cp -a src/ /usr/local/include/
+	cp -a deps/ /usr/local/include/
+	cp -a scripts/ /usr/local/bin/
