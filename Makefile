@@ -153,6 +153,7 @@ $(TARGETS)-analyze:
 	$(CC) --analyze demo/$(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
 
 $(BUILD_DIR)/libexpress.so:
+	mkdir -p $(BUILD_DIR)
 	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
 .PHONY: demo/embeddedFiles.h
@@ -160,3 +161,15 @@ demo/embeddedFiles.h:
 	ls demo/public/* | xargs -I % xxd -i % > $@
 	ls demo/views/* | xargs -I % xxd -i % >> $@
 	scripts/static_array.sh >> $@
+
+# copy all files from the src/*/*.h to /usr/local/include/
+install:
+	mkdir -p /usr/local/include
+	cp -r src/*/*.h $(DEST_DIR)/usr/local/include
+
+install: $(BUILD_DIR)/libexpress.so
+	mkdir -p /usr/local/include
+	mkdir -p /usr/local/lib
+	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
+	cp src/express.h /usr/local/include/express.h
+	cp -r src/*/*.h /usr/local/include

@@ -28,3 +28,6 @@ RUN chmod +x /usr/local/bin/dbmate
 WORKDIR /app
 
 COPY . .
+
+# Build and install
+RUN make install
