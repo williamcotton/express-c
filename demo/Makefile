@@ -157,6 +157,5 @@ $(BUILD_DIR)/libexpress.so:
 
 .PHONY: embeddedFiles.h
 embeddedFiles.h:
-	ls public/* | xargs -I % xxd -i % > $@
-	ls views/* | xargs -I % xxd -i % >> $@
-	static_array.sh >> $@
+	embed.sh $@ >> $@
+
