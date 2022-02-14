@@ -27,6 +27,9 @@ WORKDIR /app
 COPY --from=buildstage /app/sdeps/lib /usr/lib
 COPY --from=buildstage /app/sdeps/usr/local/lib /usr/lib
 
+# Copy scripts
+COPY --from=buildstage /app/scripts /usr/local/bin
+
 # Copy the app executable
 COPY --from=buildstage /app/build/TodoMVC /app/build/TodoMVC
 
