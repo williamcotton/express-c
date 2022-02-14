@@ -7,6 +7,8 @@ WORKDIR /app
 
 COPY . .
 
+RUN ls -al /usr/local/include
+
 # Build the production app
 RUN make TodoMVC-prod
 
