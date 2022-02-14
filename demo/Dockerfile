@@ -1,5 +1,5 @@
 # Start with the express-c development image
-FROM ghcr.io/williamcotton/express-c:master AS buildstage
+FROM ghcr.io/williamcotton/express-c:shared-object-install AS buildstage
 
 ENV LD_LIBRARY_PATH /usr/local/lib
 
