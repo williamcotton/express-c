@@ -25,6 +25,9 @@ ENV LD_LIBRARY_PATH /usr/local/lib
 RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
 RUN chmod +x /usr/local/bin/dbmate
 
+# Copy scripts
+COPY scripts /usr/local/bin
+
 WORKDIR /app
 
 COPY . .
