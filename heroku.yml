@@ -1,6 +1,6 @@
 build:
   docker:
-    web: Dockerfile.deploy
+    web: demo/Dockerfile
 run:
   web: /app/build/TodoMVC
 release:

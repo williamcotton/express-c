@@ -36,8 +36,8 @@ int main() {
   dispatch_resume(sig_src);
 
   /* Load static files */
-  char *staticFilesPath = cwdFullPath("demo/public");
-  app->use(expressStatic("demo/public", staticFilesPath, embeddedFiles));
+  char *staticFilesPath = cwdFullPath("public");
+  app->use(expressStatic("public", staticFilesPath, embeddedFiles));
 
   /* Health check */
   app->get("/healthz", ^(UNUSED request_t *req, response_t *res) {

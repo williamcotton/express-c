@@ -20,7 +20,7 @@
   THE SOFTWARE.
 */
 
-#include "../src/express.h"
+#include <express.h>
 #include <libpq-fe.h>
 
 typedef struct pg_t {

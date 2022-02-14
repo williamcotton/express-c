@@ -20,10 +20,10 @@
   THE SOFTWARE.
 */
 
-#include "../src/express.h"
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include <dirent.h>
+#include <express.h>
 #include <mustach/mustach-cjson.h>
 #include <stdio.h>
 #include <stdlib.h>

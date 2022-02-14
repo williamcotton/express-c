@@ -19,13 +19,13 @@ ifeq ($(PLATFORM),DARWIN)
 	FORMAT = $(shell brew --prefix llvm)/bin/clang-format
 endif
 
+TARGETS := $(notdir $(patsubst %.c,%,$(wildcard *.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir)
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -I/usr/local/include -L/usr/local/lib -lexpress
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)
-SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c)
-TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
+SRC = $(wildcard */*.c)
+TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)mak
 BUILD_DIR = build
 
 ifeq ($(PLATFORM),LINUX)
@@ -36,6 +36,17 @@ else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability
 	PROD_CFLAGS = -Ofast
 endif
+
+all: $(TARGETS)
+
+.PHONY: $(TARGETS)
+$(TARGETS):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/$@ $@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS) -DERR_STACKTRACE
+
+$(TARGETS)-prod: embeddedFiles.h
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 
 .PHONY: test
 test: test-database-create
@@ -52,7 +63,7 @@ test-coverage-output:
 	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
-	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata
 
 test-coverage-html:
 	mkdir -p $(BUILD_DIR)
@@ -60,7 +71,7 @@ test-coverage-html:
 	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
 	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
 	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
-	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > $(BUILD_DIR)/code-coverage.html
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -format=html > $(BUILD_DIR)/code-coverage.html
 
 test-coverage:
 	mkdir -p $(BUILD_DIR)
@@ -83,6 +94,15 @@ format:
 clean:
 	rm -rf $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)
+
+$(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
+	fswatch --event Updated deps/ src/ . .env | xargs -n1 -I{} watch.sh $(TARGETS)
+
+$(TARGETS)-run-background: $(TARGETS)-kill
+	$(BUILD_DIR)/$(TARGETS) &
+
+$(TARGETS)-kill:
+	kill.sh $(TARGETS)
 
 test-watch:
 	make --no-print-directory test || :
@@ -116,17 +136,27 @@ test-tape:
 	$(CC) -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
 	$(BUILD_DIR)/$@
 
-.PHONY: $(BUILD_DIR)/libexpress.so
+$(TARGETS)-trace:
+	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) -g -O0
+ifeq ($(PLATFORM),DARWIN)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
+endif
+
+$(TARGETS)-prod-trace:
+	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
+ifeq ($(PLATFORM),DARWIN)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
+endif
+
+$(TARGETS)-analyze:
+	$(CC) --analyze $(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
+
 $(BUILD_DIR)/libexpress.so:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
-install: $(BUILD_DIR)/libexpress.so
-	mkdir -p /usr/local/include
-	mkdir -p /usr/local/lib
-	mkdir -p /usr/local/bin
-	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
-	cp src/express.h /usr/local/include/express.h
-	cp -a src/ /usr/local/include/
-	cp -a deps/ /usr/local/include/
-	cp -a scripts/ /usr/local/bin/
+.PHONY: embeddedFiles.h
+embeddedFiles.h:
+	ls public/* | xargs -I % xxd -i % > $@
+	ls views/* | xargs -I % xxd -i % >> $@
+	static_array.sh >> $@

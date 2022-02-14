@@ -3,7 +3,7 @@
 Built on top of [cJSON](https://github.com/DaveGamble/cJSON) and [mustach](https://gitlab.com/jobol/mustach/-/tree/master), this middleware allows you to render JSON data into a mustache template.
 
 ```c
-#include "../src/express.h"
+#include <express.h>
 #include <Block.h>
 #include <cJSON/cJSON.h>
 #include <dirent.h>

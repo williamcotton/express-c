@@ -20,6 +20,6 @@
   THE SOFTWARE.
 */
 
-#include "../src/express.h"
+#include <express.h>
 
 middlewareHandler cookieSessionMiddlewareFactory();

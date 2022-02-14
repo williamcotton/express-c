@@ -4,7 +4,7 @@ services:
   demo:
     build:
       context: .
-      dockerfile: Dockerfile.deploy
+      dockerfile: Dockerfile
     ports:
     - "3000:3000"
     volumes: 
@@ -21,7 +21,7 @@ services:
   bash:
     build:
       context: .
-      dockerfile: Dockerfile.deploy
+      dockerfile: Dockerfile
     volumes: 
       - .:/app
     entrypoint: bash

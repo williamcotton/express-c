@@ -20,7 +20,7 @@
   THE SOFTWARE.
 */
 
-#include "../src/express.h"
+#include <express.h>
 
 middlewareHandler mustacheMiddleware(char *viewsPath,
                                      embedded_files_data_t embeddedFiles);

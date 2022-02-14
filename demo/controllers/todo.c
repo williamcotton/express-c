@@ -10,7 +10,7 @@ router_t *todosController(embedded_files_data_t embeddedFiles) {
 
   router->use(cookieSessionMiddlewareFactory());
   router->use(todoStoreMiddleware());
-  router->use(mustacheMiddleware("demo/views", embeddedFiles));
+  router->use(mustacheMiddleware("views", embeddedFiles));
 
   /*
     TODO: return a CSS class for when a todo was changed on the last request

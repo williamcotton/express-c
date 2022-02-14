@@ -1,8 +1,8 @@
 #ifndef TODO_MODEL_H
 #define TODO_MODEL_H
 
-#include "../../src/express.h"
 #include <cJSON/cJSON.h>
+#include <express.h>
 
 typedef int (^filterCallback)(void *item);
 typedef void (^eachCallback)(void *item);
