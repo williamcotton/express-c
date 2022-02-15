@@ -81,10 +81,10 @@ The core of the application is found in `TodoMVC.c`, which is broken down below.
 Besides the usual `#include` statements we find a conditional include for `embeddedFiles.h`.
 
 ```c
-#include "../src/express.h"
 #include "controllers/api.h"
 #include "controllers/todo.h"
 #include <dotenv-c/dotenv.h>
+#include <express.h>
 #include <stdlib.h>
 
 #ifdef EMBEDDED_FILES
