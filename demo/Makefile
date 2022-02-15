@@ -96,7 +96,7 @@ clean:
 	mkdir -p $(BUILD_DIR)
 
 $(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
-	fswatch --event Updated deps/ src/ . .env | xargs -n1 -I{} watch.sh $(TARGETS)
+	fswatch --event Updated TodoMVC.c .env models/ controllers/ | xargs -n1 -I{} watch.sh $(TARGETS)
 
 $(TARGETS)-run-background: $(TARGETS)-kill
 	$(BUILD_DIR)/$(TARGETS) &
