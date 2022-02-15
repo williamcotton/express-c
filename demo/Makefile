@@ -151,10 +151,6 @@ endif
 $(TARGETS)-analyze:
 	$(CC) --analyze $(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
 
-$(BUILD_DIR)/libexpress.so:
-	mkdir -p $(BUILD_DIR)
-	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
-
 .PHONY: embeddedFiles.h
 embeddedFiles.h:
 	embed.sh $@ >> $@
