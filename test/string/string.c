@@ -97,6 +97,7 @@ void stringTests(tape_t *t) {
                                         : (i == 1) ? "!!!two!!!"
                                                    : "!!!one!!!") == 0);
       }
+
       c->free();
     });
   });

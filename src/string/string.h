@@ -1,5 +1,9 @@
 #include "../express.h"
 
+typedef struct malloc_t {
+  void *ptr;
+} malloc_t;
+
 struct string_t;
 struct string_collection_t;
 struct string_t *string(const char *str);
@@ -13,6 +17,12 @@ typedef void * (^mapCallback)(struct string_t *string);
 typedef struct string_collection_t {
   size_t size;
   struct string_t **arr;
+  int mallocCount;
+  malloc_t mallocs[1024];
+  void * (^malloc)(size_t size);
+  int blockCopyCount;
+  malloc_t blockCopies[1024];
+  void * (^blockCopy)(void *);
   void (^each)(eachCallback);
   void (^eachWithIndex)(eachWithIndexCallback);
   void * (^reduce)(void *accumulator, reducerCallback);
@@ -27,6 +37,9 @@ typedef struct string_collection_t {
 typedef struct string_t {
   char *str;
   size_t size;
+  int blockCopyCount;
+  malloc_t blockCopies[1024];
+  void * (^blockCopy)(void *);
   void (^print)(void);
   struct string_t * (^concat)(const char *str);
   struct string_t * (^upcase)(void);

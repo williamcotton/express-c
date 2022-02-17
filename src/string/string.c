@@ -6,35 +6,51 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
   collection->size = size;
   collection->arr = array;
 
-  collection->each = Block_copy(^(eachCallback callback) {
+  collection->mallocCount = 0;
+  collection->malloc = Block_copy(^(size_t msize) {
+    void *ptr = malloc(msize);
+    collection->mallocs[collection->mallocCount++] = (malloc_t){.ptr = ptr};
+    return ptr;
+  });
+
+  collection->blockCopyCount = 0;
+  collection->blockCopy = Block_copy(^(void *block) {
+    void *ptr = Block_copy(block);
+    collection->blockCopies[collection->blockCopyCount++] =
+        (malloc_t){.ptr = ptr};
+    return ptr;
+  });
+
+  collection->each = collection->blockCopy(^(eachCallback callback) {
     for (size_t i = 0; i < collection->size; i++) {
       callback(collection->arr[i]);
     }
   });
 
-  collection->eachWithIndex = Block_copy(^(eachWithIndexCallback callback) {
-    for (size_t i = 0; i < collection->size; i++) {
-      callback(collection->arr[i], i);
-    }
-  });
+  collection->eachWithIndex =
+      collection->blockCopy(^(eachWithIndexCallback callback) {
+        for (size_t i = 0; i < collection->size; i++) {
+          callback(collection->arr[i], i);
+        }
+      });
 
   collection->reduce =
-      Block_copy(^(void *accumulator, reducerCallback reducer) {
+      collection->blockCopy(^(void *accumulator, reducerCallback reducer) {
         for (size_t i = 0; i < collection->size; i++) {
           accumulator = reducer(accumulator, collection->arr[i]);
         }
         return accumulator;
       });
 
-  collection->map = Block_copy(^(mapCallback callback) {
-    void **arr = malloc(sizeof(void *) * collection->size);
+  collection->map = collection->blockCopy(^(mapCallback callback) {
+    void **arr = collection->malloc(sizeof(void *) * collection->size);
     for (size_t i = 0; i < collection->size; i++) {
       arr[i] = callback(collection->arr[i]);
     }
     return arr;
   });
 
-  collection->reverse = Block_copy(^(void) {
+  collection->reverse = collection->blockCopy(^(void) {
     for (size_t i = 0; i < collection->size / 2; i++) {
       struct string_t *tmp = collection->arr[i];
       collection->arr[i] = collection->arr[collection->size - i - 1];
@@ -42,7 +58,7 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
     }
   });
 
-  collection->join = Block_copy(^(const char *delim) {
+  collection->join = collection->blockCopy(^(const char *delim) {
     size_t len = 0;
     for (size_t i = 0; i < collection->size; i++) {
       len += collection->arr[i]->size;
@@ -56,10 +72,12 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
         strcat(str, delim);
       }
     }
-    return string(str);
+    string_t *temp = string(str);
+    free(str);
+    return temp;
   });
 
-  collection->indexOf = Block_copy(^(const char *str) {
+  collection->indexOf = collection->blockCopy(^(const char *str) {
     for (int i = 0; i < (int)collection->size; i++) {
       if (strcmp(collection->arr[i]->str, str) == 0) {
         return i;
@@ -73,12 +91,15 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
       collection->arr[i]->free();
     }
     free(collection->arr);
-    Block_release(collection->each);
-    Block_release(collection->eachWithIndex);
-    Block_release(collection->reduce);
-    Block_release(collection->map);
-    Block_release(collection->reverse);
-    Block_release(collection->join);
+
+    for (int i = 0; i < collection->mallocCount; i++) {
+      free(collection->mallocs[i].ptr);
+    }
+    for (int i = 0; i < collection->blockCopyCount; i++) {
+      Block_release(collection->blockCopies[i].ptr);
+    }
+    Block_release(collection->blockCopy);
+
     dispatch_async(dispatch_get_main_queue(), ^() {
       Block_release(collection->free);
       free(collection);
@@ -93,11 +114,18 @@ string_t *string(const char *strng) {
   s->str = strdup(strng);
   s->size = strlen(s->str);
 
-  s->print = Block_copy(^(void) {
+  s->blockCopyCount = 0;
+  s->blockCopy = Block_copy(^(void *block) {
+    void *ptr = Block_copy(block);
+    s->blockCopies[s->blockCopyCount++] = (malloc_t){.ptr = ptr};
+    return ptr;
+  });
+
+  s->print = s->blockCopy(^(void) {
     printf("%s\n", s->str);
   });
 
-  s->concat = Block_copy(^(const char *str) {
+  s->concat = s->blockCopy(^(const char *str) {
     size_t size = s->size + strlen(str);
     char *new_str = malloc(size + 1);
     strcpy(new_str, s->str);
@@ -108,21 +136,21 @@ string_t *string(const char *strng) {
     return s;
   });
 
-  s->upcase = Block_copy(^(void) {
+  s->upcase = s->blockCopy(^(void) {
     for (size_t i = 0; i < s->size; i++) {
       s->str[i] = toupper(s->str[i]);
     }
     return s;
   });
 
-  s->downcase = Block_copy(^(void) {
+  s->downcase = s->blockCopy(^(void) {
     for (size_t i = 0; i < s->size; i++) {
       s->str[i] = tolower(s->str[i]);
     }
     return s;
   });
 
-  s->capitalize = Block_copy(^(void) {
+  s->capitalize = s->blockCopy(^(void) {
     for (size_t i = 0; i < s->size; i++) {
       if (i == 0) {
         s->str[i] = toupper(s->str[i]);
@@ -133,7 +161,7 @@ string_t *string(const char *strng) {
     return s;
   });
 
-  s->reverse = Block_copy(^(void) {
+  s->reverse = s->blockCopy(^(void) {
     char *new_str = malloc(s->size + 1);
     for (size_t i = 0; i < s->size; i++) {
       new_str[s->size - i - 1] = s->str[i];
@@ -144,7 +172,7 @@ string_t *string(const char *strng) {
     return s;
   });
 
-  s->trim = Block_copy(^(void) {
+  s->trim = s->blockCopy(^(void) {
     size_t start = 0;
     size_t end = s->size - 1;
     while (isspace(s->str[start])) {
@@ -163,7 +191,7 @@ string_t *string(const char *strng) {
     return s;
   });
 
-  s->split = Block_copy(^(const char *delim) {
+  s->split = s->blockCopy(^(const char *delim) {
     string_collection_t *collection = stringCollection(0, NULL);
     collection->size = 0;
     collection->arr = malloc(sizeof(string_t *));
@@ -178,11 +206,11 @@ string_t *string(const char *strng) {
     return collection;
   });
 
-  s->to_i = Block_copy(^(void) {
+  s->to_i = s->blockCopy(^(void) {
     return atoi(s->str);
   });
 
-  s->replace = Block_copy(^(const char *str1, const char *str2) {
+  s->replace = s->blockCopy(^(const char *str1, const char *str2) {
     char *new_str = malloc(s->size + 1);
     size_t i = 0;
     size_t j = 0;
@@ -204,7 +232,7 @@ string_t *string(const char *strng) {
     return s;
   });
 
-  s->chomp = Block_copy(^(void) {
+  s->chomp = s->blockCopy(^(void) {
     if (s->str[s->size - 1] == '\n') {
       s->str[s->size - 1] = '\0';
       s->size--;
@@ -212,7 +240,7 @@ string_t *string(const char *strng) {
     return s;
   });
 
-  s->slice = Block_copy(^(size_t start, size_t length) {
+  s->slice = s->blockCopy(^(size_t start, size_t length) {
     if (start >= s->size) {
       return string("");
     }
@@ -222,10 +250,12 @@ string_t *string(const char *strng) {
     char *new_str = malloc(length + 1);
     strncpy(new_str, s->str + start, length);
     new_str[length] = '\0';
-    return string(new_str);
+    string_t *temp = string(new_str);
+    free(new_str);
+    return temp;
   });
 
-  s->indexOf = Block_copy(^(const char *str) {
+  s->indexOf = s->blockCopy(^(const char *str) {
     for (int i = 0; i < (int)s->size; i++) {
       if (strncmp(s->str + i, str, strlen(str)) == 0) {
         return i;
@@ -234,7 +264,7 @@ string_t *string(const char *strng) {
     return -1;
   });
 
-  s->lastIndexOf = Block_copy(^(const char *str) {
+  s->lastIndexOf = s->blockCopy(^(const char *str) {
     for (int i = s->size - 1; i > 0; i--) {
       if (strncmp(s->str + i, str, strlen(str)) == 0) {
         return i;
@@ -243,24 +273,16 @@ string_t *string(const char *strng) {
     return -1;
   });
 
-  s->eql = Block_copy(^(const char *str) {
+  s->eql = s->blockCopy(^(const char *str) {
     return strcmp(s->str, str) == 0;
   });
 
   s->free = Block_copy(^(void) {
     free(s->str);
-    Block_release(s->print);
-    Block_release(s->concat);
-    Block_release(s->upcase);
-    Block_release(s->downcase);
-    Block_release(s->capitalize);
-    Block_release(s->reverse);
-    Block_release(s->trim);
-    Block_release(s->split);
-    Block_release(s->to_i);
-    Block_release(s->replace);
-    Block_release(s->chomp);
-    Block_release(s->slice);
+    for (int i = 0; i < s->blockCopyCount; i++) {
+      Block_release(s->blockCopies[i].ptr);
+    }
+    Block_release(s->blockCopy);
     dispatch_async(dispatch_get_main_queue(), ^() {
       Block_release(s->free);
       free(s);
