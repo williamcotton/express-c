@@ -130,19 +130,13 @@ test-threads:
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 $(BUILD_DIR)/test
 
-.PHONY: test-tape
-test-tape:
-	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
-	$(BUILD_DIR)/$@
-
 $(TARGETS)-trace:
 	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) -g -O0
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
 endif
 
-$(TARGETS)-prod-trace:
+$(TARGETS)-prod-trace: embeddedFiles.h
 	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)

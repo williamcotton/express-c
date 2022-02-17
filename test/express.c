@@ -35,6 +35,10 @@ void expressTests(tape_t *t) {
   void cookieSessionMiddlewareTests(tape_t * t);
   cookieSessionMiddlewareTests(t);
 
+  /* Strings */
+  void stringTests(tape_t * t);
+  stringTests(t);
+
   /* Helper functions */
   t->test("matchEmbeddedFile", ^(tape_t *t) {
     unsigned char demo_public_app_css[] = {0x68};

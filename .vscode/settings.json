@@ -69,7 +69,9 @@
     "megamimes.h": "c",
     "postgres-middleware.h": "c",
     "mustache-middleware.h": "c",
-    "cookie-session-middleware.h": "c"
+    "cookie-session-middleware.h": "c",
+    "stringo.h": "c",
+    "iosfwd": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

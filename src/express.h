@@ -27,6 +27,7 @@
 #include <MegaMimes/MegaMimes.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <ctype.h>
 #include <curl/curl.h>
 #include <dispatch/dispatch.h>
 #include <errno.h>

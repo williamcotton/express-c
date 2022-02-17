@@ -110,12 +110,6 @@ test-threads:
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 $(BUILD_DIR)/test
 
-.PHONY: test-tape
-test-tape:
-	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$@ test/test-tape.c test/tape.c $(SRC) $(CFLAGS)
-	$(BUILD_DIR)/$@
-
 .PHONY: $(BUILD_DIR)/libexpress.so
 $(BUILD_DIR)/libexpress.so:
 	mkdir -p $(BUILD_DIR)
