@@ -1,11 +1,20 @@
 #include "../express.h"
 
+#define NUMBER_ERROR_NO_DIGITS 1
+#define NUMBER_ERROR_UNDERFLOW 2
+#define NUMBER_ERROR_OVERFLOW 3
+#define NUMBER_ERROR_BASE_UNSUPPORTED 4
+#define NUMBER_ERROR_UNSPECIFIED 5
+#define NUMBER_ERROR_ADDITIONAL_CHARACTERS 6
+
 typedef struct malloc_t {
   void *ptr;
 } malloc_t;
 
 struct string_t;
 struct string_collection_t;
+struct number_t;
+
 struct string_t *string(const char *str);
 struct string_collection_t *stringCollection(size_t size,
                                              struct string_t **arr);
@@ -13,6 +22,16 @@ typedef void (^eachCallback)(struct string_t *string);
 typedef void (^eachWithIndexCallback)(struct string_t *string, int index);
 typedef void * (^reducerCallback)(void *accumulator, struct string_t *string);
 typedef void * (^mapCallback)(struct string_t *string);
+
+typedef struct integer_number_t {
+  long long value;
+  int error;
+} integer_number_t;
+
+typedef struct decimal_number_t {
+  long double value;
+  int error;
+} decimal_number_t;
 
 typedef struct string_collection_t {
   size_t size;
@@ -55,6 +74,7 @@ typedef struct string_t {
   int (^indexOf)(const char *str);
   int (^lastIndexOf)(const char *str);
   int (^eql)(const char *str);
-  int (^to_i)(void);
+  integer_number_t * (^toInt)(void);
+  decimal_number_t * (^toDecimal)(void);
   void (^free)(void);
 } string_t;

@@ -1,5 +1,27 @@
 #include "string.h"
 #include "../express.h"
+#include <math.h>
+
+char *stringErrorMessage(int error) {
+  switch (error) {
+  case 0:
+    return NULL;
+  case NUMBER_ERROR_NO_DIGITS:
+    return "invalid (no digits found, 0 returned)";
+  case NUMBER_ERROR_UNDERFLOW:
+    return "invalid (underflow occurred)";
+  case NUMBER_ERROR_OVERFLOW:
+    return "invalid (overflow occurred)";
+  case NUMBER_ERROR_BASE_UNSUPPORTED:
+    return "invalid (base contains unsupported value)";
+  case NUMBER_ERROR_UNSPECIFIED:
+    return "invalid (unspecified error occurred)";
+  case NUMBER_ERROR_ADDITIONAL_CHARACTERS:
+    return "valid (additional characters found)";
+  default:
+    return "invalid (unspecified error occurred)";
+  }
+}
 
 string_collection_t *stringCollection(size_t size, string_t **array) {
   string_collection_t *collection = malloc(sizeof(string_collection_t));
@@ -206,8 +228,73 @@ string_t *string(const char *strng) {
     return collection;
   });
 
-  s->to_i = s->blockCopy(^(void) {
-    return atoi(s->str);
+  s->toInt = s->blockCopy(^(void) {
+    char *nptr = s->str;
+    char *endptr = NULL;
+    int error = 0;
+    long long number;
+    errno = 0;
+    number = strtoll(nptr, &endptr, 10);
+    if (nptr == endptr) {
+      error = NUMBER_ERROR_NO_DIGITS;
+    } else if (errno == ERANGE && number == LLONG_MIN) {
+      error = NUMBER_ERROR_UNDERFLOW;
+    } else if (errno == ERANGE && number == LLONG_MAX) {
+      error = NUMBER_ERROR_OVERFLOW;
+    } else if (errno == EINVAL) { /* not in all c99 implementations - gcc OK */
+      error = NUMBER_ERROR_BASE_UNSUPPORTED;
+    } else if (errno != 0 && number == 0) {
+      error = NUMBER_ERROR_UNSPECIFIED;
+    } else if (errno == 0 && nptr && *endptr != 0) {
+      error = NUMBER_ERROR_ADDITIONAL_CHARACTERS;
+    }
+    integer_number_t *n = malloc(sizeof(integer_number_t));
+    if (error == 0 || error == NUMBER_ERROR_ADDITIONAL_CHARACTERS) {
+      n->value = number;
+    } else {
+      n->value = 0;
+    }
+    n->error = error;
+    return n;
+  });
+
+  s->toDecimal = s->blockCopy(^(void) {
+    char *nptr = s->str;
+    char *endptr = NULL;
+    int error = 0;
+    long double number;
+    errno = 0;
+    number = strtold(nptr, &endptr);
+    debug("%s\n", nptr);
+    debug("%s\n", endptr);
+    debug("%d\n", errno);
+    debug("%Lf\n", number);
+    if (nptr == endptr) {
+      error = NUMBER_ERROR_NO_DIGITS;
+    } else if (errno == ERANGE && number == -HUGE_VALL) {
+      error = NUMBER_ERROR_UNDERFLOW;
+    } else if (errno == ERANGE && number == HUGE_VALL) {
+      error = NUMBER_ERROR_OVERFLOW;
+    } else if (errno == EINVAL) { /* not in all c99 implementations - gcc OK */
+      error = NUMBER_ERROR_BASE_UNSUPPORTED;
+    } else if (errno != 0 && number == 0) {
+      error = NUMBER_ERROR_UNSPECIFIED;
+    } else if (errno == 0 && nptr && *endptr != 0) {
+      error = NUMBER_ERROR_ADDITIONAL_CHARACTERS;
+    }
+    decimal_number_t *n = malloc(sizeof(decimal_number_t));
+    if (error == 0 || error == NUMBER_ERROR_ADDITIONAL_CHARACTERS) {
+      n->value = number;
+    } else {
+      n->value = 0;
+    }
+    n->error = error;
+    return n;
+  });
+
+  s->free = Block_copy(^(void) {
+    free(s->str);
+    free(s);
   });
 
   s->replace = s->blockCopy(^(const char *str1, const char *str2) {
