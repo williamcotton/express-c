@@ -225,9 +225,11 @@ void stringTests(tape_t *t) {
 
       string_t *unsortedString = string("car,tree,boar");
       string_collection_t *unsorted = unsortedString->split(",");
-      t->ok("sort", unsorted->sort()->join(",")->eql("boar,car,tree"));
+      string_t *sortedString = unsorted->sort()->join(",");
+      t->ok("sort", sortedString->eql("boar,car,tree"));
       unsorted->free();
       unsortedString->free();
+      sortedString->free();
     });
 
     t->test("regex collection", ^(tape_t *t) {
@@ -239,6 +241,7 @@ void stringTests(tape_t *t) {
                                            : (j == 1) ? ":two"
                                                       : ":three"));
       });
+      c->free();
       s->free();
     });
   });
