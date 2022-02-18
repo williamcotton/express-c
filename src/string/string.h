@@ -74,7 +74,7 @@ typedef struct string_t {
   int (^indexOf)(const char *str);
   int (^lastIndexOf)(const char *str);
   int (^eql)(const char *str);
-  integer_number_t * (^toInt)(void);
-  decimal_number_t * (^toDecimal)(void);
+  integer_number_t (^toInt)(void);
+  decimal_number_t (^toDecimal)(void);
   void (^free)(void);
 } string_t;

@@ -248,13 +248,13 @@ string_t *string(const char *strng) {
     } else if (errno == 0 && nptr && *endptr != 0) {
       error = NUMBER_ERROR_ADDITIONAL_CHARACTERS;
     }
-    integer_number_t *n = malloc(sizeof(integer_number_t));
+    integer_number_t n;
     if (error == 0 || error == NUMBER_ERROR_ADDITIONAL_CHARACTERS) {
-      n->value = number;
+      n.value = number;
     } else {
-      n->value = 0;
+      n.value = 0;
     }
-    n->error = error;
+    n.error = error;
     return n;
   });
 
@@ -282,19 +282,14 @@ string_t *string(const char *strng) {
     } else if (errno == 0 && nptr && *endptr != 0) {
       error = NUMBER_ERROR_ADDITIONAL_CHARACTERS;
     }
-    decimal_number_t *n = malloc(sizeof(decimal_number_t));
+    decimal_number_t n;
     if (error == 0 || error == NUMBER_ERROR_ADDITIONAL_CHARACTERS) {
-      n->value = number;
+      n.value = number;
     } else {
-      n->value = 0;
+      n.value = 0;
     }
-    n->error = error;
+    n.error = error;
     return n;
-  });
-
-  s->free = Block_copy(^(void) {
-    free(s->str);
-    free(s);
   });
 
   s->replace = s->blockCopy(^(const char *str1, const char *str2) {
