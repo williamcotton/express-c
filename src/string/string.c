@@ -89,7 +89,7 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
     char *str = malloc(len + 1);
     str[0] = '\0';
     for (size_t i = 0; i < collection->size; i++) {
-      strcat(str, collection->arr[i]->str);
+      strcat(str, collection->arr[i]->value);
       if (i < collection->size - 1) {
         strcat(str, delim);
       }
@@ -101,7 +101,7 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
 
   collection->indexOf = collection->blockCopy(^(const char *str) {
     for (int i = 0; i < (int)collection->size; i++) {
-      if (strcmp(collection->arr[i]->str, str) == 0) {
+      if (strcmp(collection->arr[i]->value, str) == 0) {
         return i;
       }
     }
@@ -133,8 +133,8 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
 
 string_t *string(const char *strng) {
   string_t *s = malloc(sizeof(string_t));
-  s->str = strdup(strng);
-  s->size = strlen(s->str);
+  s->value = strdup(strng);
+  s->size = strlen(s->value);
 
   s->blockCopyCount = 0;
   s->blockCopy = Block_copy(^(void *block) {
@@ -144,30 +144,30 @@ string_t *string(const char *strng) {
   });
 
   s->print = s->blockCopy(^(void) {
-    printf("%s\n", s->str);
+    printf("%s\n", s->value);
   });
 
   s->concat = s->blockCopy(^(const char *str) {
     size_t size = s->size + strlen(str);
     char *new_str = malloc(size + 1);
-    strcpy(new_str, s->str);
+    strcpy(new_str, s->value);
     strcat(new_str, str);
-    free(s->str);
-    s->str = new_str;
+    free(s->value);
+    s->value = new_str;
     s->size = size;
     return s;
   });
 
   s->upcase = s->blockCopy(^(void) {
     for (size_t i = 0; i < s->size; i++) {
-      s->str[i] = toupper(s->str[i]);
+      s->value[i] = toupper(s->value[i]);
     }
     return s;
   });
 
   s->downcase = s->blockCopy(^(void) {
     for (size_t i = 0; i < s->size; i++) {
-      s->str[i] = tolower(s->str[i]);
+      s->value[i] = tolower(s->value[i]);
     }
     return s;
   });
@@ -175,9 +175,9 @@ string_t *string(const char *strng) {
   s->capitalize = s->blockCopy(^(void) {
     for (size_t i = 0; i < s->size; i++) {
       if (i == 0) {
-        s->str[i] = toupper(s->str[i]);
+        s->value[i] = toupper(s->value[i]);
       } else {
-        s->str[i] = tolower(s->str[i]);
+        s->value[i] = tolower(s->value[i]);
       }
     }
     return s;
@@ -186,29 +186,29 @@ string_t *string(const char *strng) {
   s->reverse = s->blockCopy(^(void) {
     char *new_str = malloc(s->size + 1);
     for (size_t i = 0; i < s->size; i++) {
-      new_str[s->size - i - 1] = s->str[i];
+      new_str[s->size - i - 1] = s->value[i];
     }
     new_str[s->size] = '\0';
-    free(s->str);
-    s->str = new_str;
+    free(s->value);
+    s->value = new_str;
     return s;
   });
 
   s->trim = s->blockCopy(^(void) {
     size_t start = 0;
     size_t end = s->size - 1;
-    while (isspace(s->str[start])) {
+    while (isspace(s->value[start])) {
       start++;
     }
-    while (isspace(s->str[end])) {
+    while (isspace(s->value[end])) {
       end--;
     }
     size_t size = end - start + 1;
     char *new_str = malloc(size + 1);
-    strncpy(new_str, s->str + start, size);
+    strncpy(new_str, s->value + start, size);
     new_str[size] = '\0';
-    free(s->str);
-    s->str = new_str;
+    free(s->value);
+    s->value = new_str;
     s->size = size;
     return s;
   });
@@ -217,7 +217,7 @@ string_t *string(const char *strng) {
     string_collection_t *collection = stringCollection(0, NULL);
     collection->size = 0;
     collection->arr = malloc(sizeof(string_t *));
-    char *token = strtok(s->str, delim);
+    char *token = strtok(s->value, delim);
     while (token != NULL) {
       collection->size++;
       collection->arr =
@@ -229,7 +229,7 @@ string_t *string(const char *strng) {
   });
 
   s->toInt = s->blockCopy(^(void) {
-    char *nptr = s->str;
+    char *nptr = s->value;
     char *endptr = NULL;
     int error = 0;
     long long number;
@@ -259,16 +259,12 @@ string_t *string(const char *strng) {
   });
 
   s->toDecimal = s->blockCopy(^(void) {
-    char *nptr = s->str;
+    char *nptr = s->value;
     char *endptr = NULL;
     int error = 0;
     long double number;
     errno = 0;
     number = strtold(nptr, &endptr);
-    debug("%s\n", nptr);
-    debug("%s\n", endptr);
-    debug("%d\n", errno);
-    debug("%Lf\n", number);
     if (nptr == endptr) {
       error = NUMBER_ERROR_NO_DIGITS;
     } else if (errno == ERANGE && number == -HUGE_VALL) {
@@ -297,26 +293,26 @@ string_t *string(const char *strng) {
     size_t i = 0;
     size_t j = 0;
     while (i < s->size) {
-      if (strncmp(s->str + i, str1, strlen(str1)) == 0) {
+      if (strncmp(s->value + i, str1, strlen(str1)) == 0) {
         strcpy(new_str + j, str2);
         i += strlen(str1);
         j += strlen(str2);
       } else {
-        new_str[j] = s->str[i];
+        new_str[j] = s->value[i];
         i++;
         j++;
       }
     }
     new_str[j] = '\0';
-    free(s->str);
-    s->str = new_str;
+    free(s->value);
+    s->value = new_str;
     s->size = j;
     return s;
   });
 
   s->chomp = s->blockCopy(^(void) {
-    if (s->str[s->size - 1] == '\n') {
-      s->str[s->size - 1] = '\0';
+    if (s->value[s->size - 1] == '\n') {
+      s->value[s->size - 1] = '\0';
       s->size--;
     }
     return s;
@@ -330,7 +326,7 @@ string_t *string(const char *strng) {
       length = s->size - start;
     }
     char *new_str = malloc(length + 1);
-    strncpy(new_str, s->str + start, length);
+    strncpy(new_str, s->value + start, length);
     new_str[length] = '\0';
     string_t *temp = string(new_str);
     free(new_str);
@@ -339,7 +335,7 @@ string_t *string(const char *strng) {
 
   s->indexOf = s->blockCopy(^(const char *str) {
     for (int i = 0; i < (int)s->size; i++) {
-      if (strncmp(s->str + i, str, strlen(str)) == 0) {
+      if (strncmp(s->value + i, str, strlen(str)) == 0) {
         return i;
       }
     }
@@ -348,7 +344,7 @@ string_t *string(const char *strng) {
 
   s->lastIndexOf = s->blockCopy(^(const char *str) {
     for (int i = s->size - 1; i > 0; i--) {
-      if (strncmp(s->str + i, str, strlen(str)) == 0) {
+      if (strncmp(s->value + i, str, strlen(str)) == 0) {
         return i;
       }
     }
@@ -356,11 +352,11 @@ string_t *string(const char *strng) {
   });
 
   s->eql = s->blockCopy(^(const char *str) {
-    return strcmp(s->str, str) == 0;
+    return strcmp(s->value, str) == 0;
   });
 
   s->free = Block_copy(^(void) {
-    free(s->str);
+    free(s->value);
     for (int i = 0; i < s->blockCopyCount; i++) {
       Block_release(s->blockCopies[i].ptr);
     }

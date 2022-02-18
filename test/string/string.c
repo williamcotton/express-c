@@ -13,42 +13,48 @@ void stringTests(tape_t *t) {
   t->test("string", ^(tape_t *t) {
     t->test("single string", ^(tape_t *t) {
       string_t *s = string("Hello");
-      t->ok("new string", strcmp(s->str, "Hello") == 0);
+      t->ok("new string", s->eql("Hello"));
 
       s->concat(" World");
-      t->ok("concat", strcmp(s->str, "Hello World") == 0);
+      t->ok("concat", s->eql("Hello World"));
 
       s->concat("!");
-      t->ok("concat again", strcmp(s->str, "Hello World!") == 0);
+      t->ok("concat again", s->eql("Hello World!"));
 
       t->ok("print", 1);
       s->print();
 
       s->upcase();
-      t->ok("upcase", strcmp(s->str, "HELLO WORLD!") == 0);
+      t->ok("upcase", s->eql("HELLO WORLD!"));
 
       s->downcase();
-      t->ok("downcase", strcmp(s->str, "hello world!") == 0);
+      t->ok("downcase", s->eql("hello world!"));
 
       s->capitalize();
-      t->ok("capitalize", strcmp(s->str, "Hello world!") == 0);
+      t->ok("capitalize", s->eql("Hello world!"));
 
       s->reverse();
-      t->ok("reverse", strcmp(s->str, "!dlrow olleH") == 0);
+      t->ok("reverse", s->eql("!dlrow olleH"));
 
       s->concat("  ");
-      t->ok("concat end space", strcmp(s->str, "!dlrow olleH  ") == 0);
+      t->ok("concat end space", s->eql("!dlrow olleH  "));
       s->trim();
-      t->ok("trim end", strcmp(s->str, "!dlrow olleH") == 0);
+      t->ok("trim end", s->eql("!dlrow olleH"));
       s->concat("  ")->reverse();
-      t->ok("concat start space", strcmp(s->str, "  Hello world!") == 0);
+      t->ok("concat start space", s->eql("  Hello world!"));
       s->trim();
-      t->ok("trim start", strcmp(s->str, "Hello world!") == 0);
+      t->ok("trim start", s->eql("Hello world!"));
       s->concat("  ")->reverse()->concat("  ")->reverse();
-      t->ok("concat start and end space",
-            strcmp(s->str, "  Hello world!  ") == 0);
+      t->ok("concat start and end space", s->eql("  Hello world!  "));
       s->trim();
-      t->ok("trim start and end", strcmp(s->str, "Hello world!") == 0);
+      t->ok("trim start and end", s->eql("Hello world!"));
+
+      t->ok("chomp", s->concat("\n")->chomp()->eql("Hello world!"));
+
+      t->ok("indexOf", s->indexOf("llo") == 2);
+      t->ok("indexOf", s->indexOf("bleep") == -1);
+      t->ok("lastIndexOf", s->lastIndexOf("l") == 9);
+      t->ok("lastIndexOf", s->lastIndexOf("#") == -1);
 
       s->free();
     });
@@ -150,16 +156,16 @@ void stringTests(tape_t *t) {
       s2->free();
       __block int i = 0;
       c->each(^(string_t *string) {
-        t->ok("split and each", strcmp(string->str, (i == 0)   ? "one"
-                                                    : (i == 1) ? "two"
-                                                               : "three") == 0);
+        t->ok("split and each", string->eql((i == 0)   ? "one"
+                                            : (i == 1) ? "two"
+                                                       : "three"));
         i++;
       });
 
       c->eachWithIndex(^(string_t *string, int j) {
-        t->ok("eachWithIndex", strcmp(string->str, (j == 0)   ? "one"
-                                                   : (j == 1) ? "two"
-                                                              : "three") == 0);
+        t->ok("eachWithIndex", string->eql((j == 0)   ? "one"
+                                           : (j == 1) ? "two"
+                                                      : "three"));
       });
 
       t->ok("indexOf zero", c->indexOf("zero") == -1);
@@ -170,33 +176,39 @@ void stringTests(tape_t *t) {
       c->reverse();
       i = 0;
       c->each(^(string_t *string) {
-        t->ok("reverse", strcmp(string->str, (i == 0)   ? "three"
-                                             : (i == 1) ? "two"
-                                                        : "one") == 0);
+        t->ok("reverse", string->eql((i == 0)   ? "three"
+                                     : (i == 1) ? "two"
+                                                : "one"));
         i++;
       });
 
       string_t *s3 = c->join("-");
-      t->ok("join", strcmp(s3->str, "three-two-one") == 0);
+      t->ok("join", s3->eql("three-two-one"));
 
       s3->replace("three", "four");
-      t->ok("replace", strcmp(s3->str, "four-two-one") == 0);
+      t->ok("replace", s3->eql("four-two-one"));
 
       s3->replace("-", "=");
-      t->ok("replace all", strcmp(s3->str, "four=two=one") == 0);
+      t->ok("replace all", s3->eql("four=two=one"));
 
       string_t *s4 = s3->slice(5, 3);
+      t->ok("slice", s4->eql("two"));
+      string_t *s4a = s3->slice(15, 4);
+      t->ok("slice over", s4a->eql(""));
+      string_t *s4b = s3->slice(4, 15);
+      t->ok("slice over", s4b->eql("=two=one"));
       s3->free();
-      t->ok("slice", strcmp(s4->str, "two") == 0);
+      s4a->free();
+      s4b->free();
       s4->free();
 
       string_t *s5 = string("");
       c->reduce((void *)s5, ^(void *accumulator, string_t *str) {
         string_t *acc = (string_t *)accumulator;
-        acc->concat(str->reverse()->str)->concat("+");
+        acc->concat(str->reverse()->value)->concat("+");
         return (void *)acc;
       });
-      t->ok("reduce", strcmp(s5->str, "eerht+owt+eno+") == 0);
+      t->ok("reduce", s5->eql("eerht+owt+eno+"));
       s5->free();
 
       string_t **sa = (string_t **)c->map(^(string_t *str) {
@@ -204,9 +216,9 @@ void stringTests(tape_t *t) {
       });
 
       for (size_t i = 0; i < c->size; i++) {
-        t->ok("map", strcmp(sa[i]->str, (i == 0)   ? "!!!three!!!"
-                                        : (i == 1) ? "!!!two!!!"
-                                                   : "!!!one!!!") == 0);
+        t->ok("map", sa[i]->eql((i == 0)   ? "!!!three!!!"
+                                : (i == 1) ? "!!!two!!!"
+                                           : "!!!one!!!"));
       }
 
       c->free();

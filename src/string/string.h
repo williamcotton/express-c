@@ -54,7 +54,7 @@ typedef struct string_collection_t {
 } string_collection_t;
 
 typedef struct string_t {
-  char *str;
+  char *value;
   size_t size;
   int blockCopyCount;
   malloc_t blockCopies[1024];
