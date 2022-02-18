@@ -11,34 +11,6 @@
 #pragma clang diagnostic ignored "-Wunused-variable"
 
 void expressTests(tape_t *t) {
-  /* Mock system call failures */
-#ifdef __linux__
-  void expressMockSystemCalls(tape_t * t);
-  expressMockSystemCalls(t);
-#endif
-
-  /* Fuzz testing */
-  void expressFuzz(tape_t * t);
-  expressFuzz(t);
-
-  /* HTTP status codes */
-  void statusMessageTests(tape_t * t);
-  statusMessageTests(t);
-
-/* Middleware */
-#ifdef __linux__
-  void postgresMiddlewareTests(tape_t * t);
-  postgresMiddlewareTests(t);
-#endif
-  void mustacheMiddlewareTests(tape_t * t);
-  mustacheMiddlewareTests(t);
-  void cookieSessionMiddlewareTests(tape_t * t);
-  cookieSessionMiddlewareTests(t);
-
-  /* Strings */
-  void stringTests(tape_t * t);
-  stringTests(t);
-
   /* Helper functions */
   t->test("matchEmbeddedFile", ^(tape_t *t) {
     unsigned char demo_public_app_css[] = {0x68};
@@ -222,5 +194,33 @@ void expressTests(tape_t *t) {
       t->strEqual("root route", curlGet("/root"), "Hello Root Router!");
     });
   });
+
+  /* Mock system call failures */
+#ifdef __linux__
+  void expressMockSystemCalls(tape_t * t);
+  expressMockSystemCalls(t);
+#endif
+
+  /* Fuzz testing */
+  void expressFuzz(tape_t * t);
+  expressFuzz(t);
+
+  /* HTTP status codes */
+  void statusMessageTests(tape_t * t);
+  statusMessageTests(t);
+
+/* Middleware */
+#ifdef __linux__
+  void postgresMiddlewareTests(tape_t * t);
+  postgresMiddlewareTests(t);
+#endif
+  void mustacheMiddlewareTests(tape_t * t);
+  mustacheMiddlewareTests(t);
+  void cookieSessionMiddlewareTests(tape_t * t);
+  cookieSessionMiddlewareTests(t);
+
+  /* Strings */
+  void stringTests(tape_t * t);
+  stringTests(t);
 }
 #pragma clang diagnostic pop

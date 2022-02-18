@@ -46,10 +46,11 @@ typedef struct string_collection_t {
   void (^eachWithIndex)(eachWithIndexCallback);
   void * (^reduce)(void *accumulator, reducerCallback);
   void ** (^map)(mapCallback);
-  void (^reverse)(void);
-  void (^sort)(void);
   void (^free)(void);
   int (^indexOf)(const char *str);
+  struct string_collection_t * (^reverse)(void);
+  struct string_collection_t * (^sort)(void);
+  struct string_collection_t * (^push)(struct string_t *string);
   struct string_t * (^join)(const char *delim);
 } string_collection_t;
 
@@ -66,11 +67,12 @@ typedef struct string_t {
   struct string_t * (^capitalize)(void);
   struct string_t * (^reverse)(void);
   struct string_t * (^trim)(void);
-  string_collection_t * (^split)(const char *delim);
   struct string_t * (^replace)(const char *str1, const char *str2);
   struct string_t * (^chomp)(void);
   struct string_t * (^slice)(size_t start, size_t length);
   struct string_t * (^delete)(const char *str);
+  string_collection_t * (^split)(const char *delim);
+  string_collection_t * (^matchGroup)(const char *regex);
   int (^indexOf)(const char *str);
   int (^lastIndexOf)(const char *str);
   int (^eql)(const char *str);

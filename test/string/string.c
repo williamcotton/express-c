@@ -222,6 +222,24 @@ void stringTests(tape_t *t) {
       }
 
       c->free();
+
+      string_t *unsortedString = string("car,tree,boar");
+      string_collection_t *unsorted = unsortedString->split(",");
+      t->ok("sort", unsorted->sort()->join(",")->eql("boar,car,tree"));
+      unsorted->free();
+      unsortedString->free();
+    });
+
+    t->test("regex collection", ^(tape_t *t) {
+      string_t *s = string("/:one/:two/:three/");
+      string_collection_t *c = s->matchGroup("(:[a-z]+)");
+      t->ok("match", c->size == 3);
+      c->eachWithIndex(^(string_t *string, int j) {
+        t->ok("eachWithIndex", string->eql((j == 0)   ? ":one"
+                                           : (j == 1) ? ":two"
+                                                      : ":three"));
+      });
+      s->free();
     });
   });
 }

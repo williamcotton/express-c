@@ -2,6 +2,12 @@
 #include "../express.h"
 #include <math.h>
 
+static int compare_strings(const void *a, const void *b) {
+  string_t *s1 = *(string_t **)a;
+  string_t *s2 = *(string_t **)b;
+  return strcmp(s1->value, s2->value);
+}
+
 char *stringErrorMessage(int error) {
   switch (error) {
   case 0:
@@ -74,10 +80,26 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
 
   collection->reverse = collection->blockCopy(^(void) {
     for (size_t i = 0; i < collection->size / 2; i++) {
-      struct string_t *tmp = collection->arr[i];
+      string_t *tmp = collection->arr[i];
       collection->arr[i] = collection->arr[collection->size - i - 1];
       collection->arr[collection->size - i - 1] = tmp;
     }
+    return collection;
+  });
+
+  collection->push = collection->blockCopy(^(string_t *string) {
+    collection->size++;
+    collection->arr =
+        realloc(collection->arr, collection->size * sizeof(string_t *));
+    collection->arr[collection->size - 1] = string;
+    return collection;
+  });
+
+  collection->sort = collection->blockCopy(^{
+    // sort strings with qsort
+    qsort(collection->arr, collection->size, sizeof(string_t *),
+          compare_strings);
+    return collection;
   });
 
   collection->join = collection->blockCopy(^(const char *delim) {
@@ -353,6 +375,56 @@ string_t *string(const char *strng) {
 
   s->eql = s->blockCopy(^(const char *str) {
     return strcmp(s->value, str) == 0;
+  });
+
+  s->split = s->blockCopy(^(const char *delim) {
+    string_collection_t *collection = stringCollection(0, NULL);
+    char *token = strtok(s->value, delim);
+    while (token != NULL) {
+      collection->push(string(token));
+      token = strtok(NULL, delim);
+    }
+    return collection;
+  });
+
+  s->matchGroup = s->blockCopy(^(const char *regex) {
+    string_collection_t *collection = stringCollection(0, NULL);
+    size_t maxMatches = 100;
+    size_t maxGroups = 100;
+    regex_t regexCompiled;
+    regmatch_t groupArray[maxGroups];
+    unsigned int m;
+    char *cursor;
+    if (regcomp(&regexCompiled, regex, REG_EXTENDED)) {
+      log_err("regcomp() failed");
+    };
+    cursor = (char *)s->value;
+    for (m = 0; m < maxMatches; m++) {
+      if (regexec(&regexCompiled, cursor, maxGroups, groupArray, 0))
+        break; // No more matches
+      unsigned int g = 0;
+      unsigned int offset = 0;
+      for (g = 0; g < maxGroups; g++) {
+        if (groupArray[g].rm_so == (long long)(size_t)-1)
+          break; // No more groups
+        char cursorCopy[strlen(cursor) + 1];
+        strlcpy(cursorCopy, cursor, groupArray[g].rm_eo + 1);
+        if (g == 0) {
+          offset = groupArray[g].rm_eo;
+        } else {
+          char *key = malloc(sizeof(char) *
+                             (groupArray[g].rm_eo - groupArray[g].rm_so + 1));
+          strlcpy(key, cursorCopy + groupArray[g].rm_so,
+                  groupArray[g].rm_eo - groupArray[g].rm_so + 1);
+          string_t *temp = string(key);
+          free(key);
+          collection->push(temp);
+        }
+      }
+      cursor += offset;
+    }
+    regfree(&regexCompiled);
+    return collection;
   });
 
   s->free = Block_copy(^(void) {
