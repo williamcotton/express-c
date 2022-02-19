@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO: make public and view dirs arguments
+
 ls public/* | xargs -I % xxd -i % > $1
 ls views/* | xargs -I % xxd -i % >> $1
 

@@ -93,6 +93,7 @@ error:
   return NULL;
 }
 
+// TODO: replace with postgres.free();
 void freePostgresConnection(postgres_connection_t *postgres) {
   for (int i = 0; i < postgres->poolSize; i++) {
     postgres->pool[i]->close();

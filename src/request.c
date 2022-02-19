@@ -1,5 +1,8 @@
 #include "express.h"
 
+// TODO: request->trash() ? push and struct with a free() and call them at end?
+// TODO: request->free()
+
 static void removeWhitespace(char *str) {
   char *p = str;
   char *q = str;

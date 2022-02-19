@@ -30,6 +30,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// TODO: rename this and move to deps
+// TODO: incorporate test-harness
+// TODO: add t.get(), t.post(), t.put(), t.delete()
+// TODO: use string()
+// TODO: handle and free malloc'd memory
+// TODO: add t.mockFailAfter()
+// TODO: add t.mockAndReturn()
+// TODO: add t.free()
+
 #ifdef __linux__
 #include <sys/epoll.h>
 #endif

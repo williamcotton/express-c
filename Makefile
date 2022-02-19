@@ -115,6 +115,8 @@ $(BUILD_DIR)/libexpress.so:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
+# TODO: copy express.supp, debug.plist to /usr/local/share
+
 install: $(BUILD_DIR)/libexpress.so
 	mkdir -p /usr/local/include
 	mkdir -p /usr/local/lib
