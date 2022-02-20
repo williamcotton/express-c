@@ -51,7 +51,6 @@ static string_t *curl(char *cmd) {
   return string(html);
 }
 
-// TODO: refactor curlGet and curlDelete
 static string_t *curlGet(char *url) {
   char *curlCmd =
       "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
@@ -82,7 +81,6 @@ static string_t *curlDelete(char *url) {
   return curl(cmd);
 }
 
-// TODO: refactor curlPost, curlPut and curlPatch
 static string_t *curlPost(char *url, char *data) {
   char cmd[1024];
   sprintf(

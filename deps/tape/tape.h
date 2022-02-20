@@ -23,6 +23,8 @@
 #ifndef TAPE_H
 #define TAPE_H
 
+#include <string/string.h>
+
 #define UNUSED __attribute__((unused))
 
 typedef void (^teardown)();
@@ -54,16 +56,9 @@ typedef struct tape_t {
   string_t * (^delete)(char *);
   void (^sendData)(char *);
   string_t * (^getHeaders)(char *);
-  char * (^mockAndReturn)(char *, char *); // TODO: add mockAndReturn
-  char * (^mockFailAfter)(char *, int);    // TODO: add mockFailAfter
-  char * (^mockAndReturnAfter)(char *, char *,
-                               int); // TODO: add mockAndReturnAfter
-  char * (^mockAndReturnAfterDelay)(char *, char *,
-                                    int); // TODO: add mockAndReturnAfterDelay
   int trashableCount;
   freeHandler trashables[1024];
   void (^trash)(freeHandler);
-  void (^free)(); // TODO: add free
 } tape_t;
 
 tape_t *tape();
