@@ -1,5 +1,4 @@
 #include "../src/express.h"
-#include "test-harness.h"
 #include "test-helpers.h"
 #include <Block.h>
 #include <dotenv-c/dotenv.h>
@@ -7,7 +6,28 @@
 #include <stdlib.h>
 #include <tape/tape.h>
 
+app_t *testApp();
+
 void expressTests(tape_t *t);
+
+test_harness_t *testHarnessFactory() {
+  __block app_t *app = testApp();
+  int port = 3032;
+
+  test_harness_t *testHarness = malloc(sizeof(test_harness_t));
+
+  testHarness->teardown = Block_copy(^{
+    shutdownAndFreeApp(app);
+  });
+
+  testHarness->setup = Block_copy(^(void (^callback)()) {
+    app->listen(port, ^{
+      callback();
+    });
+  });
+
+  return testHarness;
+}
 
 void runTests(int runAndExit, test_harness_t *testHarness) {
   tape_t *test = tape();
