@@ -1,11 +1,11 @@
 #include "../src/express.h"
-#include "tape.h"
 #include "test-harness.h"
 #include "test-helpers.h"
 #include <Block.h>
 #include <dotenv-c/dotenv.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tape/tape.h>
 
 void expressTests(tape_t *t);
 

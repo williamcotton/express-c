@@ -20,7 +20,6 @@
   THE SOFTWARE.
 */
 
-#include "tape.h"
 #include <Block.h>
 #include <arpa/inet.h>
 #include <regex.h>
@@ -28,9 +27,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <tape/tape.h>
 #include <unistd.h>
 
-// TODO: rename this and move to deps
 // TODO: incorporate test-harness
 // TODO: add t.get(), t.post(), t.put(), t.delete()
 // TODO: use string()

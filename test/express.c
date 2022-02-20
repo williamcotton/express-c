@@ -1,9 +1,9 @@
 #include "../src/express.h"
-#include "tape.h"
 #include "test-helpers.h"
 #include <Block.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tape/tape.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"

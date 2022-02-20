@@ -1,11 +1,11 @@
 #ifdef __linux__
 
 #include "../src/express.h"
-#include "tape.h"
 #include "test-helpers.h"
 #include <Block.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tape/tape.h>
 
 static void shutdownBrokenApp(app_t *app) {
   app->server->close();
