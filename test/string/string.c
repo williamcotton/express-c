@@ -1,7 +1,6 @@
 #include <string/string.h>
 
 #include "../src/express.h"
-#include "../test-helpers.h"
 #include <math.h>
 #include <string.h>
 #include <tape/tape.h>
