@@ -438,5 +438,6 @@ string_t *string(const char *strng) {
       free(s);
     });
   });
+
   return s;
 }

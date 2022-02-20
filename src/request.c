@@ -1,8 +1,5 @@
 #include "express.h"
 
-// TODO: request->trash() ? push and struct with a free() and call them at end?
-// TODO: request->free()
-
 static void removeWhitespace(char *str) {
   char *p = str;
   char *q = str;
@@ -143,6 +140,13 @@ static copyBlock reqBlockCopyFactory(request_t *req) {
     void *ptr = Block_copy(block);
     req->blockCopies[req->blockCopyCount++] = (req_block_copy_t){.ptr = ptr};
     return ptr;
+  });
+}
+
+static trashBlock reqTrashFactory(request_t *req) {
+  req->trashableCount = 0;
+  return Block_copy(^(freeHandler freeFn) {
+    req->trashables[req->trashableCount++] = freeFn;
   });
 }
 
@@ -412,6 +416,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   check(req->contentLength <= maxBodyLen, "Request body too large");
 
   req->blockCopy = reqBlockCopyFactory(req);
+  req->trash = reqTrashFactory(req);
   req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
 
   req->curl = curl_easy_init(); // TODO: move to global scope
@@ -515,6 +520,9 @@ void freeRequest(request_t *req) {
   for (int i = 0; i < req->blockCopyCount; i++) {
     Block_release(req->blockCopies[i].ptr);
   }
+  for (int i = 0; i < req->trashableCount; i++) {
+    req->trashables[i]();
+  }
   free((void *)req->path);
   Block_release(req->get);
   Block_release(req->query);
@@ -525,6 +533,7 @@ void freeRequest(request_t *req) {
   Block_release(req->mSet);
   Block_release(req->malloc);
   Block_release(req->blockCopy);
+  Block_release(req->trash);
   curl_easy_cleanup(req->curl);
   free((void *)req->queryString);
   free(req);

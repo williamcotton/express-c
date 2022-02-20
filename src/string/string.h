@@ -1,3 +1,6 @@
+#ifndef STRING_H
+#define STRING_H
+
 #include "../express.h"
 
 #define NUMBER_ERROR_NO_DIGITS 1
@@ -80,3 +83,5 @@ typedef struct string_t {
   decimal_number_t (^toDecimal)(void);
   void (^free)(void);
 } string_t;
+
+#endif // STRING_H

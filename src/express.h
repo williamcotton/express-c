@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string/string.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -127,6 +128,8 @@ typedef void (^null)();
 extern char *errorHTML;
 
 /* Primitives */
+
+typedef void (^freeHandler)();
 
 typedef struct embedded_files_data_t {
   unsigned char **data;
@@ -240,6 +243,9 @@ typedef struct request_t {
   void **middlewareCleanupBlocks;
   char *XRequestedWith;
   char *XForwardedFor;
+  int trashableCount;
+  freeHandler trashables[1024];
+  void (^trash)(freeHandler);
 } request_t;
 
 /* Response */
@@ -289,6 +295,7 @@ typedef void (^paramHandler)(request_t *req, response_t *res,
 typedef char * (^getBlock)(const char *key);
 typedef void * (^mallocBlock)(size_t);
 typedef void * (^copyBlock)(void *);
+typedef void (^trashBlock)(freeHandler);
 typedef void (^getMiddlewareSetBlock)(const char *key, void *middleware);
 typedef void * (^getMiddlewareBlock)(const char *key);
 typedef void (^sendBlock)(const char *body);
