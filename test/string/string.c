@@ -109,7 +109,6 @@ void stringTests(tape_t *t) {
       tenPointOne->free();
 
       string_t *negativeTenPointOne = string("-10.6");
-      negativeTenPointOne->print();
       t->ok("negative decimal",
             negativeTenPointOne->toDecimal().value == -10.6L);
       t->ok("negative decimal no error",
