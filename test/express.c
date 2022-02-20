@@ -37,165 +37,164 @@ void expressTests(tape_t *t) {
 
   /* Express */
   t->test("GET", ^(tape_t *t) {
-    t->strEqual("root", curlGet("/"), "Hello World!");
-    t->strEqual("basic route", curlGet("/test"), "Testing, testing!");
+    t->strEqual("root", t->get("/"), "Hello World!");
+    t->strEqual("basic route", t->get("/test"), "Testing, testing!");
     t->strEqual(
-        "route params", curlGet("/one/123/two/345/567.jpg"),
+        "route params", t->get("/one/123/two/345/567.jpg"),
         "<h1>Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
-    t->strEqual("send status", curlGet("/status"), "I'm a teapot");
-    t->strEqual("query string", curlGet("/qs\?value1=123\\&value2=34%205"),
+    t->strEqual("send status", t->get("/status"), "I'm a teapot");
+    t->strEqual("query string", t->get("/qs\?value1=123\\&value2=34%205"),
                 "<h1>Query String</h1><p>Value 1: 123</p><p>Value 2: 34 5</p>");
-    t->strEqual("send file", curlGet("/file"), "hello, world!\n");
+    t->strEqual("send file", t->get("/file"), "hello, world!\n");
   });
 
   t->test("POST", ^(tape_t *t) {
     t->strEqual("form data",
-                curlPost("/post/form123", "param1=12%2B3&param2=3+4%205"),
+                t->post("/post/form123", "param1=12%2B3&param2=3+4%205"),
                 "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
   });
 
   t->test("PUT", ^(tape_t *t) {
     t->strEqual("put form data",
-                curlPut("/put/form123", "param1=12%2B3&param2=3+4%205"),
+                t->put("/put/form123", "param1=12%2B3&param2=3+4%205"),
                 "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
     t->strEqual(
         "body method",
-        curlPost("/put/form123", "param1=12%2B3&param2=3+4%205&_method=put"),
+        t->post("/put/form123", "param1=12%2B3&param2=3+4%205&_method=put"),
         "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
   });
 
   t->test("PATCH", ^(tape_t *t) {
     t->strEqual("patch form data",
-                curlPatch("/patch/form123", "param1=12%2B3&param2=3+4%205"),
+                t->patch("/patch/form123", "param1=12%2B3&param2=3+4%205"),
                 "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
-    t->strEqual("body method",
-                curlPost("/patch/form123",
-                         "param1=12%2B3&param2=3+4%205&_method=patch"),
-                "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
+    t->strEqual(
+        "body method",
+        t->post("/patch/form123", "param1=12%2B3&param2=3+4%205&_method=patch"),
+        "<h1>Form</h1><p>Param 1: 12+3</p><p>Param 2: 3 4 5</p>");
   });
 
   t->test("DELETE", ^(tape_t *t) {
-    t->strEqual("delete form data", curlDelete("/delete/form123"),
+    t->strEqual("delete form data", t->delete ("/delete/form123"),
                 "<h1>Delete</h1><p>ID: form123</p>");
-    t->strEqual("body method", curlPost("/delete/form123", "_method=delete"),
+    t->strEqual("body method", t->post("/delete/form123", "_method=delete"),
                 "<h1>Delete</h1><p>ID: form123</p>");
   });
 
   t->test("Middleware", ^(tape_t *t) {
-    t->strEqual("static file middleware", curlGet("/test/files/test2.txt"),
+    t->strEqual("static file middleware", t->get("/test/files/test2.txt"),
                 "this is a test!!!");
-    t->strEqual("custom request middleware", curlGet("/m"), "super test");
+    t->strEqual("custom request middleware", t->get("/m"), "super test");
     t->strEqual("custom request middleware",
-                curlGet("/base/params/bloop/m-isolated"),
+                t->get("/base/params/bloop/m-isolated"),
                 "No super-nested-router");
-    t->strEqual("custom request middleware", curlGet("/base/nested/m-isolated"),
+    t->strEqual("custom request middleware", t->get("/base/nested/m-isolated"),
                 "No super-params-router");
-    t->strEqual("custom request middleware", curlGet("/base/m-isolated"),
+    t->strEqual("custom request middleware", t->get("/base/m-isolated"),
                 "No super-nested-router");
-    t->strEqual("custom request middleware", curlGet("/m-isolated"),
+    t->strEqual("custom request middleware", t->get("/m-isolated"),
                 "No super-nested-router");
   });
 
   t->test("File", ^(tape_t *t) {
-    t->strEqual("file", curlGet("/file"), "hello, world!\n");
+    t->strEqual("file", t->get("/file"), "hello, world!\n");
     char error[1024];
     sprintf(error, errorHTML, "Cannot GET /test/test3.txt");
-    t->strEqual("file not found", curlGet("/test/test3.txt"), error);
-    t->strEqual("download", curlGet("/download"), "hello, world!\n");
-    char *missingFile = curlGet("/download_missing");
+    t->strEqual("file not found", t->get("/test/test3.txt"), error);
+    t->strEqual("download", t->get("/download"), "hello, world!\n");
+    char *missingFile = t->get("/download_missing");
     t->ok("download missing", missingFile != NULL);
     free(missingFile);
   });
 
   t->test("Session", ^(tape_t *t) {
-    t->strEqual("session set", curlPost("/session", "param1=session-data"),
+    t->strEqual("session set", t->post("/session", "param1=session-data"),
                 "ok");
-    t->strEqual("session get", curlGet("/session"), "session-data");
+    t->strEqual("session get", t->get("/session"), "session-data");
   });
 
   t->test("Header", ^(tape_t *t) {
     t->strEqual(
-        "headers", curlGetHeaders("/headers"),
+        "headers", t->getHeaders("/headers"),
         "<h1>Headers</h1><p>Host: one.two.three.test.com</p><p>Accept: "
         "*/*</p><p>3 Subdomains: one two three</p><p>3 IPs: 1.1.1.1 2.2.2.2 "
         "3.3.3.3</p>");
-    t->strEqual("set header", curlGet("/set_header"), "test1");
+    t->strEqual("set header", t->get("/set_header"), "test1");
   });
 
   t->test("Cookies", ^(tape_t *t) {
-    t->strEqual("set cookie", curlGet("/set_cookie\?session=123\\&user=test"),
+    t->strEqual("set cookie", t->get("/set_cookie\?session=123\\&user=test"),
                 "ok");
-    t->strEqual("get cookie", curlGet("/get_cookie"),
+    t->strEqual("get cookie", t->get("/get_cookie"),
                 "session: 123 - user: test");
-    t->strEqual("clear cookie", curlGet("/clear_cookie"), "ok");
-    t->strEqual("get cleared cookie", curlGet("/get_cookie"),
+    t->strEqual("clear cookie", t->get("/clear_cookie"), "ok");
+    t->strEqual("get cleared cookie", t->get("/get_cookie"),
                 "session: 123 - user: (null)");
   });
 
   t->test("All", ^(tape_t *t) {
-    t->strEqual("get", curlGet("/all"), "all");
-    t->strEqual("post", curlPost("/all", "param1=all"), "all");
-    t->strEqual("put", curlPut("/all", "param1=all"), "all");
-    t->strEqual("patch", curlPatch("/all", "param1=all"), "all");
-    t->strEqual("delete", curlDelete("/all"), "all");
+    t->strEqual("get", t->get("/all"), "all");
+    t->strEqual("post", t->post("/all", "param1=all"), "all");
+    t->strEqual("put", t->put("/all", "param1=all"), "all");
+    t->strEqual("patch", t->patch("/all", "param1=all"), "all");
+    t->strEqual("delete", t->delete ("/all"), "all");
   });
 
   t->test("Redirect", ^(tape_t *t) {
-    t->strEqual("redirect", curlGet("/redirect"), "Redirecting to /redirected");
-    t->strEqual("redirect back", curlGet("/redirect/back"),
+    t->strEqual("redirect", t->get("/redirect"), "Redirecting to /redirected");
+    t->strEqual("redirect back", t->get("/redirect/back"),
                 "Redirecting to back");
   });
 
   t->test("Error", ^(tape_t *t) {
     char error[1024];
     sprintf(error, errorHTML, "Cannot GET /error");
-    t->strEqual("error", curlGet("/error"), error);
-    t->strEqual("custom error handler", curlGet("/base/error"), "fubar");
+    t->strEqual("error", t->get("/error"), error);
+    t->strEqual("custom error handler", t->get("/base/error"), "fubar");
   });
 
   t->test("Router", ^(tape_t *t) {
-    t->strEqual("root", curlGet("/base"), "Hello Router!");
-    t->strEqual("basic route", curlGet("/base/test"), "Testing Router!");
+    t->strEqual("root", t->get("/base"), "Hello Router!");
+    t->strEqual("basic route", t->get("/base/test"), "Testing Router!");
     t->strEqual(
-        "route params", curlGet("/base/one/123/two/345/567.jpg"),
+        "route params", t->get("/base/one/123/two/345/567.jpg"),
         "<h1>Base Params</h1><p>One: 123</p><p>Two: 345</p><p>Three: 567</p>");
-    t->strEqual("custom request middleware", curlGet("/base/m"),
+    t->strEqual("custom request middleware", t->get("/base/m"),
                 "super-router test");
 
     t->test("Nested router", ^(tape_t *t) {
-      t->strEqual("root", curlGet("/base/nested"), "Hello Nested Router!");
-      t->strEqual("basic route", curlGet("/base/nested/test"),
+      t->strEqual("root", t->get("/base/nested"), "Hello Nested Router!");
+      t->strEqual("basic route", t->get("/base/nested/test"),
                   "Testing Nested Router!");
       t->strEqual("route params",
-                  curlGet("/base/nested/one/123/two/345/567.jpg"),
+                  t->get("/base/nested/one/123/two/345/567.jpg"),
                   "<h1>Nested Params</h1><p>One: 123</p><p>Two: "
                   "345</p><p>Three: 567</p>");
-      t->strEqual("custom request middleware", curlGet("/base/nested/m"),
+      t->strEqual("custom request middleware", t->get("/base/nested/m"),
                   "super-nested-router test");
     });
 
     t->test("Params router", ^(tape_t *t) {
-      t->strEqual("basic route", curlGet("/base/params/blip/test"),
+      t->strEqual("basic route", t->get("/base/params/blip/test"),
                   "Testing Nested blip Router!");
       t->strEqual("route params",
-                  curlGet("/base/params/blip/one/123/two/345/567.jpg"),
+                  t->get("/base/params/blip/one/123/two/345/567.jpg"),
                   "<h1>Nested Params blip</h1><p>One: 123</p><p>Two: "
                   "345</p><p>Three: 567</p>");
-      t->strEqual("root", curlGet("/base/params/blip"),
+      t->strEqual("root", t->get("/base/params/blip"),
                   "Hello Params blip Router!");
-      t->strEqual("custom request middleware", curlGet("/base/params/blip/m"),
+      t->strEqual("custom request middleware", t->get("/base/params/blip/m"),
                   "super-params-router test blip");
-      t->strEqual("param value", curlGet("/base/params/hip/param_value"),
-                  "hip");
+      t->strEqual("param value", t->get("/base/params/hip/param_value"), "hip");
     });
 
     t->test("Root router", ^(tape_t *t) {
-      t->strEqual("root route", curlGet("/root"), "Hello Root Router!");
+      t->strEqual("root route", t->get("/root"), "Hello Root Router!");
     });
   });
 
   t->test("Trash", ^(tape_t *t) {
-    t->strEqual("take out the trash", curlGet("/trash"), "trash");
+    t->strEqual("take out the trash", t->get("/trash"), "trash");
   });
 
   /* Mock system call failures */

@@ -7,8 +7,8 @@
 
 void cookieSessionMiddlewareTests(tape_t *t) {
   t->test("cookie session middleware", ^(tape_t *t) {
-    t->strEqual("set", curlGet("/cookie-session/set"), "ok");
-    t->strEqual("get", curlGet("/cookie-session/get"), "{\"title\":\"test\"}");
+    t->strEqual("set", t->get("/cookie-session/set"), "ok");
+    t->strEqual("get", t->get("/cookie-session/get"), "{\"title\":\"test\"}");
   });
 }
 #pragma clang diagnostic pop

@@ -61,19 +61,19 @@ void expressMockSystemCalls(tape_t *t) {
 
     t->test("file failures", ^(tape_t *t) {
       t->mockFailOnce("stat");
-      t->strEqual("stat fail", curlGet("/file"), "");
+      t->strEqual("stat fail", t->get("/file"), "");
 
       t->mockFailOnce("regcomp");
-      t->strEqual("regcomp fail", curlGet("/file"), "hello, world!\n");
+      t->strEqual("regcomp fail", t->get("/file"), "hello, world!\n");
     });
 
     t->test("client failures", ^(tape_t *t) {
       t->mockFailOnce("regcomp");
-      t->strEqual("regcomp fail", curlGet("/"), "Hello World!");
+      t->strEqual("regcomp fail", t->get("/"), "Hello World!");
 
       // TODO: this hangs
       // t->mockFailOnce("accept");
-      // t->strEqual("root, accept fail", curlGet("/"), "Hello World!");
+      // t->strEqual("root, accept fail", t->get("/"), "Hello World!");
     });
   });
 }

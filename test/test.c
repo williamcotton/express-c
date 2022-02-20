@@ -32,7 +32,7 @@ void runTests(int runAndExit, test_harness_t *testHarness) {
   tape_t *test = tape();
 
   int testStatus = test->test("express", ^(tape_t *t) {
-    clearState();
+    t->clearState();
     expressTests(t);
   });
 

@@ -10,23 +10,23 @@
 
 void expressFuzz(tape_t *t) {
   t->test("send garbage", ^(tape_t *t) {
-    sendData("garbage\r\n\r\n");
-    sendData("GET / HTTP1.1\r\n\r\n");
-    sendData("GETSDFDFDF / HTTP/1.1\r\n\r\n");
-    sendData("GET HTTP/1.1\r\n\r\n");
-    sendData("GET --- HTTP/1.1\r\n\r\n");
-    sendData("\r\n\r\n");
-    sendData("\r\n");
-    sendData("");
-    sendData("POST / HTTP/1.1\r\nContent-Type: "
-             "application/json\r\nContent-Length: 50\r\n\r\ngarbage");
-    sendData("POST / HTTP/1.1\r\nContent-Type: "
-             "application/json\r\nContent-Length: "
-             "9999999999999999999999999999\r\n\r\ngarbage");
-    sendData(
+    t->sendData("garbage\r\n\r\n");
+    t->sendData("GET / HTTP1.1\r\n\r\n");
+    t->sendData("GETSDFDFDF / HTTP/1.1\r\n\r\n");
+    t->sendData("GET HTTP/1.1\r\n\r\n");
+    t->sendData("GET --- HTTP/1.1\r\n\r\n");
+    t->sendData("\r\n\r\n");
+    t->sendData("\r\n");
+    t->sendData("");
+    t->sendData("POST / HTTP/1.1\r\nContent-Type: "
+                "application/json\r\nContent-Length: 50\r\n\r\ngarbage");
+    t->sendData("POST / HTTP/1.1\r\nContent-Type: "
+                "application/json\r\nContent-Length: "
+                "9999999999999999999999999999\r\n\r\ngarbage");
+    t->sendData(
         "POST / HTTP/1.1\r\nContent-Type: application/json\r\n\r\ngarbage");
-    sendData("POST / HTTP/1.1\r\n\r\ngarbage");
-    sendData("GET /qs?g=&a-?-&r&=b=a&ge HTTP1.1\r\n\r\n");
+    t->sendData("POST / HTTP/1.1\r\n\r\ngarbage");
+    t->sendData("GET /qs?g=&a-?-&r&=b=a&ge HTTP1.1\r\n\r\n");
 
     t->test("send lots of garbage", ^(tape_t *t) {
       int multipliers[2] = {1, 64};
@@ -37,40 +37,40 @@ void expressFuzz(tape_t *t) {
 
         char *longString = malloc(longStringLen);
 
-        randomString(longString, longStringLen);
-        sendData(longString);
+        t->randomString(longString, longStringLen);
+        t->sendData(longString);
 
         memcpy(longString, "GET / HTTP/1.1\r\n", 16);
-        sendData(longString);
+        t->sendData(longString);
 
         memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
-        sendData(longString);
+        t->sendData(longString);
 
         memcpy(longString,
                "GET / HTTP/1.1\r\nContent-Type: application/json\r\n", 48);
-        sendData(longString);
+        t->sendData(longString);
 
         memcpy(longString,
                "POST / HTTP/1.1\r\nContent-Type: "
                "application/json\r\nContent-Length: 50\r\n\r\n",
                71);
-        sendData(longString);
+        t->sendData(longString);
 
         memcpy(longString,
                "POST / HTTP/1.1\r\nContent-Type: "
                "application/json\r\nContent-Length: 16384\r\n\r\n",
                74);
-        sendData(longString);
+        t->sendData(longString);
 
-        randomString(longString, longStringLen);
+        t->randomString(longString, longStringLen);
         memcpy(longString, "GET / HTTP/1.1\r\nContent-Type: ", 30);
         memcpy(longString + (longStringLen - 30), "\r\n\r\n", 4);
 
-        randomString(longString, longStringLen);
+        t->randomString(longString, longStringLen);
         memcpy(longString, "GET / HTTP/1.1\r\nCookie: ", 24);
         memcpy(longString + (longStringLen - 24), "\r\n\r\n", 4);
 
-        randomString(longString, longStringLen);
+        t->randomString(longString, longStringLen);
         memcpy(longString, "GET /qs?", 8);
         memcpy(longString + (longStringLen - 26), " HTTP/1.1\r\n\r\n", 13);
 

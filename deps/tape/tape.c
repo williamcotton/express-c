@@ -47,7 +47,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-char *curl(char *cmd) {
+static char *curl(char *cmd) {
   system(cmd);
   FILE *file = fopen("./test/test-response.html", "r");
   char html[4096];
@@ -59,7 +59,7 @@ char *curl(char *cmd) {
 }
 
 // TODO: refactor curlGet and curlDelete
-char *curlGet(char *url) {
+static char *curlGet(char *url) {
   char *curlCmd =
       "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
       " -o ./test/test-response.html http://127.0.0.1:3032";
@@ -68,7 +68,7 @@ char *curlGet(char *url) {
   return curl(cmd);
 }
 
-char *curlGetHeaders(char *url) {
+static char *curlGetHeaders(char *url) {
   char *curlCmd =
       "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
       " -H \"X-Forwarded-For: 1.1.1.1, 2.2.2.2, 3.3.3.3\""
@@ -79,7 +79,7 @@ char *curlGetHeaders(char *url) {
   return curl(cmd);
 }
 
-char *curlDelete(char *url) {
+static char *curlDelete(char *url) {
   char cmd[1024];
   sprintf(
       cmd, "%s%s",
@@ -90,7 +90,7 @@ char *curlDelete(char *url) {
 }
 
 // TODO: refactor curlPost, curlPut and curlPatch
-char *curlPost(char *url, char *data) {
+static char *curlPost(char *url, char *data) {
   char cmd[1024];
   sprintf(
       cmd,
@@ -101,7 +101,7 @@ char *curlPost(char *url, char *data) {
   return curl(cmd);
 }
 
-char *curlPatch(char *url, char *data) {
+static char *curlPatch(char *url, char *data) {
   char cmd[1024];
   sprintf(
       cmd,
@@ -112,7 +112,7 @@ char *curlPatch(char *url, char *data) {
   return curl(cmd);
 }
 
-char *curlPut(char *url, char *data) {
+static char *curlPut(char *url, char *data) {
   char cmd[1024];
   sprintf(
       cmd,
@@ -123,7 +123,7 @@ char *curlPut(char *url, char *data) {
   return curl(cmd);
 }
 
-void sendData(char *data) {
+static void sendData(char *data) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in serv_addr;
   serv_addr.sin_family = AF_INET;
@@ -135,7 +135,7 @@ void sendData(char *data) {
   close(sock);
 }
 
-void randomString(char *str, size_t size) {
+static void randomString(char *str, size_t size) {
   const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK=;:!@#$%^&*()_+-"
                          "=[]{}|/.,<>?0123456789";
   if (size) {
@@ -148,7 +148,7 @@ void randomString(char *str, size_t size) {
   }
 }
 
-void clearState() {
+static void clearState() {
   system("rm -f ./test/test-cookies.txt");
   system("rm -f ./test/test-response.html");
 }
@@ -237,6 +237,7 @@ testHandler testHandlerFactory(tape_t *root, int level) {
     printf("\n%s\n", name);
     __block tape_t *t = malloc(sizeof(tape_t));
     t->name = name;
+
     t->ok = ^(char *okName, int condition) {
       root->count++;
       if (condition) {
@@ -248,6 +249,7 @@ testHandler testHandlerFactory(tape_t *root, int level) {
         return 0;
       }
     };
+
     t->strEqual = ^(char *name, char *str1, char *str2) {
       int result = strcmp(str1, str2) == 0;
       t->ok(name, result);
@@ -275,6 +277,44 @@ testHandler testHandlerFactory(tape_t *root, int level) {
       }
       return;
     });
+
+    t->clearState = ^() {
+      clearState();
+      return;
+    };
+
+    t->randomString = ^(char *str, size_t size) {
+      randomString(str, size);
+      return;
+    };
+
+    t->get = ^(char *url) {
+      return curlGet(url);
+    };
+
+    t->post = ^(char *url, char *data) {
+      return curlPost(url, data);
+    };
+
+    t->put = ^(char *url, char *data) {
+      return curlPut(url, data);
+    };
+
+    t->patch = ^(char *url, char *data) {
+      return curlPatch(url, data);
+    };
+
+    t->delete = ^(char *url) {
+      return curlDelete(url);
+    };
+
+    t->getHeaders = ^(char *url) {
+      return curlGetHeaders(url);
+    };
+
+    t->sendData = ^(char *data) {
+      return sendData(data);
+    };
 
     t->test = testHandlerFactory(root, level + 1);
     block(t);

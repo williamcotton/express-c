@@ -7,9 +7,9 @@
 
 void postgresMiddlewareTests(tape_t *t) {
   t->test("postgres middleware", ^(tape_t *t) {
-    t->strEqual("pg->exec()", curlGet("/pg/exec"), "test123");
-    t->strEqual("pg->execParams()", curlGet("/pg/execParams/val"), "test-val");
-    t->strEqual("pg->exec(...)", curlGet("/pg/exec/blip/blop"), "blipblop");
+    t->strEqual("pg->exec()", t->get("/pg/exec"), "test123");
+    t->strEqual("pg->execParams()", t->get("/pg/execParams/val"), "test-val");
+    t->strEqual("pg->exec(...)", t->get("/pg/exec/blip/blop"), "blipblop");
   });
 }
 #pragma clang diagnostic pop

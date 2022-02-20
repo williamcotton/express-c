@@ -25,17 +25,6 @@
 
 #define UNUSED __attribute__((unused))
 
-char *curl(char *cmd);
-char *curlGet(char *url);
-char *curlGetHeaders(char *url);
-char *curlDelete(char *url);
-char *curlPost(char *url, char *data);
-char *curlPut(char *url, char *data);
-char *curlPatch(char *url, char *data);
-void sendData(char *data);
-void clearState();
-void randomString(char *str, size_t size);
-
 typedef void (^teardown)();
 typedef void (^setup)(void (^callback)());
 
@@ -50,10 +39,26 @@ typedef struct tape_t {
   char *name;
   int count;
   int failed;
+  int (^test)(char *, void (^)(struct tape_t *));
+  void (^clearState)();
+  void (^randomString)(char *, size_t);
   int (^ok)(char *, int);
   int (^strEqual)(char *, char *, char *);
-  int (^test)(char *, void (^)(struct tape_t *));
   void (^mockFailOnce)(char *);
+  char * (^get)(char *);
+  char * (^post)(char *, char *);
+  char * (^put)(char *, char *);
+  char * (^patch)(char *, char *);
+  char * (^delete)(char *);
+  void (^sendData)(char *);
+  char * (^getHeaders)(char *);            // TODO: add getHeaders
+  char * (^mockAndReturn)(char *, char *); // TODO: add mockAndReturn
+  char * (^mockFailAfter)(char *, int);    // TODO: add mockFailAfter
+  char * (^mockAndReturnAfter)(char *, char *,
+                               int); // TODO: add mockAndReturnAfter
+  char * (^mockAndReturnAfterDelay)(char *, char *,
+                                    int); // TODO: add mockAndReturnAfterDelay
+  void (^free)();
 } tape_t;
 
 tape_t *tape();
