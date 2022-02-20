@@ -31,8 +31,6 @@
 #include <tape/tape.h>
 #include <unistd.h>
 
-// TODO: handle and free malloc'd memory
-
 #ifdef __linux__
 #include <sys/epoll.h>
 #endif
@@ -230,8 +228,15 @@ typedef int (^testHandler)(char *name, void (^block)(tape_t *));
 testHandler testHandlerFactory(tape_t *root, int level) {
   return Block_copy(^(char *name, void (^block)(tape_t *)) {
     printf("\n%s\n", name);
+
+    /* Initialize tape */
     __block tape_t *t = malloc(sizeof(tape_t));
     t->name = name;
+
+    t->trashableCount = 0;
+    t->trash = Block_copy(^(freeHandler freeFn) {
+      t->trashables[t->trashableCount++] = freeFn;
+    });
 
     t->ok = ^(char *okName, int condition) {
       root->count++;
@@ -252,7 +257,6 @@ testHandler testHandlerFactory(tape_t *root, int level) {
         printf("\nExpected: \033[32m\n\n%s\n\n\033[0m", str2);
         printf("Received: \n\n\033[31m%s\033[0m\n", str1->value);
       }
-      str1->free();
       return isEqual;
     };
 
@@ -283,28 +287,46 @@ testHandler testHandlerFactory(tape_t *root, int level) {
       return;
     };
 
+    t->string = ^(char *str) {
+      string_t *s = string(str);
+      t->trash(s->free);
+      return s;
+    };
+
     t->get = ^(char *url) {
-      return curlGet(url);
+      string_t *response = curlGet(url);
+      t->trash(response->free);
+      return response;
     };
 
     t->post = ^(char *url, char *data) {
-      return curlPost(url, data);
+      string_t *response = curlPost(url, data);
+      t->trash(response->free);
+      return response;
     };
 
     t->put = ^(char *url, char *data) {
-      return curlPut(url, data);
+      string_t *response = curlPut(url, data);
+      t->trash(response->free);
+      return response;
     };
 
     t->patch = ^(char *url, char *data) {
-      return curlPatch(url, data);
+      string_t *response = curlPatch(url, data);
+      t->trash(response->free);
+      return response;
     };
 
     t->delete = ^(char *url) {
-      return curlDelete(url);
+      string_t *response = curlDelete(url);
+      t->trash(response->free);
+      return response;
     };
 
     t->getHeaders = ^(char *url) {
-      return curlGetHeaders(url);
+      string_t *response = curlGetHeaders(url);
+      t->trash(response->free);
+      return response;
     };
 
     t->sendData = ^(char *data) {
@@ -312,7 +334,11 @@ testHandler testHandlerFactory(tape_t *root, int level) {
     };
 
     t->test = testHandlerFactory(root, level + 1);
+
+    /* Call nested tests */
     block(t);
+
+    /* Final report */
     if (level == 0) {
       if (root->failed == 0)
         printf("\033[32m\n%d tests passed\n\n\033[0m", root->count);
@@ -320,8 +346,15 @@ testHandler testHandlerFactory(tape_t *root, int level) {
         printf("\033[31m\n%d tests, %d failed\n\n\033[0m", root->count,
                root->failed);
     }
+
+    /* Cleanup */
+    for (int i = 0; i < t->trashableCount; i++) {
+      t->trashables[i]();
+    }
+    Block_release(t->trash);
     Block_release(t->test);
     free(t);
+
     return root->failed > 0;
   });
 }

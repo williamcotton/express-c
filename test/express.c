@@ -22,7 +22,7 @@ void expressTests(tape_t *t) {
         embeddedFilesData, embeddedFilesLengths, embeddedFilesNames,
         embeddedFilesCount};
     char *fileData = matchEmbeddedFile("demo/public/app.css", embeddedFiles);
-    t->strEqual("matching file", string(fileData), "h");
+    t->strEqual("matching file", t->string(fileData), "h");
     free(fileData);
     const char *bogus = matchEmbeddedFile("bogus", embeddedFiles);
     t->ok("bogus file", bogus == NULL);

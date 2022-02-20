@@ -26,6 +26,7 @@
 #define UNUSED __attribute__((unused))
 
 typedef void (^teardown)();
+typedef void (^freeHandler)();
 typedef void (^setup)(void (^callback)());
 
 typedef struct test_harness_t {
@@ -39,6 +40,7 @@ typedef struct tape_t {
   char *name;
   int count;
   int failed;
+  string_t * (^string)(char *);
   int (^test)(char *, void (^)(struct tape_t *));
   void (^clearState)();
   void (^randomString)(char *, size_t);
@@ -51,14 +53,17 @@ typedef struct tape_t {
   string_t * (^patch)(char *, char *);
   string_t * (^delete)(char *);
   void (^sendData)(char *);
-  string_t * (^getHeaders)(char *);        // TODO: add getHeaders
+  string_t * (^getHeaders)(char *);
   char * (^mockAndReturn)(char *, char *); // TODO: add mockAndReturn
   char * (^mockFailAfter)(char *, int);    // TODO: add mockFailAfter
   char * (^mockAndReturnAfter)(char *, char *,
                                int); // TODO: add mockAndReturnAfter
   char * (^mockAndReturnAfterDelay)(char *, char *,
                                     int); // TODO: add mockAndReturnAfterDelay
-  void (^free)();                         // TODO: add free
+  int trashableCount;
+  freeHandler trashables[1024];
+  void (^trash)(freeHandler);
+  void (^free)(); // TODO: add free
 } tape_t;
 
 tape_t *tape();
