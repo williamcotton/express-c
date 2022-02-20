@@ -55,6 +55,8 @@ void stringTests(tape_t *t) {
       t->ok("indexOf", s->indexOf("bleep") == -1);
       t->ok("lastIndexOf", s->lastIndexOf("l") == 9);
       t->ok("lastIndexOf", s->lastIndexOf("#") == -1);
+      t->ok("contains", s->contains("Hello"));
+      t->ok("contains", !s->contains("bleep"));
 
       s->free();
     });
