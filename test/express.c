@@ -21,9 +21,9 @@ void expressTests(tape_t *t) {
     embedded_files_data_t embeddedFiles = {
         embeddedFilesData, embeddedFilesLengths, embeddedFilesNames,
         embeddedFilesCount};
-    t->strEqual("matching file",
-                matchEmbeddedFile("demo/public/app.css", embeddedFiles), "h");
-
+    char *fileData = matchEmbeddedFile("demo/public/app.css", embeddedFiles);
+    t->strEqual("matching file", string(fileData), "h");
+    free(fileData);
     const char *bogus = matchEmbeddedFile("bogus", embeddedFiles);
     t->ok("bogus file", bogus == NULL);
   });
@@ -38,6 +38,7 @@ void expressTests(tape_t *t) {
   /* Express */
   t->test("GET", ^(tape_t *t) {
     t->strEqual("root", t->get("/"), "Hello World!");
+    t->ok("root contains", t->get("/")->contains("Hello"));
     t->strEqual("basic route", t->get("/test"), "Testing, testing!");
     t->strEqual(
         "route params", t->get("/one/123/two/345/567.jpg"),
@@ -102,9 +103,9 @@ void expressTests(tape_t *t) {
     sprintf(error, errorHTML, "Cannot GET /test/test3.txt");
     t->strEqual("file not found", t->get("/test/test3.txt"), error);
     t->strEqual("download", t->get("/download"), "hello, world!\n");
-    char *missingFile = t->get("/download_missing");
-    t->ok("download missing", missingFile != NULL);
-    free(missingFile);
+    // char *missingFile = t->get("/download_missing");
+    t->ok("download missing", t->get("/download_missing")->value != NULL);
+    // free(missingFile);
   });
 
   t->test("Session", ^(tape_t *t) {

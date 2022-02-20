@@ -26,17 +26,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string/string.h>
 #include <sys/stat.h>
 #include <tape/tape.h>
 #include <unistd.h>
 
-// TODO: incorporate test-harness
-// TODO: add t.get(), t.post(), t.put(), t.delete()
-// TODO: use string()
 // TODO: handle and free malloc'd memory
-// TODO: add t.mockFailAfter()
-// TODO: add t.mockAndReturn()
-// TODO: add t.free()
 
 #ifdef __linux__
 #include <sys/epoll.h>
@@ -47,7 +42,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-static char *curl(char *cmd) {
+static string_t *curl(char *cmd) {
   system(cmd);
   FILE *file = fopen("./test/test-response.html", "r");
   char html[4096];
@@ -55,11 +50,11 @@ static char *curl(char *cmd) {
   html[bytesRead] = '\0';
   fclose(file);
   system("rm ./test/test-response.html");
-  return strdup(html);
+  return string(html);
 }
 
 // TODO: refactor curlGet and curlDelete
-static char *curlGet(char *url) {
+static string_t *curlGet(char *url) {
   char *curlCmd =
       "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
       " -o ./test/test-response.html http://127.0.0.1:3032";
@@ -68,7 +63,7 @@ static char *curlGet(char *url) {
   return curl(cmd);
 }
 
-static char *curlGetHeaders(char *url) {
+static string_t *curlGetHeaders(char *url) {
   char *curlCmd =
       "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
       " -H \"X-Forwarded-For: 1.1.1.1, 2.2.2.2, 3.3.3.3\""
@@ -79,7 +74,7 @@ static char *curlGetHeaders(char *url) {
   return curl(cmd);
 }
 
-static char *curlDelete(char *url) {
+static string_t *curlDelete(char *url) {
   char cmd[1024];
   sprintf(
       cmd, "%s%s",
@@ -90,7 +85,7 @@ static char *curlDelete(char *url) {
 }
 
 // TODO: refactor curlPost, curlPut and curlPatch
-static char *curlPost(char *url, char *data) {
+static string_t *curlPost(char *url, char *data) {
   char cmd[1024];
   sprintf(
       cmd,
@@ -101,7 +96,7 @@ static char *curlPost(char *url, char *data) {
   return curl(cmd);
 }
 
-static char *curlPatch(char *url, char *data) {
+static string_t *curlPatch(char *url, char *data) {
   char cmd[1024];
   sprintf(
       cmd,
@@ -112,7 +107,7 @@ static char *curlPatch(char *url, char *data) {
   return curl(cmd);
 }
 
-static char *curlPut(char *url, char *data) {
+static string_t *curlPut(char *url, char *data) {
   char cmd[1024];
   sprintf(
       cmd,
@@ -250,15 +245,15 @@ testHandler testHandlerFactory(tape_t *root, int level) {
       }
     };
 
-    t->strEqual = ^(char *name, char *str1, char *str2) {
-      int result = strcmp(str1, str2) == 0;
-      t->ok(name, result);
-      if (!result) {
+    t->strEqual = ^(char *name, string_t *str1, char *str2) {
+      int isEqual = str1->eql(str2);
+      t->ok(name, isEqual);
+      if (!isEqual) {
         printf("\nExpected: \033[32m\n\n%s\n\n\033[0m", str2);
-        printf("Received: \n\n\033[31m%s\033[0m\n", str1);
+        printf("Received: \n\n\033[31m%s\033[0m\n", str1->value);
       }
-      free(str1);
-      return result;
+      str1->free();
+      return isEqual;
     };
 
     t->mockFailOnce = Block_copy(^(char *name) {

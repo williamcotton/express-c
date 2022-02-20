@@ -43,22 +43,22 @@ typedef struct tape_t {
   void (^clearState)();
   void (^randomString)(char *, size_t);
   int (^ok)(char *, int);
-  int (^strEqual)(char *, char *, char *);
+  int (^strEqual)(char *, string_t *, char *);
   void (^mockFailOnce)(char *);
-  char * (^get)(char *);
-  char * (^post)(char *, char *);
-  char * (^put)(char *, char *);
-  char * (^patch)(char *, char *);
-  char * (^delete)(char *);
+  string_t * (^get)(char *);
+  string_t * (^post)(char *, char *);
+  string_t * (^put)(char *, char *);
+  string_t * (^patch)(char *, char *);
+  string_t * (^delete)(char *);
   void (^sendData)(char *);
-  char * (^getHeaders)(char *);            // TODO: add getHeaders
+  string_t * (^getHeaders)(char *);        // TODO: add getHeaders
   char * (^mockAndReturn)(char *, char *); // TODO: add mockAndReturn
   char * (^mockFailAfter)(char *, int);    // TODO: add mockFailAfter
   char * (^mockAndReturnAfter)(char *, char *,
                                int); // TODO: add mockAndReturnAfter
   char * (^mockAndReturnAfterDelay)(char *, char *,
                                     int); // TODO: add mockAndReturnAfterDelay
-  void (^free)();
+  void (^free)();                         // TODO: add free
 } tape_t;
 
 tape_t *tape();
