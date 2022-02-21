@@ -15,7 +15,7 @@
  */
 
 #include "mustach-wrap.h"
-#include <jansson/jansson.h>
+#include <jansson.h>
 
 /**
  * Wrap interface used internally by mustach jansson functions.

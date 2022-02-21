@@ -74,7 +74,9 @@
     "iosfwd": "c",
     "math.h": "c",
     "cjson-mustache-middleware.h": "c",
-    "mustach-cjson.h": "c"
+    "mustach-cjson.h": "c",
+    "mustach.h": "c",
+    "mustach-wrap.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
