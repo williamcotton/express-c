@@ -35,7 +35,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - run: brew install jansson
+      - run: brew install jansson libjwt
       - run: make format
       - run: make lint
       - run: make test-leaks
