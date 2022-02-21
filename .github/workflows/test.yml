@@ -7,7 +7,7 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}:master
+      image: ghcr.io/${{ github.repository }}:jansson
     services:
       postgres:
         image: postgres
