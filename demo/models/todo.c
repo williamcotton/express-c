@@ -125,7 +125,7 @@ middlewareHandler todoStoreMiddleware() {
 
     todoStore->all = req->blockCopy(^() {
       collection_t *collection = malloc(sizeof(collection_t));
-      collection->each = req->blockCopy(^(eachCallback callback) {
+      collection->each = req->blockCopy(^(eachTodoCallback callback) {
         cJSON *item = NULL;
         int totalTodos = cJSON_GetArraySize(todoStore->store);
         if (totalTodos == 0)
@@ -139,9 +139,9 @@ middlewareHandler todoStoreMiddleware() {
       return collection;
     });
 
-    todoStore->filter = req->blockCopy(^(UNUSED filterCallback fCb) {
+    todoStore->filter = req->blockCopy(^(UNUSED filterTodoCallback fCb) {
       collection_t *collection = req->malloc(sizeof(collection_t));
-      collection->each = req->blockCopy(^(UNUSED eachCallback eCb) {
+      collection->each = req->blockCopy(^(UNUSED eachTodoCallback eCb) {
         cJSON *item = NULL;
         int totalTodos = cJSON_GetArraySize(todoStore->store);
         if (totalTodos == 0)

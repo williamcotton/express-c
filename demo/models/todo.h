@@ -4,11 +4,11 @@
 #include <cJSON/cJSON.h>
 #include <express.h>
 
-typedef int (^filterCallback)(void *item);
-typedef void (^eachCallback)(void *item);
+typedef int (^filterTodoCallback)(void *item);
+typedef void (^eachTodoCallback)(void *item);
 
 typedef struct collection_t {
-  void (^each)(eachCallback);
+  void (^each)(eachTodoCallback);
 } collection_t;
 
 typedef struct todo_t {
@@ -27,7 +27,7 @@ typedef struct todo_store_t {
   void (^update)(todo_t *todo);
   void (^delete)(int id);
   collection_t * (^all)();
-  collection_t * (^filter)(filterCallback);
+  collection_t * (^filter)(filterTodoCallback);
 } todo_store_t;
 
 middlewareHandler todoStoreMiddleware();

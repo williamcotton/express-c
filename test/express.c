@@ -217,8 +217,8 @@ void expressTests(tape_t *t) {
   void postgresMiddlewareTests(tape_t * t);
   postgresMiddlewareTests(t);
 #endif
-  void mustacheMiddlewareTests(tape_t * t);
-  mustacheMiddlewareTests(t);
+  void cJSONMustacheMiddlewareTests(tape_t * t);
+  cJSONMustacheMiddlewareTests(t);
   void cookieSessionMiddlewareTests(tape_t * t);
   cookieSessionMiddlewareTests(t);
 

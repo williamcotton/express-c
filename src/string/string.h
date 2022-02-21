@@ -43,10 +43,11 @@ struct number_t;
 struct string_t *string(const char *str);
 struct string_collection_t *stringCollection(size_t size,
                                              struct string_t **arr);
-typedef void (^eachCallback)(struct string_t *string);
-typedef void (^eachWithIndexCallback)(struct string_t *string, int index);
-typedef void * (^reducerCallback)(void *accumulator, struct string_t *string);
-typedef void * (^mapCallback)(struct string_t *string);
+typedef void (^eachStringCallback)(struct string_t *string);
+typedef void (^eachStringWithIndexCallback)(struct string_t *string, int index);
+typedef void * (^reducerStringCallback)(void *accumulator,
+                                        struct string_t *string);
+typedef void * (^mapStringCallback)(struct string_t *string);
 
 typedef struct integer_number_t {
   long long value;
@@ -67,10 +68,10 @@ typedef struct string_collection_t {
   int blockCopyCount;
   malloc_t blockCopies[1024];
   void * (^blockCopy)(void *);
-  void (^each)(eachCallback);
-  void (^eachWithIndex)(eachWithIndexCallback);
-  void * (^reduce)(void *accumulator, reducerCallback);
-  void ** (^map)(mapCallback);
+  void (^each)(eachStringCallback);
+  void (^eachWithIndex)(eachStringWithIndexCallback);
+  void * (^reduce)(void *accumulator, reducerStringCallback);
+  void ** (^map)(mapStringCallback);
   void (^free)(void);
   int (^indexOf)(const char *str);
   struct string_collection_t * (^reverse)(void);

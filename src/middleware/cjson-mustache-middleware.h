@@ -20,12 +20,12 @@
   THE SOFTWARE.
 */
 
-#ifndef MUSTACHE_MIDDLEWARE_H
-#define MUSTACHE_MIDDLEWARE_H
+#ifndef CJSON_MUSTACHE_MIDDLEWARE_H
+#define CJSON_MUSTACHE_MIDDLEWARE_H
 
 #include <express.h>
 
-middlewareHandler mustacheMiddleware(char *viewsPath,
-                                     embedded_files_data_t embeddedFiles);
+middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
+                                          embedded_files_data_t embeddedFiles);
 
-#endif // MUSTACHE_MIDDLEWARE_H
+#endif // CJSON_MUSTACHE_MIDDLEWARE_H

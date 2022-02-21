@@ -29,7 +29,7 @@ In production the mustache views are compiled into C binary data. In development
 ```c
   router->use(cookieSessionMiddlewareFactory());
   router->use(todoStoreMiddleware());
-  router->use(mustacheMiddleware("demo/views", embeddedFiles));
+  router->use(cJSONMustacheMiddleware("demo/views", embeddedFiles));
 ```
 
 ### Front Page

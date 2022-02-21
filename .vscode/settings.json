@@ -72,7 +72,8 @@
     "cookie-session-middleware.h": "c",
     "stringo.h": "c",
     "iosfwd": "c",
-    "math.h": "c"
+    "math.h": "c",
+    "cjson-mustache-middleware.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

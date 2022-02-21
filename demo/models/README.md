@@ -155,7 +155,7 @@ In addition to the basic CRUD operations are a few helper functions for working 
 
 ```
 typedef struct collection_t {
-  void (^each)(eachCallback);
+  void (^each)(eachTodoCallback);
 } collection_t;
 ```
 
@@ -164,7 +164,7 @@ This very basic implementation of a collection supports an interable `each` func
 ```c
     todoStore->all = req->blockCopy(^() {
       collection_t *collection = malloc(sizeof(collection_t));
-      collection->each = req->blockCopy(^(eachCallback callback) {
+      collection->each = req->blockCopy(^(eachTodoCallback callback) {
         cJSON *item = NULL;
         int totalTodos = cJSON_GetArraySize(todoStore->store);
         if (totalTodos == 0)
@@ -178,9 +178,9 @@ This very basic implementation of a collection supports an interable `each` func
       return collection;
     });
 
-    todoStore->filter = req->blockCopy(^(UNUSED filterCallback fCb) {
+    todoStore->filter = req->blockCopy(^(UNUSED filterTodoCallback fCb) {
       collection_t *collection = req->malloc(sizeof(collection_t));
-      collection->each = req->blockCopy(^(UNUSED eachCallback eCb) {
+      collection->each = req->blockCopy(^(UNUSED eachTodoCallback eCb) {
         cJSON *item = NULL;
         int totalTodos = cJSON_GetArraySize(todoStore->store);
         if (totalTodos == 0)

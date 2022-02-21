@@ -71,28 +71,28 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
     return ptr;
   });
 
-  collection->each = collection->blockCopy(^(eachCallback callback) {
+  collection->each = collection->blockCopy(^(eachStringCallback callback) {
     for (size_t i = 0; i < collection->size; i++) {
       callback(collection->arr[i]);
     }
   });
 
   collection->eachWithIndex =
-      collection->blockCopy(^(eachWithIndexCallback callback) {
+      collection->blockCopy(^(eachStringWithIndexCallback callback) {
         for (size_t i = 0; i < collection->size; i++) {
           callback(collection->arr[i], i);
         }
       });
 
-  collection->reduce =
-      collection->blockCopy(^(void *accumulator, reducerCallback reducer) {
+  collection->reduce = collection->blockCopy(
+      ^(void *accumulator, reducerStringCallback reducer) {
         for (size_t i = 0; i < collection->size; i++) {
           accumulator = reducer(accumulator, collection->arr[i]);
         }
         return accumulator;
       });
 
-  collection->map = collection->blockCopy(^(mapCallback callback) {
+  collection->map = collection->blockCopy(^(mapStringCallback callback) {
     void **arr = collection->malloc(sizeof(void *) * collection->size);
     for (size_t i = 0; i < collection->size; i++) {
       arr[i] = callback(collection->arr[i]);
