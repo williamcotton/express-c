@@ -219,6 +219,8 @@ void expressTests(tape_t *t) {
 #endif
   void cJSONMustacheMiddlewareTests(tape_t * t);
   cJSONMustacheMiddlewareTests(t);
+  void janssonMustacheMiddlewareTests(tape_t * t);
+  janssonMustacheMiddlewareTests(t);
   void cookieSessionMiddlewareTests(tape_t * t);
   cookieSessionMiddlewareTests(t);
 

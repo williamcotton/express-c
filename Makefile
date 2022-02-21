@@ -20,7 +20,7 @@ ifeq ($(PLATFORM),DARWIN)
 endif
 
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -ljansson
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -ljansson -ljwt
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
 EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)

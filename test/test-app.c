@@ -3,6 +3,7 @@
 
 router_t *postgresRouter(const char *pgUri, int poolSize);
 router_t *cJSONMustacheRouter();
+router_t *janssonMustacheRouter();
 router_t *cookieSessionRouter();
 
 app_t *testApp() {
@@ -29,7 +30,8 @@ app_t *testApp() {
   router_t *pgRouter = postgresRouter(TEST_DATABASE_URL, poolSize);
   app->useRouter("/pg", pgRouter);
 
-  app->useRouter("/mustache", cJSONMustacheRouter());
+  app->useRouter("/cjson-mustache", cJSONMustacheRouter());
+  app->useRouter("/jansson-mustache", janssonMustacheRouter());
   app->useRouter("/cookie-session", cookieSessionRouter());
 
   typedef struct super_t {

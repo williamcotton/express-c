@@ -5,9 +5,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
 
-void cJSONMustacheMiddlewareTests(tape_t *t) {
-  t->test("cjson mustache middleware", ^(tape_t *t) {
-    t->strEqual("render", t->get("/cjson-mustache"),
+void janssonMustacheMiddlewareTests(tape_t *t) {
+  t->test("jansson mustache middleware", ^(tape_t *t) {
+    t->strEqual("render", t->get("/jansson-mustache"),
                 "<h1>test</h1>\n<p>test</p>\n");
   });
 }
