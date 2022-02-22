@@ -200,8 +200,8 @@ void expressTests(tape_t *t) {
 
   /* Mock system call failures */
 #ifdef __linux__
-  void expressMockSystemCalls(tape_t * t);
-  expressMockSystemCalls(t);
+  // void expressMockSystemCalls(tape_t * t);
+  // expressMockSystemCalls(t);
 #endif
 
   /* Fuzz testing */

@@ -16,7 +16,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 RUN apt update && apt -y install --no-install-recommends software-properties-common && add-apt-repository ppa:ben-collins/libjwt
 
-RUN apt-get install libjwt-dev
+RUN apt-get -y install libjwt-dev
 
 WORKDIR /vscode
 RUN pwd
