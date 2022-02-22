@@ -223,6 +223,8 @@ void expressTests(tape_t *t) {
   janssonMustacheMiddlewareTests(t);
   void cookieSessionMiddlewareTests(tape_t * t);
   cookieSessionMiddlewareTests(t);
+  void jwtMiddlewareTests(tape_t * t);
+  jwtMiddlewareTests(t);
 
   /* Strings */
   void stringTests(tape_t * t);

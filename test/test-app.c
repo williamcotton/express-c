@@ -5,6 +5,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize);
 router_t *cJSONMustacheRouter();
 router_t *janssonMustacheRouter();
 router_t *cookieSessionRouter();
+router_t *jwtRouter();
 
 app_t *testApp() {
 
@@ -33,6 +34,7 @@ app_t *testApp() {
   app->useRouter("/cjson-mustache", cJSONMustacheRouter());
   app->useRouter("/jansson-mustache", janssonMustacheRouter());
   app->useRouter("/cookie-session", cookieSessionRouter());
+  app->useRouter("/jwt", jwtRouter());
 
   typedef struct super_t {
     char *uuid;
