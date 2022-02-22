@@ -152,6 +152,25 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
     return -1;
   });
 
+  collection->first = collection->blockCopy(^{
+    return collection->arr[0];
+  });
+  collection->second = collection->blockCopy(^{
+    return collection->arr[1];
+  });
+  collection->third = collection->blockCopy(^{
+    return collection->arr[2];
+  });
+  collection->fourth = collection->blockCopy(^{
+    return collection->arr[3];
+  });
+  collection->fifth = collection->blockCopy(^{
+    return collection->arr[4];
+  });
+  collection->last = collection->blockCopy(^{
+    return collection->arr[collection->size - 1];
+  });
+
   collection->free = Block_copy(^(void) {
     for (size_t i = 0; i < collection->size; i++) {
       collection->arr[i]->free();

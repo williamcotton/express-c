@@ -78,6 +78,12 @@ typedef struct string_collection_t {
   struct string_collection_t * (^sort)(void);
   struct string_collection_t * (^push)(struct string_t *string);
   struct string_t * (^join)(const char *delim);
+  struct string_t * (^first)();
+  struct string_t * (^second)();
+  struct string_t * (^third)();
+  struct string_t * (^fourth)();
+  struct string_t * (^fifth)();
+  struct string_t * (^last)();
 } string_collection_t;
 
 typedef struct string_t {

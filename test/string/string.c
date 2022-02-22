@@ -230,6 +230,15 @@ void stringTests(tape_t *t) {
       unsorted->free();
       unsortedString->free();
       sortedString->free();
+
+      string_t *s6 = string("one,two,three,four,five,six");
+      string_collection_t *c2 = s6->split(",");
+      t->strEqual("first", c2->first(), "one");
+      t->strEqual("second", c2->second(), "two");
+      t->strEqual("third", c2->third(), "three");
+      t->strEqual("fourth", c2->fourth(), "four");
+      t->strEqual("fifth", c2->fifth(), "five");
+      t->strEqual("last", c2->last(), "six");
     });
 
     t->test("regex collection", ^(tape_t *t) {
