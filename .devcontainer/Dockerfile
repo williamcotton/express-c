@@ -14,6 +14,10 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     libblocksruntime-dev libkqueue-dev libpthread-workqueue-dev git build-essential python cmake ninja-build systemtap-sdt-dev libbsd-dev \
     linux-libc-dev apache2-utils fswatch uuid-dev valgrind xxd pkg-config libpq-dev postgresql-client-14 libjansson-dev gpg-agent
 
+RUN apt update && apt -y install --no-install-recommends software-properties-common && add-apt-repository ppa:ben-collins/libjwt
+
+RUN apt-get install libjwt-dev
+
 WORKDIR /vscode
 RUN pwd
 RUN git clone https://github.com/apple/swift-corelibs-libdispatch.git
