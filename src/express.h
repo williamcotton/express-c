@@ -246,6 +246,7 @@ typedef struct request_t {
   int trashableCount;
   freeHandler trashables[1024];
   void (^trash)(freeHandler);
+  void *user;
 } request_t;
 
 /* Response */
