@@ -159,7 +159,7 @@ janssonMustacheMiddleware(char *viewsPath,
       }
       free(templateFile);
       free(template);
-      free(json);
+      json_decref(json);
     };
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));

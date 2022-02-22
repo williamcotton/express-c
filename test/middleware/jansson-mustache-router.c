@@ -12,7 +12,6 @@ router_t *janssonMustacheRouter() {
   router->get("/", ^(UNUSED request_t *req, response_t *res) {
     json_t *json = json_object();
     json_object_set_new(json, "title", json_string("test"));
-
     res->render("test", json);
   });
 
