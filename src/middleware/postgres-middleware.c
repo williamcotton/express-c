@@ -88,24 +88,26 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
     });
   }
 
+  postgres->free = Block_copy(^() {
+    for (int i = 0; i < postgres->poolSize; i++) {
+      postgres->pool[i]->close();
+      Block_release(postgres->pool[i]->exec);
+      Block_release(postgres->pool[i]->execParams);
+      Block_release(postgres->pool[i]->close);
+      free(postgres->pool[i]);
+    }
+    free(postgres->pool);
+    dispatch_release(postgres->semaphore);
+    dispatch_release(postgres->queue);
+    dispatch_async(dispatch_get_main_queue(), ^() {
+      Block_release(postgres->free);
+      free(postgres);
+    });
+  });
+
   return postgres;
 error:
   return NULL;
-}
-
-// TODO: replace with postgres.free();
-void freePostgresConnection(postgres_connection_t *postgres) {
-  for (int i = 0; i < postgres->poolSize; i++) {
-    postgres->pool[i]->close();
-    Block_release(postgres->pool[i]->exec);
-    Block_release(postgres->pool[i]->execParams);
-    Block_release(postgres->pool[i]->close);
-    free(postgres->pool[i]);
-  }
-  free(postgres->pool);
-  dispatch_release(postgres->semaphore);
-  dispatch_release(postgres->queue);
-  free(postgres);
 }
 
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {

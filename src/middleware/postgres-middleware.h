@@ -41,11 +41,10 @@ typedef struct postgres_connection_t {
   dispatch_semaphore_t semaphore;
   dispatch_queue_t queue;
   int poolSize;
+  void (^free)();
 } postgres_connection_t;
 
 postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
-
-void freePostgresConnection(postgres_connection_t *postgres);
 
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
 

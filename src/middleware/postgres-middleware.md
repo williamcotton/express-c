@@ -44,26 +44,26 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
     });
   }
 
+  postgres->free = Block_copy(^() {
+    for (int i = 0; i < postgres->poolSize; i++) {
+      postgres->pool[i]->close();
+      Block_release(postgres->pool[i]->exec);
+      Block_release(postgres->pool[i]->execParams);
+      Block_release(postgres->pool[i]->close);
+      free(postgres->pool[i]);
+    }
+    free(postgres->pool);
+    dispatch_release(postgres->semaphore);
+    dispatch_release(postgres->queue);
+    dispatch_async(dispatch_get_main_queue(), ^() {
+      Block_release(postgres->free);
+      free(postgres);
+    });
+  });
+
   return postgres;
 error:
   return NULL;
-}
-```
-
-### Free Connection
-
-```c
-void freePostgresConnection(postgres_connection_t *postgres) {
-  for (int i = 0; i < postgres->poolSize; i++) {
-    Block_release(postgres->pool[i]->exec);
-    Block_release(postgres->pool[i]->close);
-    PQfinish(postgres->pool[i]->connection);
-    free(postgres->pool[i]);
-  }
-  free(postgres->pool);
-  dispatch_release(postgres->semaphore);
-  dispatch_release(postgres->queue);
-  free(postgres);
 }
 ```
 

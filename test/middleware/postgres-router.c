@@ -61,7 +61,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
   });
 
   router->cleanup(Block_copy(^{
-    freePostgresConnection(postgres);
+    postgres->free();
   }));
 
   return router;

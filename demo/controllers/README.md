@@ -225,7 +225,7 @@ We need to clean up the postgres connection when the router is destroyed.
 
 ```c
   router->cleanup(Block_copy(^{
-    freePostgresConnection(postgres);
+    postgres->free();
   }));
 
   return router;
