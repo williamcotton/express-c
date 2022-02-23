@@ -7,11 +7,13 @@
 
 void jwtMiddlewareTests(tape_t *t) {
   t->test("jansson jwt middleware", ^(tape_t *t) {
-    t->strEqual("sign", t->get("/jwt/sign")->split(".")->first(),
+    string_t *response = t->get("/jwt/sign");
+    string_collection_t *tokens = response->split(".");
+    t->strEqual("sign", tokens->first(),
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+    tokens->free();
 
-    t->strEqual("verify", t->get("/jwt/verify")->split(".")->first(),
-                "{\"hello\":\"world\"}");
+    t->strEqual("verify", t->get("/jwt/verify"), "{\"hello\":\"world\"}");
   });
 }
 #pragma clang diagnostic pop

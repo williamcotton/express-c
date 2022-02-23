@@ -28,8 +28,8 @@
 #include <jwt.h>
 
 typedef struct jwt_middleware_t {
-  char * (^sign)(char *payload);
-  char * (^verify)(char *jwt);
+  char * (^sign)(char *jsonPayload);
+  char * (^verify)(char *token);
 } jwt_middleware_t;
 
 middlewareHandler jwtMiddleware(const unsigned char *privateKey,

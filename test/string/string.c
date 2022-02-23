@@ -239,6 +239,8 @@ void stringTests(tape_t *t) {
       t->strEqual("fourth", c2->fourth(), "four");
       t->strEqual("fifth", c2->fifth(), "five");
       t->strEqual("last", c2->last(), "six");
+      s6->free();
+      c2->free();
     });
 
     t->test("regex collection", ^(tape_t *t) {
