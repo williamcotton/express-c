@@ -121,9 +121,11 @@ install: $(BUILD_DIR)/libexpress.so
 	mkdir -p /usr/local/include
 	mkdir -p /usr/local/lib
 	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share
 	rm -f /usr/local/lib/libexpress.so
 	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
 	cp -Rp src/* /usr/local/include
 	cp -Rp deps/* /usr/local/include
 	cp -Rp scripts/* /usr/local/bin
+	cp express.supp /usr/local/share
 	
