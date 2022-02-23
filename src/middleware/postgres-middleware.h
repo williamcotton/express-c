@@ -26,17 +26,33 @@
 #include <express.h>
 #include <libpq-fe.h>
 
+typedef struct query_t {
+  struct query_t * (^where)(const char *, ...);
+  struct query_t * (^orderBy)(const char *, ...);
+  struct query_t * (^limit)(int);
+  struct query_t * (^offset)(int);
+  struct query_t * (^groupBy)(const char *, ...);
+  struct query_t * (^having)(const char *, ...);
+  struct query_t * (^join)(const char *, ...);
+  PGresult * (^find)();
+  PGresult * (^all)();
+} query_t;
+
+typedef query_t * (^getPostgresQueryBlock)(const char *);
+
 typedef struct pg_t {
   PGconn *connection;
   int used;
   PGresult * (^exec)(const char *, ...);
   PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
                            const int *, const int *, int);
+  query_t * (^query)(const char *);
   void (^close)();
 } pg_t;
 
 typedef struct postgres_connection_t {
   const char *uri;
+  PGconn *connection;
   pg_t **pool;
   dispatch_semaphore_t semaphore;
   dispatch_queue_t queue;

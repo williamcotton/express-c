@@ -36,6 +36,32 @@ int paramCount(const char *query) {
   return count;
 }
 
+static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
+  return req->blockCopy(^(const char *tableName) {
+    query_t *query = req->malloc(sizeof(query_t));
+    debug("tableName: %s", tableName);
+
+    // char * (^where)(const char *, ...) = ^(const char *format, ...) {
+    //   va_list args;
+    //   va_start(args, format);
+    //   char *query = req->vsprintf(format, args);
+    //   va_end(args);
+    //   return query;
+    // };
+
+    query->where = req->blockCopy(^(const char *conditions, ...) {
+      debug("conditions: %s", conditions);
+      return query;
+    });
+
+    query->all = req->blockCopy(^() {
+      return pg->exec("SELECT * FROM %s", tableName);
+    });
+
+    return query;
+  });
+}
+
 postgres_connection_t *initPostgressConnection(const char *pgUri,
                                                int poolSize) {
   postgres_connection_t *postgres = malloc(sizeof(postgres_connection_t));
@@ -112,11 +138,10 @@ error:
 
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
   /* Test connection */
-  PGconn *connection = PQconnectdb(postgres->uri);
-  check(PQstatus(connection) == CONNECTION_OK,
-        "Failed to connect to postgres: %s (%s)", PQerrorMessage(connection),
-        postgres->uri);
-  PQfinish(connection);
+  postgres->connection = PQconnectdb(postgres->uri);
+  check(PQstatus(postgres->connection) == CONNECTION_OK,
+        "Failed to connect to postgres: %s (%s)",
+        PQerrorMessage(postgres->connection), postgres->uri);
 
   /* Create middleware, getting a postgress connection at the beginning of every
    * request and releasing it after the request has finished */
@@ -138,6 +163,8 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
       }
     });
 
+    pg->query = getPostgresQuery(req, pg);
+
     req->mSet("pg", pg);
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
@@ -154,11 +181,12 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
   });
 
 error:
-  PQfinish(connection);
-  return ^(UNUSED request_t *req, UNUSED response_t *res, void (^next)(),
-           void (^cleanup)(cleanupHandler)) {
+
+  return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
+                      void (^next)(), void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+        // PQfinish(postgres->connection);
     }));
     next();
-  };
+  });
 }
