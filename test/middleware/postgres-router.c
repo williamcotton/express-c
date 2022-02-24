@@ -2,11 +2,19 @@
 #include "../../src/middleware/postgres-middleware.h"
 
 static void setupTestTable(pg_t *pg) {
-  pg->exec("DROP TABLE IF EXISTS test");
-  pg->exec("CREATE TABLE test (id serial PRIMARY KEY, name text, age integer)");
-  pg->exec("INSERT INTO test (name, age) VALUES ('test123', 123)");
-  pg->exec("INSERT INTO test (name, age) VALUES ('test456', 456)");
-  pg->exec("INSERT INTO test (name, age) VALUES ('test789', 789)");
+  PQclear(pg->exec("DROP TABLE IF EXISTS test"));
+  PQclear(pg->exec(
+      "CREATE TABLE test (id serial PRIMARY KEY, name text, age integer, "
+      "city text)"));
+  PQclear(pg->exec("INSERT INTO test (name, age, city) VALUES ('test123', 123, "
+                   "'testcity')"));
+  PQclear(pg->exec("INSERT INTO test (name, age, city) VALUES ('test456', 456, "
+                   "'testcity')"));
+  PQclear(pg->exec("INSERT INTO test (name, age, city) VALUES ('test789', 789, "
+                   "'anothercity')"));
+  PQclear(
+      pg->exec("INSERT INTO test (name, age, city) VALUES ('another123', 123, "
+               "'anothercity')"));
 };
 
 router_t *postgresRouter(const char *pgUri, int poolSize) {
@@ -51,15 +59,30 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres = pg->query("test")->all();
-    res->send(PQgetvalue(pgres, 0, 0));
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->send(PQgetvalue(pgres, 0, 1));
     PQclear(pgres);
   });
 
   router->get("/query/where", ^(request_t *req, UNUSED response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
-    PGresult *pgres = pg->query("test")->where("age = ?", "456")->all();
-    res->send(PQgetvalue(pgres, 0, 0));
+    PGresult *pgres = pg->query("test")
+                          ->where("age = $", "123")
+                          ->where("city = $", "anothercity")
+                          ->all();
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->send(PQgetvalue(pgres, 0, 1));
     PQclear(pgres);
   });
 

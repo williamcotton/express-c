@@ -352,7 +352,9 @@ string_t *string(const char *strng) {
   });
 
   s->replace = s->blockCopy(^(const char *str1, const char *str2) {
-    char *new_str = malloc(s->size + 1);
+    size_t str1_len = strlen(str1);
+    size_t str2_len = strlen(str2);
+    char *new_str = malloc(s->size + str2_len - str1_len + 1);
     size_t i = 0;
     size_t j = 0;
     while (i < s->size) {

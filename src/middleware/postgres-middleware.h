@@ -27,6 +27,10 @@
 #include <libpq-fe.h>
 
 typedef struct query_t {
+  const char *paramValues[100];
+  int paramValueCount;
+  char *whereConditions[100];
+  int whereConditionsCount;
   struct query_t * (^where)(const char *, ...);
   struct query_t * (^orderBy)(const char *, ...);
   struct query_t * (^limit)(int);

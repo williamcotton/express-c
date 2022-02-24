@@ -39,23 +39,70 @@ int paramCount(const char *query) {
 static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
   return req->blockCopy(^(const char *tableName) {
     query_t *query = req->malloc(sizeof(query_t));
-    debug("tableName: %s", tableName);
 
-    // char * (^where)(const char *, ...) = ^(const char *format, ...) {
-    //   va_list args;
-    //   va_start(args, format);
-    //   char *query = req->vsprintf(format, args);
-    //   va_end(args);
-    //   return query;
-    // };
+    query->paramValueCount = 0;
+    query->whereConditionsCount = 0;
 
     query->where = req->blockCopy(^(const char *conditions, ...) {
-      debug("conditions: %s", conditions);
+      int nParams = paramCount(conditions);
+
+      char varNum[10];
+      sprintf(varNum, "$%d", query->whereConditionsCount + 1);
+
+      string_t *whereConditions = string(conditions);
+      char *sequentialConditions =
+          strdup(whereConditions->replace("$", varNum)->value);
+      whereConditions->free();
+
+      query->whereConditions[query->whereConditionsCount++] =
+          sequentialConditions;
+
+      va_list args;
+      va_start(args, conditions);
+
+      for (int j = 0; j < nParams; j++) {
+        query->paramValues[query->paramValueCount++] =
+            va_arg(args, const char *);
+      }
+
+      va_end(args);
+
       return query;
     });
 
     query->all = req->blockCopy(^() {
-      return pg->exec("SELECT * FROM %s", tableName);
+      char *select = "SELECT *";
+
+      char *from = req->malloc(strlen(tableName) + strlen("FROM ") + 1);
+      sprintf(from, "FROM %s", tableName);
+
+      char *where = NULL;
+      for (int i = 0; i < query->whereConditionsCount; i++) {
+        if (where == NULL) {
+          where = req->malloc(strlen(query->whereConditions[i]) +
+                              strlen(" WHERE ") + 1);
+          sprintf(where, "WHERE %s", query->whereConditions[i]);
+        } else {
+          char *tmp = req->malloc(strlen(where) + strlen(" AND ") +
+                                  strlen(query->whereConditions[i]) + 1);
+          sprintf(tmp, "%s AND %s", where, query->whereConditions[i]);
+          where = tmp;
+        }
+      }
+
+      if (where == NULL)
+        where = "";
+
+      char *queryString =
+          req->malloc(strlen(select) + strlen(from) + strlen(where) + 3);
+      sprintf(queryString, "%s %s %s", select, from, where);
+
+      for (int i = 0; i < query->whereConditionsCount; i++) {
+        free(query->whereConditions[i]);
+      }
+
+      return pg->execParams(queryString, query->paramValueCount, NULL,
+                            query->paramValues, NULL, NULL, 0);
     });
 
     return query;

@@ -13,7 +13,7 @@ void postgresMiddlewareTests(tape_t *t) {
 
     t->test("pg->query", ^(tape_t *t) {
       t->strEqual("all", t->get("/pg/query/all"), "test123");
-      t->strEqual("where", t->get("/pg/query/where"), "test456");
+      t->strEqual("where", t->get("/pg/query/where"), "another123");
     });
   });
 }
