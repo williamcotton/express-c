@@ -42,6 +42,15 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
 
     query->paramValueCount = 0;
     query->whereConditionsCount = 0;
+    query->selectCondition = "*";
+    query->limitCondition = "";
+    query->offsetCondition = "";
+    query->orderConditionsCount = 0;
+
+    query->select = ^query_t *(const char *select) {
+      query->selectCondition = select;
+      return query;
+    };
 
     query->where = req->blockCopy(^(const char *conditions, ...) {
       int nParams = paramCount(conditions);
@@ -70,12 +79,37 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       return query;
     });
 
-    query->all = req->blockCopy(^() {
-      char *select = "SELECT *";
+    query->limit = req->blockCopy(^(int limit) {
+      char *limitStr = req->malloc(sizeof(char) * 10);
+      sprintf(limitStr, "%d", limit);
+      query->limitCondition = limitStr;
+      return query;
+    });
 
+    query->offset = req->blockCopy(^(int offset) {
+      char *offsetStr = req->malloc(sizeof(char) * 10);
+      sprintf(offsetStr, "%d", offset);
+      query->offsetCondition = offsetStr;
+      return query;
+    });
+
+    query->order = req->blockCopy(^(const char *orderCondition) {
+      query->orderConditions[query->orderConditionsCount++] =
+          (char *)orderCondition;
+      return query;
+    });
+
+    query->all = req->blockCopy(^() {
+      // SELECT
+      char *select =
+          malloc(strlen(query->selectCondition) + strlen("SELECT ") + 1);
+      sprintf(select, "SELECT %s", query->selectCondition);
+
+      // FROM
       char *from = req->malloc(strlen(tableName) + strlen("FROM ") + 1);
       sprintf(from, "FROM %s", tableName);
 
+      // WHERE
       char *where = NULL;
       for (int i = 0; i < query->whereConditionsCount; i++) {
         if (where == NULL) {
@@ -89,13 +123,51 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
           where = tmp;
         }
       }
-
       if (where == NULL)
         where = "";
 
+      // LIMIT
+      char *limit = NULL;
+      if (strlen(query->limitCondition) > 0) {
+        limit =
+            req->malloc(strlen(query->limitCondition) + strlen(" LIMIT ") + 1);
+        sprintf(limit, "LIMIT %s", query->limitCondition);
+      }
+      if (limit == NULL)
+        limit = "";
+
+      // OFFSET
+      char *offset = NULL;
+      if (strlen(query->offsetCondition) > 0) {
+        offset = req->malloc(strlen(query->offsetCondition) +
+                             strlen(" OFFSET ") + 1);
+        sprintf(offset, "OFFSET %s", query->offsetCondition);
+      }
+      if (offset == NULL)
+        offset = "";
+
+      // ORDER BY
+      char *order = NULL;
+      for (int i = 0; i < query->orderConditionsCount; i++) {
+        if (order == NULL) {
+          order = req->malloc(strlen(query->orderConditions[i]) +
+                              strlen(" ORDER BY ") + 1);
+          sprintf(order, "ORDER BY %s", query->orderConditions[i]);
+        } else {
+          char *tmp = req->malloc(strlen(order) + strlen(" , ") +
+                                  strlen(query->orderConditions[i]) + 1);
+          sprintf(tmp, "%s , %s", order, query->orderConditions[i]);
+          order = tmp;
+        }
+      }
+      if (order == NULL)
+        order = "";
+
       char *queryString =
-          req->malloc(strlen(select) + strlen(from) + strlen(where) + 3);
-      sprintf(queryString, "%s %s %s", select, from, where);
+          req->malloc(strlen(select) + strlen(from) + strlen(where) +
+                      strlen(limit) + strlen(offset) + strlen(order) + 6);
+      sprintf(queryString, "%s %s %s %s %s %s", select, from, where, limit,
+              offset, order);
 
       for (int i = 0; i < query->whereConditionsCount; i++) {
         free(query->whereConditions[i]);
@@ -103,6 +175,23 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
 
       return pg->execParams(queryString, query->paramValueCount, NULL,
                             query->paramValues, NULL, NULL, 0);
+    });
+
+    query->find = req->blockCopy(^(char *id) {
+      query->where("id = $", id);
+      return query->all();
+    });
+
+    query->count = req->blockCopy(^() {
+      query->selectCondition = "count(*)";
+      PGresult *pgres = query->all();
+      if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+        log_err("%s", PQresultErrorMessage(pgres));
+        return -1;
+      }
+      int count = atoi(PQgetvalue(pgres, 0, 0));
+      PQclear(pgres);
+      return count;
     });
 
     return query;

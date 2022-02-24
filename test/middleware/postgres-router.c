@@ -55,6 +55,20 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
+  router->get("/query/find", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    PGresult *pgres = pg->query("test")->find("2");
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->send(PQgetvalue(pgres, 0, 1));
+    PQclear(pgres);
+  });
+
   router->get("/query/all", ^(request_t *req, UNUSED response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
@@ -69,6 +83,20 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
+  router->get("/query/select", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    PGresult *pgres = pg->query("test")->select("city")->all();
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->send(PQgetvalue(pgres, 0, 0));
+    PQclear(pgres);
+  });
+
   router->get("/query/where", ^(request_t *req, UNUSED response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
@@ -76,6 +104,63 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
                           ->where("age = $", "123")
                           ->where("city = $", "anothercity")
                           ->all();
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->send(PQgetvalue(pgres, 0, 1));
+    PQclear(pgres);
+  });
+
+  router->get("/query/count", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    int count = pg->query("test")->where("age = $", "123")->count();
+    if (count == -1) {
+      res->status = 500;
+      res->send("<pre>Error</pre>");
+      return;
+    }
+    res->sendf("%d", count);
+  });
+
+  router->get("/query/limit", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    PGresult *pgres =
+        pg->query("test")->where("age = $", "123")->limit(1)->all();
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    int count = PQntuples(pgres);
+    res->sendf("%d", count);
+    PQclear(pgres);
+  });
+
+  router->get("/query/offset", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    PGresult *pgres =
+        pg->query("test")->where("age = $", "123")->offset(1)->all();
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->send(PQgetvalue(pgres, 0, 1));
+    PQclear(pgres);
+  });
+
+  router->get("/query/order", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    PGresult *pgres = pg->query("test")->order("id DESC")->all();
     if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
       res->status = 500;
       res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));

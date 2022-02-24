@@ -29,16 +29,26 @@
 typedef struct query_t {
   const char *paramValues[100];
   int paramValueCount;
+  const char *selectCondition;
   char *whereConditions[100];
   int whereConditionsCount;
+  char *orderConditions[100];
+  int orderConditionsCount;
+  char *limitCondition;
+  char *offsetCondition;
+  char *groupConditions[100];
+  int groupConditionsCount;
+  struct query_t * (^select)(const char *);
   struct query_t * (^where)(const char *, ...);
-  struct query_t * (^orderBy)(const char *, ...);
+  struct query_t * (^order)(const char *);
   struct query_t * (^limit)(int);
   struct query_t * (^offset)(int);
-  struct query_t * (^groupBy)(const char *, ...);
-  struct query_t * (^having)(const char *, ...);
-  struct query_t * (^join)(const char *, ...);
-  PGresult * (^find)();
+  struct query_t * (^group)(const char *);  // TODO: add group by
+  struct query_t * (^having)(const char *); // TODO: add having
+  struct query_t * (^joins)(const char *);  // TODO: add joins
+  struct query_t * (^distinct)();           // TODO: add distinct
+  int (^count)();
+  PGresult * (^find)(char *);
   PGresult * (^all)();
 } query_t;
 
