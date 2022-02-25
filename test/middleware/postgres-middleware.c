@@ -20,6 +20,10 @@ void postgresMiddlewareTests(tape_t *t) {
       t->strEqual("limit", t->get("/pg/query/limit"), "1");
       t->strEqual("offset", t->get("/pg/query/offset"), "another123");
       t->strEqual("order", t->get("/pg/query/order"), "another123");
+      t->strEqual("toSql", t->get("/pg/query/tosql"),
+                  "SELECT DISTINCT city FROM test INNER JOIN test2 ON "
+                  "test.name = test2.name WHERE city = $1 GROUP BY city HAVING "
+                  "city = $1 AND name = $2 LIMIT 1 OFFSET 1 ORDER BY id DESC");
     });
   });
 }

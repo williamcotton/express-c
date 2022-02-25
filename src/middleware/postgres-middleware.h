@@ -27,6 +27,7 @@
 #include <libpq-fe.h>
 
 typedef struct query_t {
+  char *sql;
   const char *paramValues[100];
   int paramValueCount;
   const char *selectCondition;
@@ -36,17 +37,21 @@ typedef struct query_t {
   int orderConditionsCount;
   char *limitCondition;
   char *offsetCondition;
-  char *groupConditions[100];
-  int groupConditionsCount;
+  char *havingConditions[100];
+  int havingConditionsCount;
+  char *joinsConditions;
+  char *groupConditions;
+  int distinctCondition;
   struct query_t * (^select)(const char *);
   struct query_t * (^where)(const char *, ...);
   struct query_t * (^order)(const char *);
   struct query_t * (^limit)(int);
   struct query_t * (^offset)(int);
-  struct query_t * (^group)(const char *);  // TODO: add group by
-  struct query_t * (^having)(const char *); // TODO: add having
-  struct query_t * (^joins)(const char *);  // TODO: add joins
-  struct query_t * (^distinct)();           // TODO: add distinct
+  struct query_t * (^group)(const char *);
+  struct query_t * (^having)(const char *, ...);
+  struct query_t * (^joins)(const char *);
+  struct query_t * (^distinct)();
+  char * (^toSql)();
   int (^count)();
   PGresult * (^find)(char *);
   PGresult * (^all)();

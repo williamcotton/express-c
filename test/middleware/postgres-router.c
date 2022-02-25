@@ -171,6 +171,24 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
+  router->get("/query/tosql", ^(request_t *req, UNUSED response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    char *sql = pg->query("test")
+                    ->select("city")
+                    ->distinct()
+                    ->where("city = $", "test")
+                    ->group("city")
+                    ->joins("INNER JOIN test2 ON test.name = test2.name")
+                    ->having("city = $", "test")
+                    ->having("name = $", "test")
+                    ->limit(1)
+                    ->offset(1)
+                    ->order("id DESC")
+                    ->toSql();
+    res->send(sql);
+  });
+
   router->cleanup(Block_copy(^{
     postgres->free();
   }));

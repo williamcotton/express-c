@@ -46,6 +46,10 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
     query->limitCondition = "";
     query->offsetCondition = "";
     query->orderConditionsCount = 0;
+    query->groupConditions = "";
+    query->havingConditionsCount = 0;
+    query->joinsConditions = "";
+    query->distinctCondition = 0;
 
     query->select = req->blockCopy(^(const char *select) {
       query->selectCondition = select;
@@ -99,15 +103,68 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       return query;
     });
 
-    query->all = req->blockCopy(^() {
+    query->joins = req->blockCopy(^(const char *joinsCondition) {
+      query->joinsConditions = (char *)joinsCondition;
+      return query;
+    });
+
+    query->group = req->blockCopy(^(const char *groupCondition) {
+      query->groupConditions = (char *)groupCondition;
+      return query;
+    });
+
+    query->having = req->blockCopy(^(const char *conditions, ...) {
+      int nParams = paramCount(conditions);
+
+      char varNum[10];
+      sprintf(varNum, "$%d", query->havingConditionsCount + 1);
+
+      string_t *havingConditions = string(conditions);
+      char *sequentialConditions =
+          strdup(havingConditions->replace("$", varNum)->value);
+      havingConditions->free();
+
+      query->havingConditions[query->havingConditionsCount++] =
+          sequentialConditions;
+
+      va_list args;
+      va_start(args, conditions);
+
+      for (int j = 0; j < nParams; j++) {
+        query->paramValues[query->paramValueCount++] =
+            va_arg(args, const char *);
+      }
+
+      va_end(args);
+
+      return query;
+    });
+
+    query->distinct = req->blockCopy(^() {
+      query->distinctCondition = 1;
+      return query;
+    });
+
+    query->toSql = req->blockCopy(^() {
       // SELECT
-      char *select =
-          req->malloc(strlen(query->selectCondition) + strlen("SELECT ") + 1);
-      sprintf(select, "SELECT %s", query->selectCondition);
+      char *select = NULL;
+      if (query->distinctCondition) {
+        select = req->malloc(strlen(query->selectCondition) +
+                             strlen("SELECT DISTINCT") + 2);
+        sprintf(select, "SELECT DISTINCT %s", query->selectCondition);
+      } else {
+        select =
+            req->malloc(strlen(query->selectCondition) + strlen("SELECT ") + 1);
+        sprintf(select, "SELECT %s", query->selectCondition);
+      }
 
       // FROM
       char *from = req->malloc(strlen(tableName) + strlen("FROM ") + 1);
       sprintf(from, "FROM %s", tableName);
+
+      // JOINS
+      char *joins = req->malloc(strlen(query->joinsConditions) + 1);
+      sprintf(joins, "%s", query->joinsConditions);
 
       // WHERE
       char *where = NULL;
@@ -125,6 +182,33 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       }
       if (where == NULL)
         where = "";
+
+      // GROUP BY
+      char *group = NULL;
+      if (strlen(query->groupConditions) > 0) {
+        group = req->malloc(strlen(query->groupConditions) +
+                            strlen(" GROUP BY ") + 1);
+        sprintf(group, "GROUP BY %s", query->groupConditions);
+      }
+      if (group == NULL)
+        group = "";
+
+      // HAVING
+      char *having = NULL;
+      for (int i = 0; i < query->havingConditionsCount; i++) {
+        if (having == NULL) {
+          having = req->malloc(strlen(query->havingConditions[i]) +
+                               strlen(" HAVING ") + 1);
+          sprintf(having, "HAVING %s", query->havingConditions[i]);
+        } else {
+          char *tmp = req->malloc(strlen(having) + strlen(" AND ") +
+                                  strlen(query->havingConditions[i]) + 1);
+          sprintf(tmp, "%s AND %s", having, query->havingConditions[i]);
+          having = tmp;
+        }
+      }
+      if (having == NULL)
+        having = "";
 
       // LIMIT
       char *limit = NULL;
@@ -163,17 +247,28 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       if (order == NULL)
         order = "";
 
-      char *queryString =
-          req->malloc(strlen(select) + strlen(from) + strlen(where) +
-                      strlen(limit) + strlen(offset) + strlen(order) + 6);
-      sprintf(queryString, "%s %s %s %s %s %s", select, from, where, limit,
-              offset, order);
+      char *sql =
+          req->malloc(strlen(select) + strlen(from) + strlen(joins) +
+                      strlen(where) + strlen(limit) + strlen(offset) +
+                      strlen(order) + strlen(group) + strlen(having) + 10);
+      sprintf(sql, "%s %s %s %s %s %s %s %s %s", select, from, joins, where,
+              group, having, limit, offset, order);
 
       for (int i = 0; i < query->whereConditionsCount; i++) {
         free(query->whereConditions[i]);
       }
 
-      return pg->execParams(queryString, query->paramValueCount, NULL,
+      for (int i = 0; i < query->havingConditionsCount; i++) {
+        free(query->havingConditions[i]);
+      }
+
+      query->sql = sql;
+
+      return sql;
+    });
+
+    query->all = req->blockCopy(^() {
+      return pg->execParams(query->toSql(), query->paramValueCount, NULL,
                             query->paramValues, NULL, NULL, 0);
     });
 
