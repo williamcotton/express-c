@@ -158,7 +158,7 @@ int listen_fail_once = 0;
 int __real_stat(const char *path, struct stat *buf);
 int __wrap_stat(const char *path, struct stat *buf) {
   if (stat_fail_once) {
-    usleep(100);
+    usleep(1000);
     stat_fail_once = 0;
     return -1;
   } else {
@@ -169,7 +169,7 @@ int __wrap_stat(const char *path, struct stat *buf) {
 int __real_regcomp(regex_t *preg, const char *regex, int cflags);
 int __wrap_regcomp(regex_t *preg, const char *regex, int cflags) {
   if (regcomp_fail_once) {
-    usleep(100);
+    usleep(1000);
     regcomp_fail_once = 0;
     return -1;
   } else {
@@ -180,7 +180,7 @@ int __wrap_regcomp(regex_t *preg, const char *regex, int cflags) {
 int __real_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 int __wrap_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
   if (accept_fail_once) {
-    usleep(100);
+    usleep(1000);
     accept_fail_once = 0;
     return -1;
   } else {
@@ -191,7 +191,7 @@ int __wrap_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 int __real_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
 int __wrap_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
   if (epoll_ctl_fail_once) {
-    usleep(100);
+    usleep(1000);
     epoll_ctl_fail_once = 0;
     return -1;
   } else {
@@ -202,7 +202,7 @@ int __wrap_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
 int __real_socket(int domain, int type, int protocol);
 int __wrap_socket(int domain, int type, int protocol) {
   if (socket_fail_once) {
-    usleep(100);
+    usleep(1000);
     socket_fail_once = 0;
     return -1;
   } else {
@@ -213,7 +213,7 @@ int __wrap_socket(int domain, int type, int protocol) {
 int __real_listen(int sockfd, int backlog);
 int __wrap_listen(int sockfd, int backlog) {
   if (listen_fail_once) {
-    usleep(100);
+    usleep(1000);
     listen_fail_once = 0;
     return -1;
   } else {

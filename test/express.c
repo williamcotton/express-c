@@ -200,8 +200,8 @@ void expressTests(tape_t *t) {
 
   /* Mock system call failures */
 #ifdef __linux__
-  // void expressMockSystemCalls(tape_t * t);
-  // expressMockSystemCalls(t);
+  void expressMockSystemCalls(tape_t * t);
+  expressMockSystemCalls(t);
 #endif
 
   /* Fuzz testing */
@@ -217,17 +217,17 @@ void expressTests(tape_t *t) {
   void postgresMiddlewareTests(tape_t * t);
   postgresMiddlewareTests(t);
 #endif
-  // void cJSONMustacheMiddlewareTests(tape_t * t);
-  // cJSONMustacheMiddlewareTests(t);
-  // void janssonMustacheMiddlewareTests(tape_t * t);
-  // janssonMustacheMiddlewareTests(t);
-  // void cookieSessionMiddlewareTests(tape_t * t);
-  // cookieSessionMiddlewareTests(t);
-  // void jwtMiddlewareTests(tape_t * t);
-  // jwtMiddlewareTests(t);
+  void cJSONMustacheMiddlewareTests(tape_t * t);
+  cJSONMustacheMiddlewareTests(t);
+  void janssonMustacheMiddlewareTests(tape_t * t);
+  janssonMustacheMiddlewareTests(t);
+  void cookieSessionMiddlewareTests(tape_t * t);
+  cookieSessionMiddlewareTests(t);
+  void jwtMiddlewareTests(tape_t * t);
+  jwtMiddlewareTests(t);
 
-  // /* Strings */
-  // void stringTests(tape_t * t);
-  // stringTests(t);
+  /* Strings */
+  void stringTests(tape_t * t);
+  stringTests(t);
 }
 #pragma clang diagnostic pop

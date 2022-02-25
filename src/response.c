@@ -14,7 +14,7 @@ error_t *error404(request_t *req) {
   return err;
 }
 
-static size_t getFileSize(const char *filePath) {
+static size_t getFileSize(UNUSED const char *filePath) {
   struct stat st;
   check(stat(filePath, &st) >= 0, "Could not stat file %s", filePath);
   return st.st_size;
