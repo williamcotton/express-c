@@ -83,6 +83,6 @@ postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
 
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
 
-getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg)
+getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg);
 
 #endif // POSTGRES_MIDDLEWARE_H
