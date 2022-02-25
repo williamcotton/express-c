@@ -36,7 +36,7 @@ int paramCount(const char *query) {
   return count;
 }
 
-static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
+getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
   return req->blockCopy(^(const char *tableName) {
     query_t *query = req->malloc(sizeof(query_t));
 
