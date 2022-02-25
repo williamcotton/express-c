@@ -47,10 +47,10 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
     query->offsetCondition = "";
     query->orderConditionsCount = 0;
 
-    query->select = ^query_t *(const char *select) {
+    query->select = req->blockCopy(^(const char *select) {
       query->selectCondition = select;
       return query;
-    };
+    });
 
     query->where = req->blockCopy(^(const char *conditions, ...) {
       int nParams = paramCount(conditions);
@@ -102,7 +102,7 @@ static getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
     query->all = req->blockCopy(^() {
       // SELECT
       char *select =
-          malloc(strlen(query->selectCondition) + strlen("SELECT ") + 1);
+          req->malloc(strlen(query->selectCondition) + strlen("SELECT ") + 1);
       sprintf(select, "SELECT %s", query->selectCondition);
 
       // FROM
