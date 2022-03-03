@@ -538,3 +538,38 @@ void freeRequest(request_t *req) {
   free((void *)req->queryString);
   free(req);
 }
+
+request_t *mockRequest() {
+  request_t *req = malloc(sizeof(request_t));
+
+  req->mallocCount = 0;
+  req->malloc = Block_copy(^(size_t size) {
+    void *ptr = malloc(size);
+    req->mallocs[req->mallocCount++] = (req_malloc_t){.ptr = ptr};
+    return ptr;
+  });
+
+  req->blockCopyCount = 0;
+  req->blockCopy = Block_copy(^(void *block) {
+    void *ptr = Block_copy(block);
+    req->blockCopies[req->blockCopyCount++] = (req_block_copy_t){.ptr = ptr};
+    return ptr;
+  });
+
+  req->free = Block_copy(^() {
+    for (int i = 0; i < req->mallocCount; i++) {
+      free(req->mallocs[i].ptr);
+    }
+    Block_release(req->malloc);
+    for (int i = 0; i < req->blockCopyCount; i++) {
+      Block_release(req->blockCopies[i].ptr);
+    }
+    Block_release(req->blockCopy);
+    dispatch_async(dispatch_get_main_queue(), ^() {
+      Block_release(req->free);
+      free(req);
+    });
+  });
+
+  return req;
+}

@@ -247,7 +247,10 @@ typedef struct request_t {
   freeHandler trashables[1024];
   void (^trash)(freeHandler);
   void *user;
+  void (^free)();
 } request_t;
+
+request_t *mockRequest();
 
 /* Response */
 

@@ -78,7 +78,14 @@
     "mustach.h": "c",
     "mustach-wrap.h": "c",
     "jwt.h": "c",
-    "jansson.h": "c"
+    "jansson.h": "c",
+    "__tree": "c",
+    "deque": "c",
+    "list": "c",
+    "map": "c",
+    "regex": "c",
+    "stack": "c",
+    "unordered_set": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
