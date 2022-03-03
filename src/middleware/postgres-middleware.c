@@ -293,6 +293,44 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
   });
 }
 
+pg_t *initPg(const char *pgUri) {
+  pg_t *pg = malloc(sizeof(pg_t));
+  pg->connection = PQconnectdb(pgUri);
+  pg->used = 0;
+
+  pg->exec = Block_copy(^(const char *sql, ...) {
+    int nParams = paramCount(sql);
+    va_list args;
+    va_start(args, sql);
+
+    const char **paramValues = malloc(sizeof(char *) * nParams);
+    for (int j = 0; j < nParams; j++) {
+      paramValues[j] = va_arg(args, const char *);
+    }
+    va_end(args);
+    PGresult *pgres = PQexecParams(pg->connection, sql, nParams, NULL,
+                                   paramValues, NULL, NULL, 0);
+    free(paramValues);
+    return pgres;
+  });
+
+  pg->execParams =
+      Block_copy(^(const char *sql, int nParams, const Oid *paramTypes,
+                   const char *const *paramValues, const int *paramLengths,
+                   const int *paramFormats, int resultFormat) {
+        PGresult *pgres =
+            PQexecParams(pg->connection, sql, nParams, paramTypes, paramValues,
+                         paramLengths, paramFormats, resultFormat);
+        return pgres;
+      });
+
+  pg->close = Block_copy(^{
+    PQfinish(pg->connection);
+  });
+
+  return pg;
+}
+
 postgres_connection_t *initPostgressConnection(const char *pgUri,
                                                int poolSize) {
   postgres_connection_t *postgres = malloc(sizeof(postgres_connection_t));
@@ -310,39 +348,7 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
   postgres->queue = dispatch_queue_create("postgres", NULL);
 
   for (int i = 0; i < postgres->poolSize; i++) {
-    postgres->pool[i] = malloc(sizeof(pg_t));
-    postgres->pool[i]->connection = PQconnectdb(postgres->uri);
-    postgres->pool[i]->used = 0;
-
-    postgres->pool[i]->exec = Block_copy(^(const char *sql, ...) {
-      int nParams = paramCount(sql);
-      va_list args;
-      va_start(args, sql);
-
-      const char **paramValues = malloc(sizeof(char *) * nParams);
-      for (int j = 0; j < nParams; j++) {
-        paramValues[j] = va_arg(args, const char *);
-      }
-      va_end(args);
-      PGresult *pgres = PQexecParams(postgres->pool[i]->connection, sql,
-                                     nParams, NULL, paramValues, NULL, NULL, 0);
-      free(paramValues);
-      return pgres;
-    });
-
-    postgres->pool[i]->execParams =
-        Block_copy(^(const char *sql, int nParams, const Oid *paramTypes,
-                     const char *const *paramValues, const int *paramLengths,
-                     const int *paramFormats, int resultFormat) {
-          PGresult *pgres = PQexecParams(
-              postgres->pool[i]->connection, sql, nParams, paramTypes,
-              paramValues, paramLengths, paramFormats, resultFormat);
-          return pgres;
-        });
-
-    postgres->pool[i]->close = Block_copy(^{
-      PQfinish(postgres->pool[i]->connection);
-    });
+    postgres->pool[i] = initPg(postgres->uri);
   }
 
   postgres->free = Block_copy(^() {
