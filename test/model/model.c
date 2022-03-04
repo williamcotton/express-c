@@ -238,6 +238,91 @@ void modelTests(tape_t *t, request_t *req, pg_t *pg) {
         teamError->free();
       });
     });
+
+    t->test("destroy", ^(tape_t *t) {
+      team_t *employee = Employee->find("3");
+      int res = employee->destroy();
+
+      t->ok("destroyed", res == 1);
+
+      team_t *employeeAgain = Employee->find("3");
+      t->ok("null", employeeAgain == NULL);
+    });
+
+    t->test("collection", ^(tape_t *t) {
+      employee_collection_t *employees = Employee->all();
+
+      t->test("each", ^(tape_t *t) {
+        __block int i = 0;
+        employees->each(^(employee_t *employee) {
+          if (i == 0) {
+            string_t *name = string(employee->get("name"));
+
+            t->strEqual("first name", name, "Alice");
+
+            name->free();
+          } else if (i == 1) {
+            string_t *name = string(employee->get("name"));
+
+            t->strEqual("second name", name, "Robert");
+
+            name->free();
+          } else {
+            t->ok("too many", false);
+          }
+          i++;
+        });
+      });
+
+      t->test("eachWithIndex", ^(tape_t *t) {
+        employees->eachWithIndex(^(employee_t *employee, int i) {
+          if (i == 0) {
+            string_t *name = string(employee->get("name"));
+
+            t->strEqual("first name", name, "Alice");
+
+            name->free();
+          } else if (i == 1) {
+            string_t *name = string(employee->get("name"));
+
+            t->strEqual("second name", name, "Robert");
+
+            name->free();
+          } else {
+            t->ok("too many", false);
+          }
+        });
+      });
+
+      t->test("map", ^(tape_t *t) {
+        char **names = (char **)employees->map(^(employee_t *employee) {
+          return (void *)employee->get("name");
+        });
+
+        string_t *firstName = string(names[0]);
+        string_t *secondName = string(names[1]);
+
+        t->strEqual("first name", firstName, "Alice");
+        t->strEqual("second name", secondName, "Robert");
+
+        firstName->free();
+        secondName->free();
+      });
+
+      t->test("reduce", ^(tape_t *t) {
+        string_t *names = string("");
+
+        employees->reduce((void *)names, ^(void *accum, employee_t *e) {
+          string_t *acc = (string_t *)accum;
+          acc->concat(e->get("name"))->concat("+");
+          return (void *)acc;
+        });
+
+        t->strEqual("names", names, "Alice+Robert+");
+
+        names->free();
+      });
+    });
   });
 }
 

@@ -23,6 +23,35 @@ createModelInstanceCollection(model_t *model) {
     return collection->arr[index];
   });
 
+  collection->each = req->blockCopy(^(eachInstanceCallback callback) {
+    for (size_t i = 0; i < collection->size; i++) {
+      callback(collection->arr[i]);
+    }
+  });
+
+  collection->eachWithIndex =
+      req->blockCopy(^(eachInstanceWithIndexCallback callback) {
+        for (size_t i = 0; i < collection->size; i++) {
+          callback(collection->arr[i], i);
+        }
+      });
+
+  collection->reduce =
+      req->blockCopy(^(void *accumulator, reducerInstanceCallback reducer) {
+        for (size_t i = 0; i < collection->size; i++) {
+          accumulator = reducer(accumulator, collection->arr[i]);
+        }
+        return accumulator;
+      });
+
+  collection->map = req->blockCopy(^(mapInstanceCallback callback) {
+    void **arr = req->malloc(sizeof(void *) * collection->size);
+    for (size_t i = 0; i < collection->size; i++) {
+      arr[i] = callback(collection->arr[i]);
+    }
+    return arr;
+  });
+
   return collection;
 }
 
@@ -229,6 +258,25 @@ static model_instance_t *createModelInstance(model_t *model) {
       dirtyAttributes[i]->isDirty = 0;
     }
     return didSave;
+  });
+
+  instance->destroy = req->blockCopy(^() {
+    int didDestroy = 0;
+    if (instance->id) {
+      char *destroyQuery =
+          req->malloc(strlen("DELETE FROM  WHERE id = ") +
+                      strlen(model->tableName) + strlen(instance->id) + 1);
+      sprintf(destroyQuery, "DELETE FROM %s WHERE id = %s", model->tableName,
+              instance->id);
+      PGresult *pgres = model->exec(destroyQuery);
+      if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
+        log_err("%s", PQresultErrorMessage(pgres));
+      } else {
+        didDestroy = 1;
+      }
+      PQclear(pgres);
+    }
+    return didDestroy;
   });
 
   return instance;

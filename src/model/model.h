@@ -130,7 +130,7 @@ typedef struct model_t {
   void (^afterUpdate)(instanceCallback);
   class_attribute_t * (^getAttribute)(char *name);
   model_instance_t * (^find)(char *);
-  model_instance_t ** (^all)();
+  model_instance_collection_t * (^all)();
   model_instance_t * (^new)();
   struct model_t * (^lookup)(char *);
 } model_t;
