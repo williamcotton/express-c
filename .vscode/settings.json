@@ -85,7 +85,9 @@
     "map": "c",
     "regex": "c",
     "stack": "c",
-    "unordered_set": "c"
+    "unordered_set": "c",
+    "team.h": "c",
+    "mustach-jansson.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
