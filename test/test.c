@@ -40,7 +40,7 @@ void runTests(int runAndExit, test_harness_t *testHarness,
 
   int testStatus = test->test("express", ^(tape_t *t) {
     t->clearState();
-    expressTests(t);
+    // expressTests(t);
     modelTests(t, req, pg);
   });
 

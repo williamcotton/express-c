@@ -274,7 +274,8 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
 
     query->find = req->blockCopy(^(char *id) {
       query->where("id = $", id);
-      return query->all();
+      return pg->execParams(query->toSql(), query->paramValueCount, NULL,
+                            query->paramValues, NULL, NULL, 0);
     });
 
     query->count = req->blockCopy(^() {

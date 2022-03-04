@@ -5,8 +5,11 @@ model_t *EmployeeModel(request_t *req, pg_t *pg) {
 
   Employee->attribute("name", "text");
   Employee->attribute("email", "text");
+  Employee->attribute("team_id", "integer");
 
   Employee->belongsTo("teams", "team_id");
+
+  Employee->validatesAttribute("team_id", "presence");
 
   return Employee;
 }

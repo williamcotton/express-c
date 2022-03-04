@@ -1,10 +1,36 @@
 #include "model.h"
 
-model_instance_t *createModelInstance(model_t *model) {
+static model_instance_collection_t *
+createModelInstanceCollection(model_t *model) {
+  request_t *req = model->req;
+
+  model_instance_collection_t *collection =
+      req->malloc(sizeof(model_instance_collection_t));
+
+  collection->arr = NULL;
+  collection->size = 0;
+
+  collection->at = req->blockCopy(^(size_t index) {
+    if (collection->arr == NULL) {
+      log_err("'%s' collection->arr is NULL", model->tableName);
+      return (model_instance_t *)NULL;
+    }
+    if (index >= collection->size) {
+      log_err("'%s' collection index out of bounds: %zu >= %zu",
+              model->tableName, index, collection->size);
+      return (model_instance_t *)NULL;
+    }
+    return collection->arr[index];
+  });
+
+  return collection;
+}
+
+static model_instance_t *createModelInstance(model_t *model) {
   request_t *req = model->req;
   model_instance_t *instance = req->malloc(sizeof(model_instance_t));
   instance->attributesCount = 0;
-  instance->errors = malloc(sizeof(instance_errors_t));
+  instance->errors = req->malloc(sizeof(instance_errors_t));
   instance->errors->count = 0;
 
   instance->addError = req->blockCopy(^(char *attribute, char *message) {
@@ -29,6 +55,11 @@ model_instance_t *createModelInstance(model_t *model) {
       }
     } else {
       class_attribute_t *classAttribute = model->getAttribute(attribute);
+      if (classAttribute == NULL) {
+        log_err("'%s' does not have attribute '%s'", model->tableName,
+                attribute);
+        return;
+      }
       instance_attribute_t *instanceAttribute =
           req->malloc(sizeof(instance_attribute_t));
       instanceAttribute->classAttribute = classAttribute;
@@ -49,49 +80,49 @@ model_instance_t *createModelInstance(model_t *model) {
   });
 
   instance->r = req->blockCopy(^(UNUSED char *relationName) {
-    model_instance_collection_t *collection =
-        req->malloc(sizeof(model_instance_collection_t));
-
     model_t *relatedModel = model->lookup(relationName);
-    char *foreignKey = NULL;
+    if (relatedModel == NULL) {
+      log_err("Could not find model '%s'", relationName);
+      return (model_instance_collection_t *)NULL;
+    }
+    model_instance_collection_t *collection = NULL;
+    char *whereForeignKey = NULL;
+
+    char *hasManyForeignKey = NULL;
     for (int i = 0; i < model->hasManyCount; i++) {
       if (strcmp(model->hasManyRelationships[i]->tableName,
                  relatedModel->tableName) == 0) {
-        foreignKey = model->hasManyRelationships[i]->foreignKey;
+        hasManyForeignKey = model->hasManyRelationships[i]->foreignKey;
         break;
       }
     }
-    char *whereForeignKey = req->malloc(strlen(foreignKey) + 5);
-    sprintf(whereForeignKey, "%s = $", foreignKey);
-    PGresult *pgres =
-        relatedModel->query()->where(whereForeignKey, instance->id)->all();
-
-    int recordCount = PQntuples(pgres);
-    collection->arr = req->malloc(sizeof(model_instance_t *) * recordCount);
-    collection->size = recordCount;
-
-    collection->at = req->blockCopy(^(size_t index) {
-      return collection->arr[index];
-    });
-
-    for (int i = 0; i < recordCount; i++) {
-      char *id = PQgetvalue(pgres, i, 0);
-      collection->arr[i] = createModelInstance(relatedModel);
-      collection->arr[i]->id = id;
-      int fieldsCount = PQnfields(pgres);
-      for (int j = 0; j < fieldsCount; j++) {
-        char *name = PQfname(pgres, j);
-        if (relatedModel->getAttribute(name)) {
-          char *pgValue = PQgetvalue(pgres, i, j);
-          char *value = req->malloc(strlen(pgValue) + 1);
-          strcpy(value, pgValue);
-          collection->arr[i]->set(name, value);
-        }
-      }
-      PQclear(pgres);
+    if (hasManyForeignKey) {
+      whereForeignKey =
+          req->malloc(strlen(hasManyForeignKey) + strlen(instance->id) + 5);
+      sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
+      collection = relatedModel->query()->where(whereForeignKey)->all();
+      return collection;
     }
 
-    return collection;
+    char *belongsToForeignKey = NULL;
+    for (int i = 0; i < model->belongsToCount; i++) {
+      if (strcmp(model->belongsToRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        belongsToForeignKey = model->belongsToRelationships[i]->foreignKey;
+        break;
+      }
+    }
+    if (belongsToForeignKey) {
+      char *foreignKey = instance->get(belongsToForeignKey);
+      whereForeignKey = req->malloc(strlen(foreignKey) + 6);
+      sprintf(whereForeignKey, "id = %s", foreignKey);
+      collection = relatedModel->query()->where(whereForeignKey)->all();
+      return collection;
+    }
+
+    log_err("Could not find relation '%s' on '%s'", relationName,
+            model->tableName);
+    return (model_instance_collection_t *)NULL;
   });
 
   instance->validate = req->blockCopy(^() {
@@ -114,16 +145,22 @@ model_instance_t *createModelInstance(model_t *model) {
 }
 
 model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
-  static int modelCount = 0;
-  static model_t *models[100];
-
   model_t *model = req->malloc(sizeof(model_t));
 
+  /* Global model store */
+  static int modelCount = 0;
+  static model_t *models[100];
   models[modelCount] = model;
   modelCount++;
 
   model->tableName = tableName;
   model->req = req;
+  model->attributesCount = 0;
+  model->validationsCount = 0;
+  model->hasManyCount = 0;
+  model->belongsToCount = 0;
+  model->beforeSaveCallbacksCount = 0;
+  model->validatesCallbacksCount = 0;
 
   model->lookup = req->blockCopy(^(char *lookupTableName) {
     for (int i = 0; i < modelCount; i++) {
@@ -136,12 +173,43 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
 
   model->query = req->blockCopy(^() {
     query_t * (^baseQuery)(const char *) = getPostgresQuery(req, pg);
-    return baseQuery(model->tableName);
+    query_t *modelQuery = baseQuery(model->tableName);
+    void * (^originalAll)(void) = modelQuery->all;
+    modelQuery->all = req->blockCopy(^() {
+      PGresult *result = originalAll();
+      model_instance_collection_t *collection =
+          createModelInstanceCollection(model);
+      int recordCount = PQntuples(result);
+      collection->arr = req->malloc(sizeof(model_instance_t *) * recordCount);
+      collection->size = recordCount;
+      for (int i = 0; i < recordCount; i++) {
+        char *id = PQgetvalue(result, i, 0);
+        collection->arr[i] = createModelInstance(model);
+        collection->arr[i]->id = id;
+        int fieldsCount = PQnfields(result);
+        for (int j = 0; j < fieldsCount; j++) {
+          char *name = PQfname(result, j);
+          if (model->getAttribute(name)) {
+            char *pgValue = PQgetvalue(result, i, j);
+            char *value = req->malloc(strlen(pgValue) + 1);
+            strcpy(value, pgValue);
+            collection->arr[i]->set(name, value);
+          }
+        }
+      }
+      PQclear(result);
+      return collection;
+    });
+    return modelQuery;
   });
 
   model->find = req->blockCopy(^(char *id) {
     void * (^originalFind)(char *) = model->query()->find;
     PGresult *result = originalFind(id);
+    int recordCount = PQntuples(result);
+    if (recordCount == 0) {
+      return (model_instance_t *)NULL;
+    }
     model_instance_t *instance = createModelInstance(model);
     instance->id = id;
     int fieldsCount = PQnfields(result);
@@ -158,12 +226,9 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
     return instance;
   });
 
-  model->attributesCount = 0;
-  model->validationsCount = 0;
-  model->hasManyCount = 0;
-  model->belongsToCount = 0;
-  model->beforeSaveCallbacksCount = 0;
-  model->validatesCallbacksCount = 0;
+  model->all = req->blockCopy(^() {
+    return model->query()->all();
+  });
 
   model->attribute = req->blockCopy(^(char *attributeName, char *type) {
     class_attribute_t *newAttribute = req->malloc(sizeof(class_attribute_t));
