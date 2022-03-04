@@ -53,8 +53,8 @@ typedef struct query_t {
   struct query_t * (^distinct)();
   char * (^toSql)();
   int (^count)();
-  PGresult * (^find)(char *);
-  PGresult * (^all)();
+  void * (^find)(char *);
+  void * (^all)();
 } query_t;
 
 typedef query_t * (^getPostgresQueryBlock)(const char *);
