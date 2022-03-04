@@ -16,6 +16,7 @@ typedef struct class_attribute_t {
 typedef struct instance_attribute_t {
   class_attribute_t *classAttribute;
   char *value;
+  int isDirty;
 } instance_attribute_t;
 
 typedef struct validation_t {
@@ -72,11 +73,11 @@ typedef struct model_instance_t {
   void (^addError)(char *attribute, char *message);
   char * (^get)(char *attribute);
   void (^set)(char *attribute, char *value);
+  void (^initAttr)(char *attribute, char *value, int isDirty);
   model_instance_collection_t * (^r)(char *relationName);
-  instance_errors_t (^save)();
-  instance_errors_t (^validate)();
-  instance_errors_t (^destroy)();
-  instance_errors_t (^update)(char *name, char *value);
+  int (^save)();
+  int (^validate)();
+  int (^destroy)();
 } model_instance_t;
 
 typedef void * (^copyBlock)(void *);
@@ -111,6 +112,9 @@ typedef struct model_t {
   instanceCallback afterUpdateCallbacks[100];
   int afterUpdateCallbacksCount;
   query_t * (^query)();
+  PGresult * (^exec)(const char *, ...);
+  PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
+                           const int *, const int *, int);
   request_t *req;
   void (^attribute)(char *name, char *type);
   void (^validatesAttribute)(char *name, char *validation);

@@ -32,6 +32,7 @@ static model_instance_t *createModelInstance(model_t *model) {
   instance->attributesCount = 0;
   instance->errors = req->malloc(sizeof(instance_errors_t));
   instance->errors->count = 0;
+  instance->id = NULL;
 
   instance->addError = req->blockCopy(^(char *attribute, char *message) {
     instance->errors->messages[instance->errors->count] = message;
@@ -50,23 +51,29 @@ static model_instance_t *createModelInstance(model_t *model) {
         if (strcmp(instance->attributes[i]->classAttribute->name, attribute) ==
             0) {
           instance->attributes[i]->value = value;
+          instance->attributes[i]->isDirty = 1;
           return;
         }
       }
     } else {
-      class_attribute_t *classAttribute = model->getAttribute(attribute);
-      if (classAttribute == NULL) {
-        log_err("'%s' does not have attribute '%s'", model->tableName,
-                attribute);
-        return;
-      }
-      instance_attribute_t *instanceAttribute =
-          req->malloc(sizeof(instance_attribute_t));
-      instanceAttribute->classAttribute = classAttribute;
-      instanceAttribute->value = value;
-      instance->attributes[instance->attributesCount] = instanceAttribute;
-      instance->attributesCount++;
+      instance->initAttr(attribute, value, 1);
     }
+  });
+
+  instance->initAttr = req->blockCopy(^(char *attribute, char *value,
+                                        int isDirty) {
+    class_attribute_t *classAttribute = model->getAttribute(attribute);
+    if (classAttribute == NULL) {
+      log_err("'%s' does not have attribute '%s'", model->tableName, attribute);
+      return;
+    }
+    instance_attribute_t *instanceAttribute =
+        req->malloc(sizeof(instance_attribute_t));
+    instanceAttribute->classAttribute = classAttribute;
+    instanceAttribute->value = value;
+    instanceAttribute->isDirty = isDirty;
+    instance->attributes[instance->attributesCount] = instanceAttribute;
+    instance->attributesCount++;
   });
 
   instance->get = req->blockCopy(^(char *attribute) {
@@ -138,7 +145,90 @@ static model_instance_t *createModelInstance(model_t *model) {
     for (int i = 0; i < model->validatesCallbacksCount; i++) {
       model->validatesCallbacks[i](instance);
     }
-    return instance->errors;
+    return instance->errors->count == 0;
+  });
+
+  instance->save = req->blockCopy(^() {
+    int didSave = false;
+
+    if (!instance->validate()) {
+      return didSave;
+    }
+
+    char *saveQuery = NULL;
+
+    instance_attribute_t *dirtyAttributes[instance->attributesCount];
+    int dirtyAttributesCount = 0;
+    for (int i = 0; i < instance->attributesCount; i++) {
+      if (instance->attributes[i]->isDirty) {
+        dirtyAttributes[dirtyAttributesCount] = instance->attributes[i];
+        dirtyAttributesCount++;
+      }
+    }
+
+    char dirtyAttributeNamesString[512];
+    char dirtyAttributePlaceholdersString[64];
+    char *dirtyAttributeValues[dirtyAttributesCount];
+    dirtyAttributeNamesString[0] = '\0';
+    for (int i = 0; i < dirtyAttributesCount; i++) {
+      char *attributeName = dirtyAttributes[i]->classAttribute->name;
+      char *attributeValue = dirtyAttributes[i]->value;
+      dirtyAttributeValues[i] = attributeValue;
+      if (i == 0) {
+        sprintf(dirtyAttributePlaceholdersString, "$%d", i + 1);
+        sprintf(dirtyAttributeNamesString, "%s", attributeName);
+      } else {
+        sprintf(dirtyAttributePlaceholdersString, "%s, $%d",
+                dirtyAttributePlaceholdersString, i + 1);
+        sprintf(dirtyAttributeNamesString, "%s, %s", dirtyAttributeNamesString,
+                attributeName);
+      }
+    }
+
+    if (instance->id) {
+      // UPDATE
+      saveQuery = req->malloc(strlen("UPDATE  SET () = () WHERE id = ") +
+                              strlen(model->tableName) + strlen(instance->id) +
+                              strlen(dirtyAttributeNamesString) +
+                              strlen(dirtyAttributePlaceholdersString) + 1);
+      sprintf(saveQuery, "UPDATE %s SET (%s) = (%s) WHERE id = %s",
+              model->tableName, dirtyAttributeNamesString,
+              dirtyAttributePlaceholdersString, instance->id);
+
+    } else {
+      // INSERT
+      saveQuery = req->malloc(
+          strlen("INSERT INTO  () VALUES () RETURNING id;") +
+          strlen(model->tableName) + strlen(dirtyAttributeNamesString) +
+          strlen(dirtyAttributePlaceholdersString) + 1);
+      sprintf(saveQuery, "INSERT INTO %s (%s) VALUES (%s) RETURNING id;",
+              model->tableName, dirtyAttributeNamesString,
+              dirtyAttributePlaceholdersString);
+    }
+
+    PGresult *pgres = model->execParams(
+        saveQuery, dirtyAttributesCount, NULL,
+        (const char *const *)dirtyAttributeValues, NULL, NULL, 0);
+
+    if (!instance->id) {
+      size_t idLen = strlen(PQgetvalue(pgres, 0, 0));
+      if (idLen > 0) {
+        instance->id = req->malloc(idLen + 1);
+        sprintf(instance->id, "%s", PQgetvalue(pgres, 0, 0));
+        didSave = true;
+      }
+    } else if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
+      log_err("%s", PQresultErrorMessage(pgres));
+    } else {
+      didSave = true;
+    }
+
+    PQclear(pgres);
+
+    for (int i = 0; i < dirtyAttributesCount; i++) {
+      dirtyAttributes[i]->isDirty = 0;
+    }
+    return didSave;
   });
 
   return instance;
@@ -155,6 +245,8 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
 
   model->tableName = tableName;
   model->req = req;
+  model->exec = pg->exec;
+  model->execParams = pg->execParams;
   model->attributesCount = 0;
   model->validationsCount = 0;
   model->hasManyCount = 0;
@@ -193,7 +285,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
             char *pgValue = PQgetvalue(result, i, j);
             char *value = req->malloc(strlen(pgValue) + 1);
             strcpy(value, pgValue);
-            collection->arr[i]->set(name, value);
+            collection->arr[i]->initAttr(name, value, 0);
           }
         }
       }
@@ -204,6 +296,10 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
   });
 
   model->find = req->blockCopy(^(char *id) {
+    if (!id) {
+      log_err("id is required");
+      return (model_instance_t *)NULL;
+    }
     void * (^originalFind)(char *) = model->query()->find;
     PGresult *result = originalFind(id);
     int recordCount = PQntuples(result);
@@ -219,7 +315,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
         char *pgValue = PQgetvalue(result, 0, i);
         char *value = req->malloc(strlen(pgValue) + 1);
         strcpy(value, pgValue);
-        instance->set(name, value);
+        instance->initAttr(name, value, 0);
       }
     }
     PQclear(result);

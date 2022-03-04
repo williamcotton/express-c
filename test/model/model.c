@@ -179,6 +179,65 @@ void modelTests(tape_t *t, request_t *req, pg_t *pg) {
         t->ok("no errors", team->errors->count == 0);
       });
     });
+
+    t->test("save", ^(tape_t *t) {
+      t->test("existing record", ^(tape_t *t) {
+        team_t *employee = Employee->find("2");
+        employee->set("name", "Robert");
+        employee->set("email", "robert@email.com");
+        int res = employee->save();
+
+        t->ok("updated", res == 1);
+
+        team_t *employeeAgain = Employee->find("2");
+
+        string_t *nameValue = string(employeeAgain->get("name"));
+        t->strEqual("updated name", nameValue, "Robert");
+        string_t *emailValue = string(employeeAgain->get("email"));
+        t->strEqual("updated email", emailValue, "robert@email.com");
+
+        nameValue->free();
+        emailValue->free();
+      });
+
+      t->test("new record", ^(tape_t *t) {
+        team_t *employee = Employee->new ();
+        employee->set("name", "Charlie");
+        employee->set("email", "charlie@email.com");
+        employee->set("team_id", "1");
+        int res = employee->save();
+
+        t->ok("created", res == 1);
+
+        team_t *employeeAgain = Employee->find(employee->id);
+
+        string_t *nameValue = string(employeeAgain->get("name"));
+        t->strEqual("created name", nameValue, "Charlie");
+        string_t *emailValue = string(employeeAgain->get("email"));
+        t->strEqual("created email", emailValue, "charlie@email.com");
+
+        nameValue->free();
+        emailValue->free();
+      });
+
+      t->test("invalid new record", ^(tape_t *t) {
+        team_t *employee = Employee->new ();
+        employee->set("name", "Charlie");
+        employee->set("email", "charlie@email.com");
+        int res = employee->save();
+
+        t->ok("created", res == 0);
+
+        string_t *teamAttribute = string(employee->errors->attributes[0]);
+        t->strEqual("team_id error", teamAttribute, "team_id");
+
+        string_t *teamError = string(employee->errors->messages[0]);
+        t->strEqual("team_id error present", teamError, "is required");
+
+        teamAttribute->free();
+        teamError->free();
+      });
+    });
   });
 }
 
