@@ -129,13 +129,13 @@ typedef struct model_t {
   void (^hasMany)(char *tableName, char *foreignKey, void *);
   void (^hasOne)(char *tableName, char *foreignKey, void *);
   void (^validates)(instanceCallback);
-  void (^beforeSave)(instanceCallback);
+  void (^beforeSave)(beforeCallback);
   void (^afterSave)(instanceCallback);
-  void (^beforeDestroy)(instanceCallback);
+  void (^beforeDestroy)(beforeCallback);
   void (^afterDestroy)(instanceCallback);
-  void (^beforeUpdate)(instanceCallback);
+  void (^beforeUpdate)(beforeCallback);
   void (^afterUpdate)(instanceCallback);
-  void (^beforeCreate)(instanceCallback);
+  void (^beforeCreate)(beforeCallback);
   void (^afterCreate)(instanceCallback);
   class_attribute_t * (^getAttribute)(char *name);
   model_instance_t * (^find)(char *);
@@ -143,6 +143,11 @@ typedef struct model_t {
   model_instance_t * (^new)();
   struct model_t * (^lookup)(char *);
 } model_t;
+
+// TODO: remove request_t dependency, replace with malloc and blockCopy
+// PostgresModellBase->new(char *tableName);
+// PostgresModelBase = PostgresModelFactory(pg_t *pg, mallocFunction,
+// blockCopyFunction);
 
 model_t *CreateModel(char *tableName, request_t *req, pg_t *pg);
 

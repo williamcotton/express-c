@@ -1,21 +1,23 @@
 #include "resource.h"
 
-resource_t *CreateResource(char *name, request_t *req, model_t *model) {
+resource_t *CreateResource(char *type, request_t *req, model_t *model) {
   resource_t *resource = req->malloc(sizeof(resource_t));
-  resource->name = name;
+  resource->type = type;
   resource->model = model;
 
   resource->attributesCount = 0;
   resource->belongsToCount = 0;
   resource->hasManyCount = 0;
 
-  resource->attribute = req->blockCopy(^(char *attributeName, char *type) {
-    class_attribute_t *newAttribute = req->malloc(sizeof(class_attribute_t));
-    newAttribute->name = attributeName;
-    newAttribute->type = type;
-    resource->attributes[resource->attributesCount] = newAttribute;
-    resource->attributesCount++;
-  });
+  resource->attribute =
+      req->blockCopy(^(char *attributeName, char *attributeType) {
+        class_attribute_t *newAttribute =
+            req->malloc(sizeof(class_attribute_t));
+        newAttribute->name = attributeName;
+        newAttribute->type = attributeType;
+        resource->attributes[resource->attributesCount] = newAttribute;
+        resource->attributesCount++;
+      });
 
   resource->belongsTo =
       req->blockCopy(^(char *relatedResourceName, char *foreignKey) {
