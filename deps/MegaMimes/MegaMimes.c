@@ -59,8 +59,12 @@ static bool splitMimeTypeParts(const char *target, char **firstPart,
        *mimeLastPart = malloc(MAX_PART_SIZE),
        *trailingDetails = malloc(MAX_PART_SIZE * 2);
   const char *slashPosition = strchr(target, '/');
-  if (!slashPosition)
+  if (!slashPosition) {
+    free(mimeFirstPart);
+    free(mimeLastPart);
+    free(trailingDetails);
     return false;
+  }
   const char *colonPosition = strchr(target, ';');
   if (!colonPosition)
     colonPosition = target + strlen(target);
