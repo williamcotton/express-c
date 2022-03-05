@@ -70,7 +70,6 @@ void *clientAcceptEventHandler(void *args) {
   int nfds;
 
   while (1) {
-    // next:
     nfds = epoll_wait(epollFd, events, MAX_EVENTS, -1);
 
     if (nfds <= 0) {
@@ -189,7 +188,6 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
 
   struct epoll_event epollEvent;
   epollEvent.events = EPOLLIN | EPOLLET;
-  check(server->socket >= 0, "server->socket is not valid");
   epollEvent.data.fd = server->socket;
 
   check(epoll_ctl(epollFd, EPOLL_CTL_ADD, server->socket, &epollEvent) >= 0,

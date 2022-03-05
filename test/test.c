@@ -9,7 +9,7 @@
 app_t *testApp();
 
 void expressTests(tape_t *t);
-void modelTests(tape_t *t, request_t *req, pg_t *pg);
+void modelTests(tape_t *t, const char *databaseUrl);
 
 test_harness_t *testHarnessFactory() {
   __block app_t *app = testApp();
@@ -34,22 +34,16 @@ void runTests(int runAndExit, test_harness_t *testHarness,
               const char *databaseUrl) {
   tape_t *test = tape();
 
-  pg_t *pg = initPg(databaseUrl);
-  request_t *req = mockRequest();
-  pg->query = getPostgresQuery(req, pg);
-
   int testStatus = test->test("express", ^(tape_t *t) {
     t->clearState();
     expressTests(t);
 #ifdef __linux__
-    modelTests(t, req, pg);
+    modelTests(t, databaseUrl);
 #endif
   });
 
   Block_release(test->test);
   free(test);
-  req->free();
-  pg->free();
 
   if (runAndExit) {
     testHarness->teardown();

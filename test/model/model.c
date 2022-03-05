@@ -25,8 +25,13 @@ static void setupTest(pg_t *pg) {
                    "'Bob', 'bob@email.com')"));
 };
 
-void modelTests(tape_t *t, request_t *req, pg_t *pg) {
+void modelTests(tape_t *t, const char *databaseUrl) {
+  pg_t *pg = initPg(databaseUrl);
+  request_t *req = mockRequest();
+  pg->query = getPostgresQuery(req, pg);
+
   setupTest(pg);
+
   Team_t *Team = TeamModel(req, pg);
   Employee_t *Employee = EmployeeModel(req, pg);
   Island_t *Island = IslandModel(req, pg);
@@ -368,6 +373,9 @@ void modelTests(tape_t *t, request_t *req, pg_t *pg) {
       });
     });
   });
+
+  req->free();
+  pg->free();
 }
 
 #pragma clang diagnostic pop
