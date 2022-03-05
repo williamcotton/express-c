@@ -59,13 +59,13 @@ void expressMockSystemCalls(tape_t *t) {
       shutdownBrokenApp(app4);
     });
 
-    t->test("file failures", ^(tape_t *t) {
-      t->mockFailOnce("stat");
-      t->strEqual("stat fail", t->get("/file"), "");
+    // t->test("file failures", ^(tape_t *t) {
+    //   t->mockFailOnce("stat");
+    //   t->strEqual("stat fail", t->get("/file"), "");
 
-      t->mockFailOnce("regcomp");
-      t->strEqual("regcomp fail", t->get("/file"), "hello, world!\n");
-    });
+    //   t->mockFailOnce("regcomp");
+    //   t->strEqual("regcomp fail", t->get("/file"), "hello, world!\n");
+    // });
 
     t->test("client failures", ^(tape_t *t) {
       t->mockFailOnce("regcomp");
