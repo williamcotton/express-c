@@ -67,6 +67,7 @@ typedef struct pg_t {
                            const int *, const int *, int);
   query_t * (^query)(const char *);
   void (^close)();
+  void (^free)();
 } pg_t;
 
 typedef struct postgres_connection_t {

@@ -397,6 +397,8 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
   model->afterDestroyCallbacksCount = 0;
   model->beforeUpdateCallbacksCount = 0;
   model->afterUpdateCallbacksCount = 0;
+  model->beforeCreateCallbacksCount = 0;
+  model->afterCreateCallbacksCount = 0;
 
   model->lookup = req->blockCopy(^(char *lookupTableName) {
     for (int i = 0; i < modelCount; i++) {
@@ -448,6 +450,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
     PGresult *result = originalFind(id);
     int recordCount = PQntuples(result);
     if (recordCount == 0) {
+      PQclear(result);
       return (model_instance_t *)NULL;
     }
     model_instance_t *instance = createModelInstance(model);

@@ -40,13 +40,16 @@ void runTests(int runAndExit, test_harness_t *testHarness,
 
   int testStatus = test->test("express", ^(tape_t *t) {
     t->clearState();
-    // expressTests(t);
+    expressTests(t);
+#ifdef __linux__
     modelTests(t, req, pg);
+#endif
   });
 
   Block_release(test->test);
   free(test);
   req->free();
+  pg->free();
 
   if (runAndExit) {
     testHarness->teardown();

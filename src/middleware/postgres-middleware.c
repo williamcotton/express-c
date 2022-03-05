@@ -329,6 +329,16 @@ pg_t *initPg(const char *pgUri) {
     PQfinish(pg->connection);
   });
 
+  pg->free = Block_copy(^{
+    Block_release(pg->exec);
+    Block_release(pg->execParams);
+    Block_release(pg->close);
+    dispatch_async(dispatch_get_main_queue(), ^() {
+      Block_release(pg->free);
+      free(pg);
+    });
+  });
+
   return pg;
 }
 
@@ -354,11 +364,7 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
 
   postgres->free = Block_copy(^() {
     for (int i = 0; i < postgres->poolSize; i++) {
-      postgres->pool[i]->close();
-      Block_release(postgres->pool[i]->exec);
-      Block_release(postgres->pool[i]->execParams);
-      Block_release(postgres->pool[i]->close);
-      free(postgres->pool[i]);
+      postgres->pool[i]->free();
     }
     free(postgres->pool);
     dispatch_release(postgres->semaphore);
