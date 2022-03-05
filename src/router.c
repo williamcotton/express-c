@@ -130,9 +130,9 @@ static void runMiddleware(int index, request_t *req, response_t *res,
                           router_t *router, void (^next)()) {
   if (index < router->middlewareCount) {
     void (^cleanup)(cleanupHandler) = ^(cleanupHandler cleanupBlock) {
-      req->middlewareCleanupBlocks = realloc( // NOLINT
-          req->middlewareCleanupBlocks,
-          sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
+      req->middlewareCleanupBlocks =
+          realloc(req->middlewareCleanupBlocks,
+                  sizeof(cleanupHandler *) * (req->middlewareStackCount + 1));
       req->middlewareCleanupBlocks[req->middlewareStackCount++] =
           (void *)cleanupBlock;
     };
@@ -189,9 +189,16 @@ int routerMatchesRequest(router_t *router, request_t *req) {
   if (strchr(router->basePath, ':') != NULL) {
     param_match_t *pm = paramMatch(router->basePath, "");
     regex_t regexCompiled;
+    if (!pm->regexRoute) {
+      paramMatchFree(pm);
+      free(pm);
+      return 0;
+    }
     int regexRouteLen = strlen(pm->regexRoute);
     pm->regexRoute[regexRouteLen - 1] = '\0';
     if (regcomp(&regexCompiled, pm->regexRoute, REG_EXTENDED)) {
+      paramMatchFree(pm);
+      free(pm);
       log_err("regcomp() failed");
       return 0;
     };

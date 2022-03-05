@@ -45,6 +45,9 @@ int paramCount(const char *query) {
   return count;
 }
 
+// TODO: replace request_t with malloc and blockCopy
+// or do we have a memory_manager_t? a request has a memory_manager_t?
+
 getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
   return req->blockCopy(^(const char *tableName) {
     query_t *query = req->malloc(sizeof(query_t));
@@ -323,8 +326,12 @@ pg_t *initPg(const char *pgUri) {
     va_start(args, sql);
 
     const char **paramValues = malloc(sizeof(char *) * nParams);
-    for (int j = 0; j < nParams; j++) {
-      paramValues[j] = va_arg(args, const char *);
+    for (int i = 0; i < nParams; i++) {
+      paramValues[i] = va_arg(args, const char *);
+      if (i > 1024) {
+        log_err("Too many parameters");
+        return (PGresult *)NULL;
+      }
     }
     va_end(args);
     PGresult *pgres = PQexecParams(pg->connection, sql, nParams, NULL,
@@ -370,7 +377,6 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
   postgres->poolSize = poolSize;
 
   postgres->pool = malloc(sizeof(pg_t *) * postgres->poolSize);
-  check(postgres->pool, "Failed to allocate postgres connection pool");
 
   postgres->semaphore = dispatch_semaphore_create(postgres->poolSize);
 
@@ -412,7 +418,7 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
     /* Wait for a connection */
     dispatch_semaphore_wait(postgres->semaphore, DISPATCH_TIME_FOREVER);
 
-    __block pg_t *pg;
+    __block pg_t *pg = NULL;
 
     /* Get connection */
     dispatch_sync(postgres->queue, ^{

@@ -243,6 +243,10 @@ static model_instance_t *createModelInstance(model_t *model) {
       }
     }
 
+    if (dirtyAttributesCount == 0) {
+      return didSave;
+    }
+
     char dirtyAttributeNamesString[512];
     char dirtyAttributePlaceholdersString[64];
     char *dirtyAttributeValues[dirtyAttributesCount];

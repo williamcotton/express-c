@@ -125,6 +125,9 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
   });
 
   collection->join = collection->blockCopy(^(const char *delim) {
+    if (collection->size == 0) {
+      return string("");
+    }
     size_t len = 0;
     for (size_t i = 0; i < collection->size; i++) {
       len += collection->arr[i]->size;

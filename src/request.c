@@ -417,7 +417,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
 
   req->blockCopy = reqBlockCopyFactory(req);
   req->trash = reqTrashFactory(req);
-  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *)); // NOLINT
+  req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
 
   req->curl = curl_easy_init(); // TODO: move to global scope
 

@@ -92,7 +92,7 @@ janssonMustacheMiddleware(char *viewsPath,
           char *partialName = embeddedFiles.names[i];
           char *partial = (char *)embeddedFiles.data[i];
 
-          char *token = strdup(partialName);
+          char *token = partialName;
           char *extention = token;
           char *name = token;
           strtok(token, "_");

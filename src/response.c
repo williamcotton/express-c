@@ -125,10 +125,9 @@ static sendBlock resSendFileFactory(client_t client, request_t *req,
     write(client.socket, response, strlen(response));
     // TODO: use sendfile
     char *buffer = malloc(4096);
-    size_t bytesRead = fread(buffer, 1, 4096, file);
-    while (bytesRead > 0) {
-      write(client.socket, buffer, bytesRead);
-      bytesRead = fread(buffer, 1, 4096, file);
+    size_t read;
+    while ((read = fread(buffer, 1, 4096, file)) > 0) {
+      write(client.socket, buffer, read);
     }
     free(buffer);
     free(response);

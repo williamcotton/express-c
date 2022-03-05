@@ -187,6 +187,10 @@ typedef struct error_t {
 
 /* Request */
 
+struct request_t;
+
+typedef void (^cleanupHandler)(struct request_t *finishedReq);
+
 typedef struct request_t {
   const char *path;
   const char *method;
@@ -240,7 +244,7 @@ typedef struct request_t {
   req_block_copy_t blockCopies[1024];
   void * (^blockCopy)(void *);
   CURL *curl;
-  void **middlewareCleanupBlocks;
+  cleanupHandler **middlewareCleanupBlocks;
   char *XRequestedWith;
   char *XForwardedFor;
   int trashableCount;
