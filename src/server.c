@@ -9,6 +9,7 @@ server_t *expressServer() {
 
   server->close = Block_copy(^() {
     close(server->socket);
+    server->socket = -1;
   });
 
   server->listen = Block_copy(^(int port) {

@@ -16,6 +16,8 @@ static client_t acceptClientConnection(server_t *server) {
   struct sockaddr_in echoClntAddr;
   unsigned int clntLen = sizeof(echoClntAddr);
 
+  check(server->socket >= 0, "server->socket is not valid");
+
   check_silent(
       (clientSocket = accept(server->socket, (struct sockaddr *)&echoClntAddr,
                              &clntLen)) >= 0,
@@ -75,6 +77,8 @@ void *clientAcceptEventHandler(void *args) {
       log_err("epoll_wait() failed");
       continue;
     }
+
+    check(server->socket >= 0, "server->socket is not valid");
 
     for (int n = 0; n < nfds; ++n) {
       if (events[n].data.fd == server->socket) {
@@ -166,8 +170,9 @@ void *clientAcceptEventHandler(void *args) {
       }
     }
   }
-
+error:
   free(events);
+  return NULL;
 }
 
 int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
@@ -184,6 +189,7 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
 
   struct epoll_event epollEvent;
   epollEvent.events = EPOLLIN | EPOLLET;
+  check(server->socket >= 0, "server->socket is not valid");
   epollEvent.data.fd = server->socket;
 
   check(epoll_ctl(epollFd, EPOLL_CTL_ADD, server->socket, &epollEvent) >= 0,

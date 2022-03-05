@@ -8,13 +8,13 @@
 
 static void shutdownBrokenApp(app_t *app) {
   app->server->close();
-  usleep(100);
+  usleep(1000);
   app->server->free();
-  usleep(100);
+  usleep(1000);
   Block_release(app->listen);
   Block_release(app->closeServer);
   Block_release(app->free);
-  usleep(100);
+  usleep(1000);
   free(app->server);
   free(app);
 };
