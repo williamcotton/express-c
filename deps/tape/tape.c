@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #ifdef __linux__
+#include <bsd/stdlib.h>
 #include <sys/epoll.h>
 #endif
 

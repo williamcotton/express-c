@@ -44,6 +44,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 
 #ifdef ENABLE_LOCALES
 #include <locale.h>

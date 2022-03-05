@@ -7,6 +7,9 @@
 #include <string.h>
 #include <wchar.h>
 #include <wctype.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 
 static void splitFileParts(const char *path, char **filename,
                            char **fileextension, char **fileparents) {
