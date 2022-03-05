@@ -160,7 +160,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
   router->get("/query/order", ^(request_t *req, UNUSED response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
-    PGresult *pgres = pg->query("test")->order("id DESC")->all();
+    PGresult *pgres = pg->query("test")->order("id", "DESC")->all();
     if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
       res->status = 500;
       res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
@@ -184,7 +184,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
                     ->having("name = $", "test")
                     ->limit(1)
                     ->offset(1)
-                    ->order("id DESC")
+                    ->order("id", "DESC")
                     ->toSql();
     res->send(sql);
   });

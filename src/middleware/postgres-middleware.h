@@ -44,7 +44,7 @@ typedef struct query_t {
   int distinctCondition;
   struct query_t * (^select)(const char *);
   struct query_t * (^where)(const char *, ...);
-  struct query_t * (^order)(const char *);
+  struct query_t * (^order)(const char *, char *);
   struct query_t * (^limit)(int);
   struct query_t * (^offset)(int);
   struct query_t * (^group)(const char *);

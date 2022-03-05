@@ -26,6 +26,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static void toUpper(char *givenStr) {
+  int i;
+  for (i = 0; givenStr[i] != '\0'; i++) {
+    if (givenStr[i] >= 'a' && givenStr[i] <= 'z') {
+      givenStr[i] = givenStr[i] - 32;
+    }
+  }
+}
+
 int paramCount(const char *query) {
   int count = 0;
   for (size_t i = 0; i < strlen(query); i++) {
@@ -60,7 +69,7 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       int nParams = paramCount(conditions);
 
       char varNum[10];
-      sprintf(varNum, "$%d", query->whereConditionsCount + 1);
+      sprintf(varNum, "$%d", query->paramValueCount + 1);
 
       string_t *whereConditions = string(conditions);
       char *sequentialConditions =
@@ -97,7 +106,16 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       return query;
     });
 
-    query->order = req->blockCopy(^(const char *orderCondition) {
+    query->order = req->blockCopy(^(const char *column, char *direction) {
+      toUpper(direction);
+      if (strcmp(direction, "ASC") != 0 && strcmp(direction, "DESC") != 0) {
+        log_err("Invalid order direction: %s", direction);
+        return query;
+      }
+
+      char *orderCondition =
+          req->malloc(strlen(column) + strlen(direction) + 2);
+      sprintf(orderCondition, "%s %s", column, direction);
       query->orderConditions[query->orderConditionsCount++] =
           (char *)orderCondition;
       return query;
@@ -117,7 +135,7 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       int nParams = paramCount(conditions);
 
       char varNum[10];
-      sprintf(varNum, "$%d", query->havingConditionsCount + 1);
+      sprintf(varNum, "$%d", query->paramValueCount + 1);
 
       string_t *havingConditions = string(conditions);
       char *sequentialConditions =
