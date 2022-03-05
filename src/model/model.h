@@ -4,6 +4,8 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+// TODO: rename to postgres_model
+
 struct model_t;
 struct model_instance_t;
 struct model_instance_collection_t;
@@ -121,11 +123,11 @@ typedef struct model_t {
   PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
                            const int *, const int *, int);
   request_t *req;
-  void (^attribute)(char *name, char *type);
-  void (^validatesAttribute)(char *name, char *validation);
-  void (^belongsTo)(char *tableName, char *foreignKey);
-  void (^hasMany)(char *tableName, char *foreignKey);
-  void (^hasOne)(char *tableName, char *foreignKey);
+  void (^attribute)(char *name, char *type, void *);
+  void (^validatesAttribute)(char *name, char *validation, void *);
+  void (^belongsTo)(char *tableName, char *foreignKey, void *);
+  void (^hasMany)(char *tableName, char *foreignKey, void *);
+  void (^hasOne)(char *tableName, char *foreignKey, void *);
   void (^validates)(instanceCallback);
   void (^beforeSave)(instanceCallback);
   void (^afterSave)(instanceCallback);
