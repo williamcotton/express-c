@@ -7,6 +7,10 @@
     "github.copilot-nightly",
     "mikestead.dotenv",
     "dawhite.mustache",
-    "xaver.clang-format"
+    "xaver.clang-format",
+    "gruntfuggly.todo-tree",
+    "github.codespaces",
+    "ms-azuretools.vscode-docker",
+    "GitHub.vscode-pull-request-github"
   ]
 }

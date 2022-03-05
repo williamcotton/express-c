@@ -34,7 +34,12 @@
 		"mtxr.sqltools-driver-pg",
 		"mikestead.dotenv",
 		"dawhite.mustache",
-		"xaver.clang-format"
+		"xaver.clang-format",
+		"Gruntfuggly.todo-tree",
+		"GitHub.codespaces",
+		"ms-azuretools.vscode-docker",
+		"GitHub.copilot-nightly",
+		"GitHub.vscode-pull-request-github"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
