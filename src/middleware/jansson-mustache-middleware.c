@@ -67,6 +67,7 @@ janssonMustacheMiddleware(char *viewsPath,
     sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
     if (embeddedFiles.count > 0) {
       template = matchEmbeddedFile(templatePath, embeddedFiles);
+      free(templatePath);
       return template;
     }
     FILE *templateFd = fopen(templatePath, "r");

@@ -107,7 +107,7 @@ else ifeq ($(PLATFORM),DARWIN)
 endif
 
 test-analyze:
-	clang --analyze $(SRC) -I/opt/homebrew/include -Ideps -Isrc
+	clang --analyze $(SRC) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text
 
 test-threads:
 	mkdir -p $(BUILD_DIR)
