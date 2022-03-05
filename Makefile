@@ -106,6 +106,9 @@ else ifeq ($(PLATFORM),DARWIN)
 	leaks --atExit -- $(BUILD_DIR)/test
 endif
 
+test-analyze:
+	clang --analyze $(SRC) -I/opt/homebrew/include -Ideps -Isrc
+
 test-threads:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
