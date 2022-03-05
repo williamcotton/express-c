@@ -28,6 +28,10 @@ SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c)
 TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
 BUILD_DIR = build
 
+ifeq ($(BUILD_ENV),development)
+	DEV_CFLAGS += -DDEV_ENV
+endif
+
 ifeq ($(PLATFORM),LINUX)
 	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
 	TEST_CFLAGS += -Wl,--wrap=stat -Wl,--wrap=regcomp -Wl,--wrap=accept -Wl,--wrap=socket -Wl,--wrap=epoll_ctl, -Wl,--wrap=listen

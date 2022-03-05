@@ -214,7 +214,7 @@ void expressTests(tape_t *t) {
   statusMessageTests(t);
 
 /* Middleware */
-#ifdef __linux__
+#if defined(__linux__) || defined(DEV_ENV)
   void postgresMiddlewareTests(tape_t * t);
   postgresMiddlewareTests(t);
 #endif
