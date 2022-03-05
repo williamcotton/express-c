@@ -46,6 +46,8 @@ typedef struct instance_errors_t {
 } instance_errors_t;
 
 typedef void (^eachInstanceCallback)(struct model_instance_t *instance);
+typedef int (^findInstanceCallback)(struct model_instance_t *instance);
+typedef int (^filterInstanceCallback)(struct model_instance_t *instance);
 typedef void (^eachInstanceWithIndexCallback)(struct model_instance_t *instance,
                                               int index);
 typedef void * (^reducerInstanceCallback)(void *accumulator,
@@ -57,8 +59,8 @@ typedef struct model_instance_collection_t {
   size_t size;
   struct model_instance_t * (^at)(size_t index);
   void (^each)(eachInstanceCallback);
-  void (^filter)(eachInstanceCallback);
-  void (^find)(eachInstanceCallback);
+  struct model_instance_collection_t * (^filter)(filterInstanceCallback);
+  struct model_instance_t * (^find)(findInstanceCallback);
   void (^eachWithIndex)(eachInstanceWithIndexCallback);
   void * (^reduce)(void *accumulator, reducerInstanceCallback);
   void ** (^map)(mapInstanceCallback);
@@ -81,8 +83,6 @@ typedef struct model_instance_t {
 } model_instance_t;
 
 typedef void * (^copyBlock)(void *);
-
-// typedef void (^requestHandler)(request_t *req, response_t *res);
 typedef void (^instanceCallback)(model_instance_t *instance);
 
 typedef struct model_t {
@@ -120,14 +120,14 @@ typedef struct model_t {
   void (^validatesAttribute)(char *name, char *validation);
   void (^belongsTo)(char *tableName, char *foreignKey);
   void (^hasMany)(char *tableName, char *foreignKey);
-  void (^hasOne)(char *, char *);
+  void (^hasOne)(char *tableName, char *foreignKey); // TODO: implement hasOne
   void (^validates)(instanceCallback);
-  void (^beforeSave)(instanceCallback);
-  void (^afterSave)(instanceCallback);
-  void (^beforeDestroy)(instanceCallback);
-  void (^afterDestroy)(instanceCallback);
-  void (^beforeUpdate)(instanceCallback);
-  void (^afterUpdate)(instanceCallback);
+  void (^beforeSave)(instanceCallback);    // TODO: implement beforeSave
+  void (^afterSave)(instanceCallback);     // TODO: implement afterSave
+  void (^beforeDestroy)(instanceCallback); // TODO: implement beforeDestroy
+  void (^afterDestroy)(instanceCallback);  // TODO: implement afterDestroy
+  void (^beforeUpdate)(instanceCallback);  // TODO: implement beforeUpdate
+  void (^afterUpdate)(instanceCallback);   // TODO: implement afterUpdate
   class_attribute_t * (^getAttribute)(char *name);
   model_instance_t * (^find)(char *);
   model_instance_collection_t * (^all)();

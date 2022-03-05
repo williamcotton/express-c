@@ -322,6 +322,42 @@ void modelTests(tape_t *t, request_t *req, pg_t *pg) {
 
         names->free();
       });
+
+      t->test("filter", ^(tape_t *t) {
+        team_t *employee = Employee->new ();
+        employee->set("name", "Charlie");
+        employee->set("email", "charlie@email.com");
+        employee->set("team_id", "1");
+        employee->save();
+
+        employee_collection_t *employees = Employee->all();
+        employee_collection_t *filtered =
+            employees->filter(^(employee_t *employee) {
+              return strlen(employee->get("name")) > 5;
+            });
+
+        string_t *firstName = string(filtered->at(0)->get("name"));
+        string_t *secondName = string(filtered->at(1)->get("name"));
+
+        t->strEqual("first name", firstName, "Robert");
+        t->strEqual("second name", secondName, "Charlie");
+
+        firstName->free();
+        secondName->free();
+      });
+
+      t->test("find", ^(tape_t *t) {
+        employee_collection_t *employees = Employee->all();
+        employee_t *employee = employees->find(^(employee_t *employee) {
+          return strcmp(employee->get("team_id"), "1") == 0;
+        });
+
+        string_t *name = string(employee->get("name"));
+
+        t->strEqual("name", name, "Charlie");
+
+        name->free();
+      });
     });
   });
 }

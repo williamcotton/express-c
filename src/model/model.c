@@ -52,6 +52,30 @@ createModelInstanceCollection(model_t *model) {
     return arr;
   });
 
+  collection->filter = req->blockCopy(^(filterInstanceCallback callback) {
+    model_instance_collection_t *filteredCollection =
+        createModelInstanceCollection(model);
+    filteredCollection->arr =
+        req->malloc(sizeof(model_instance_t *) * collection->size);
+    filteredCollection->size = 0;
+    for (size_t i = 0; i < collection->size; i++) {
+      if (callback(collection->arr[i])) {
+        filteredCollection->arr[filteredCollection->size] = collection->arr[i];
+        filteredCollection->size++;
+      }
+    }
+    return filteredCollection;
+  });
+
+  collection->find = req->blockCopy(^(findInstanceCallback callback) {
+    for (size_t i = 0; i < collection->size; i++) {
+      if (callback(collection->arr[i])) {
+        return collection->arr[i];
+      }
+    }
+    return (model_instance_t *)NULL;
+  });
+
   return collection;
 }
 
