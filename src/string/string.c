@@ -125,6 +125,7 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
   });
 
   collection->join = collection->blockCopy(^(const char *delim) {
+    size_t delimSize = strlen(delim);
     if (collection->size == 0) {
       return string("");
     }
@@ -136,9 +137,10 @@ string_collection_t *stringCollection(size_t size, string_t **array) {
     char *str = malloc(len + 1);
     str[0] = '\0';
     for (size_t i = 0; i < collection->size; i++) {
-      strcat(str, collection->arr[i]->value);
+      strlcat(str, collection->arr[i]->value,
+              len + 1 + collection->arr[i]->size);
       if (i < collection->size - 1) {
-        strcat(str, delim);
+        strlcat(str, delim, len + 1 + delimSize);
       }
     }
     string_t *temp = string(str);
@@ -216,8 +218,8 @@ string_t *string(const char *strng) {
   s->concat = s->blockCopy(^(const char *str) {
     size_t size = s->size + strlen(str);
     char *new_str = malloc(size + 1);
-    strcpy(new_str, s->value);
-    strcat(new_str, str);
+    strlcpy(new_str, s->value, size + 1);
+    strlcat(new_str, str, size + 1);
     free(s->value);
     s->value = new_str;
     s->size = size;
@@ -357,23 +359,24 @@ string_t *string(const char *strng) {
   s->replace = s->blockCopy(^(const char *str1, const char *str2) {
     size_t str1_len = strlen(str1);
     size_t str2_len = strlen(str2);
-    char *new_str = malloc(s->size + str2_len - str1_len + 1);
+    size_t newStrLen = s->size + str2_len - str1_len + 1;
+    char *newStr = malloc(newStrLen);
     size_t i = 0;
     size_t j = 0;
     while (i < s->size) {
       if (strncmp(s->value + i, str1, strlen(str1)) == 0) {
-        strcpy(new_str + j, str2);
+        strlcpy(newStr + j, str2, newStrLen);
         i += strlen(str1);
         j += strlen(str2);
       } else {
-        new_str[j] = s->value[i];
+        newStr[j] = s->value[i];
         i++;
         j++;
       }
     }
-    new_str[j] = '\0';
+    newStr[j] = '\0';
     free(s->value);
-    s->value = new_str;
+    s->value = newStr;
     s->size = j;
     return s;
   });

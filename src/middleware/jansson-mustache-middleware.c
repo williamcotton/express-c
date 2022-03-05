@@ -117,8 +117,9 @@ janssonMustacheMiddleware(char *viewsPath,
     while ((de = readdir(dr)) != NULL) {
       if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile)) {
         char *partial = loadTemplate(de->d_name);
-        char *partialName = req->malloc(strlen(de->d_name) + 1);
-        strcpy(partialName, de->d_name);
+        size_t partialNameLength = strlen(de->d_name) + 1;
+        char *partialName = req->malloc(partialNameLength);
+        strlcpy(partialName, de->d_name, partialNameLength);
         char *partialNameSplit = strtok(partialName, ".");
         json_t *partialJson = json_string(partial);
         json_object_set_new(data, partialNameSplit, partialJson);

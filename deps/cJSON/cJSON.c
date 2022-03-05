@@ -379,8 +379,9 @@ cJSON_SetValuestring(cJSON *object, const char *valuestring) {
   if (!(object->type & cJSON_String) || (object->type & cJSON_IsReference)) {
     return NULL;
   }
-  if (strlen(valuestring) <= strlen(object->valuestring)) {
-    strcpy(object->valuestring, valuestring);
+  size_t valuestringlen = strlen(valuestring);
+  if (valuestringlen <= strlen(object->valuestring)) {
+    strlcpy(object->valuestring, valuestring, valuestringlen);
     return object->valuestring;
   }
   copy =
@@ -829,7 +830,7 @@ static cJSON_bool print_string_ptr(const unsigned char *const input,
     if (output == NULL) {
       return false;
     }
-    strcpy((char *)output, "\"\"");
+    strlcpy((char *)output, "\"\"", 3);
 
     return true;
   }
@@ -1264,7 +1265,7 @@ static cJSON_bool print_value(const cJSON *const item,
     if (output == NULL) {
       return false;
     }
-    strcpy((char *)output, "null");
+    strlcpy((char *)output, "null", 5);
     return true;
 
   case cJSON_False:
@@ -1272,7 +1273,7 @@ static cJSON_bool print_value(const cJSON *const item,
     if (output == NULL) {
       return false;
     }
-    strcpy((char *)output, "false");
+    strlcpy((char *)output, "false", 6);
     return true;
 
   case cJSON_True:
@@ -1280,7 +1281,7 @@ static cJSON_bool print_value(const cJSON *const item,
     if (output == NULL) {
       return false;
     }
-    strcpy((char *)output, "true");
+    strlcpy((char *)output, "true", 5);
     return true;
 
   case cJSON_Number:

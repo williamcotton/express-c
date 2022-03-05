@@ -126,6 +126,6 @@ typedef struct resource_t {
   resource_instance_t ** (^all)(json_t *query);
   resource_instance_t * (^build)(json_t *query);
   request_t *req;
-} resource_t;
+} __attribute__((packed)) resource_t;
 
 resource_t *CreateResource(char *name, request_t *req, model_t *model);

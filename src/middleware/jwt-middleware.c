@@ -17,8 +17,9 @@ middlewareHandler jwtMiddleware(const unsigned char *privateKey,
       jwt_add_grants_json(jwt, jsonPayload);
       jwt_set_alg(jwt, jwtAlgorithm, privateKey, sizeof(privateKey));
       char *jwtToken = jwt_encode_str(jwt);
-      char *token = req->malloc(strlen(jwtToken) + 1);
-      strcpy(token, jwtToken);
+      size_t jwtTokenLength = strlen(jwtToken) + 1;
+      char *token = req->malloc(jwtTokenLength);
+      strlcpy(token, jwtToken, jwtTokenLength);
       free(jwtToken);
       jwt_free(jwt);
       return token;
@@ -28,8 +29,9 @@ middlewareHandler jwtMiddleware(const unsigned char *privateKey,
       jwt_t *jwt = NULL;
       jwt_decode(&jwt, token, privateKey, sizeof(privateKey));
       char *jwtDecoded = jwt_get_grants_json(jwt, NULL);
-      char *decodedJson = req->malloc(strlen(jwtDecoded) + 1);
-      strcpy(decodedJson, jwtDecoded);
+      size_t jwtDecodedLength = strlen(jwtDecoded) + 1;
+      char *decodedJson = req->malloc(jwtDecodedLength);
+      strlcpy(decodedJson, jwtDecoded, jwtDecodedLength);
       free(jwtDecoded);
       jwt_free(jwt);
       return decodedJson;

@@ -16,7 +16,8 @@ static char *concat(char *buffer, char *string) {
     size_t length = strlen(buffer) + strlen(string) + 1;
     char *new = realloc(buffer, length);
 
-    return strcat(new, string);
+    strlcat(new, string, length);
+    return new;
   }
 
   return buffer;

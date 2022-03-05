@@ -433,8 +433,9 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
           char *name = PQfname(result, j);
           if (model->getAttribute(name)) {
             char *pgValue = PQgetvalue(result, i, j);
-            char *value = req->malloc(strlen(pgValue) + 1);
-            strcpy(value, pgValue);
+            size_t valueLen = strlen(pgValue) + 1;
+            char *value = req->malloc(valueLen);
+            strlcpy(value, pgValue, valueLen);
             collection->arr[i]->initAttr(name, value, 0);
           }
         }
@@ -464,8 +465,9 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
       char *name = PQfname(result, i);
       if (model->getAttribute(name)) {
         char *pgValue = PQgetvalue(result, 0, i);
-        char *value = req->malloc(strlen(pgValue) + 1);
-        strcpy(value, pgValue);
+        size_t valueLen = strlen(pgValue) + 1;
+        char *value = req->malloc(valueLen);
+        strlcpy(value, pgValue, valueLen);
         instance->initAttr(name, value, 0);
       }
     }

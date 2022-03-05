@@ -142,7 +142,7 @@ typedef struct model_t {
   model_instance_collection_t * (^all)();
   model_instance_t * (^new)();
   struct model_t * (^lookup)(char *);
-} model_t;
+} __attribute__((packed)) model_t;
 
 // TODO: remove request_t dependency, replace with malloc and blockCopy
 // PostgresModellBase->new(char *tableName);

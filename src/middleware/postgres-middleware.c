@@ -325,7 +325,8 @@ pg_t *initPg(const char *pgUri) {
     va_list args;
     va_start(args, sql);
 
-    const char **paramValues = malloc(sizeof(char *) * nParams);
+    const char **paramValues =
+        nParams == 0 ? NULL : malloc(sizeof(char *) * nParams);
     for (int i = 0; i < nParams; i++) {
       paramValues[i] = va_arg(args, const char *);
       if (i > 1024) {

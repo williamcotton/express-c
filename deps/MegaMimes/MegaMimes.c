@@ -13,17 +13,19 @@ static void splitFileParts(const char *path, char **filename,
   const char *slashPos = strrchr(path, FILE_PATH_SEP);
   if (!slashPos) {
     *fileparents = malloc(1);
-    strcpy(*fileparents, "");
+    strlcpy(*fileparents, "", 1);
 
     const char *dotPos = strrchr(path, '.');
     if (!dotPos) { // no  extension
       *fileextension = malloc(1);
-      strcpy(*fileextension, "");
-      *filename = malloc(strlen(path));
-      strcpy(*filename, path);
+      strlcpy(*fileextension, "", 1);
+      size_t filenameLength = strlen(path);
+      *filename = malloc(filenameLength);
+      strlcpy(*filename, path, filenameLength);
     } else {
-      *fileextension = malloc(strlen(dotPos) + 1);
-      strcpy(*fileextension, dotPos);
+      size_t dotPosLen = strlen(dotPos) + 1;
+      *fileextension = malloc(dotPosLen);
+      strlcpy(*fileextension, dotPos, dotPosLen);
       size_t bytes = dotPos - path; // do not add the dot
       *filename = malloc(bytes + 1);
       strncpy(*filename, path, bytes);
@@ -38,12 +40,14 @@ static void splitFileParts(const char *path, char **filename,
     const char *dotPos = strrchr(path, '.');
     if (dotPos < slashPos || dotPos == NULL) { // not an extension
       *fileextension = malloc(1);
-      strcpy(*fileextension, "");
-      *filename = malloc(strlen(slashPos));
-      strcpy(*filename, slashPos + 1);
+      strlcpy(*fileextension, "", 1);
+      size_t slashPosLen = strlen(slashPos);
+      *filename = malloc(slashPosLen);
+      strlcpy(*filename, slashPos + 1, slashPosLen);
     } else {
-      *fileextension = malloc(strlen(dotPos));
-      strcpy(*fileextension, dotPos);
+      size_t dotPosLen = strlen(dotPos);
+      *fileextension = malloc(dotPosLen);
+      strlcpy(*fileextension, dotPos, dotPosLen);
       size_t sbytes = dotPos - slashPos - 1;
       *filename = malloc(sbytes + 1);
       strncpy(*filename, slashPos + 1, sbytes);
