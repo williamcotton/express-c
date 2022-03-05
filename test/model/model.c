@@ -115,6 +115,10 @@ void modelTests(tape_t *t, request_t *req, pg_t *pg) {
       employeeBobEmail->free();
     });
 
+    t->test("hasOne", ^(tape_t *t){
+                // TODO: test hasOne
+            });
+
     t->test("belongsTo", ^(tape_t *t) {
       employee_t *employee = Employee->find("1");
       team_collection_t *teams = employee->r("teams");
@@ -248,6 +252,10 @@ void modelTests(tape_t *t, request_t *req, pg_t *pg) {
       team_t *employeeAgain = Employee->find("3");
       t->ok("null", employeeAgain == NULL);
     });
+
+    t->test("callbacks", ^(tape_t *t){
+                // TODO: test callbacks
+            });
 
     t->test("collection", ^(tape_t *t) {
       employee_collection_t *employees = Employee->all();

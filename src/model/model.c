@@ -164,6 +164,23 @@ static model_instance_t *createModelInstance(model_t *model) {
       return collection;
     }
 
+    char *hasOneForeignKey = NULL;
+    for (int i = 0; i < model->hasOneCount; i++) {
+      if (strcmp(model->hasOneRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        hasOneForeignKey = model->hasOneRelationships[i]->foreignKey;
+        break;
+      }
+    }
+    if (hasOneForeignKey) {
+      whereForeignKey =
+          req->malloc(strlen(hasOneForeignKey) + strlen(instance->id) + 5);
+      sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
+      collection =
+          relatedModel->query()->where(whereForeignKey)->limit(1)->all();
+      return collection;
+    }
+
     char *belongsToForeignKey = NULL;
     for (int i = 0; i < model->belongsToCount; i++) {
       if (strcmp(model->belongsToRelationships[i]->tableName,
@@ -204,6 +221,13 @@ static model_instance_t *createModelInstance(model_t *model) {
   instance->save = req->blockCopy(^() {
     int didSave = false;
 
+    for (int i = 0; i < model->beforeSaveCallbacksCount; i++) {
+      int res = model->beforeSaveCallbacks[i](instance);
+      if (res == 0) {
+        return false;
+      }
+    }
+
     if (!instance->validate()) {
       return didSave;
     }
@@ -240,6 +264,13 @@ static model_instance_t *createModelInstance(model_t *model) {
 
     if (instance->id) {
       // UPDATE
+      for (int i = 0; i < model->beforeUpdateCallbacksCount; i++) {
+        int res = model->beforeUpdateCallbacks[i](instance);
+        if (res == 0) {
+          return false;
+        }
+      }
+
       saveQuery = req->malloc(strlen("UPDATE  SET () = () WHERE id = ") +
                               strlen(model->tableName) + strlen(instance->id) +
                               strlen(dirtyAttributeNamesString) +
@@ -250,6 +281,13 @@ static model_instance_t *createModelInstance(model_t *model) {
 
     } else {
       // INSERT
+      for (int i = 0; i < model->beforeCreateCallbacksCount; i++) {
+        int res = model->beforeCreateCallbacks[i](instance);
+        if (res == 0) {
+          return false;
+        }
+      }
+
       saveQuery = req->malloc(
           strlen("INSERT INTO  () VALUES () RETURNING id;") +
           strlen(model->tableName) + strlen(dirtyAttributeNamesString) +
@@ -268,11 +306,21 @@ static model_instance_t *createModelInstance(model_t *model) {
       if (idLen > 0) {
         instance->id = req->malloc(idLen + 1);
         sprintf(instance->id, "%s", PQgetvalue(pgres, 0, 0));
+
+        for (int i = 0; i < model->afterCreateCallbacksCount; i++) {
+          model->afterCreateCallbacks[i](instance);
+        }
+
         didSave = true;
       }
     } else if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
       log_err("%s", PQresultErrorMessage(pgres));
     } else {
+
+      for (int i = 0; i < model->afterUpdateCallbacksCount; i++) {
+        model->afterUpdateCallbacks[i](instance);
+      }
+
       didSave = true;
     }
 
@@ -281,11 +329,24 @@ static model_instance_t *createModelInstance(model_t *model) {
     for (int i = 0; i < dirtyAttributesCount; i++) {
       dirtyAttributes[i]->isDirty = 0;
     }
+
+    for (int i = 0; i < model->afterSaveCallbacksCount; i++) {
+      model->afterSaveCallbacks[i](instance);
+    }
+
     return didSave;
   });
 
   instance->destroy = req->blockCopy(^() {
     int didDestroy = 0;
+
+    for (int i = 0; i < model->beforeDestroyCallbacksCount; i++) {
+      int res = model->beforeDestroyCallbacks[i](instance);
+      if (res == 0) {
+        return false;
+      }
+    }
+
     if (instance->id) {
       char *destroyQuery =
           req->malloc(strlen("DELETE FROM  WHERE id = ") +
@@ -300,6 +361,11 @@ static model_instance_t *createModelInstance(model_t *model) {
       }
       PQclear(pgres);
     }
+
+    for (int i = 0; i < model->afterDestroyCallbacksCount; i++) {
+      model->afterDestroyCallbacks[i](instance);
+    }
+
     return didDestroy;
   });
 
@@ -322,9 +388,15 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
   model->attributesCount = 0;
   model->validationsCount = 0;
   model->hasManyCount = 0;
+  model->hasOneCount = 0;
   model->belongsToCount = 0;
-  model->beforeSaveCallbacksCount = 0;
   model->validatesCallbacksCount = 0;
+  model->beforeSaveCallbacksCount = 0;
+  model->afterSaveCallbacksCount = 0;
+  model->beforeDestroyCallbacksCount = 0;
+  model->afterDestroyCallbacksCount = 0;
+  model->beforeUpdateCallbacksCount = 0;
+  model->afterUpdateCallbacksCount = 0;
 
   model->lookup = req->blockCopy(^(char *lookupTableName) {
     for (int i = 0; i < modelCount; i++) {
@@ -447,14 +519,58 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
     model->hasManyCount++;
   });
 
-  model->beforeSave = req->blockCopy(^(instanceCallback callback) {
-    model->beforeSaveCallbacks[model->beforeSaveCallbacksCount] = callback;
-    model->beforeSaveCallbacksCount++;
+  model->hasOne = req->blockCopy(^(char *relatedTableName, char *foreignKey) {
+    has_one_t *newHasOne = req->malloc(sizeof(has_one_t));
+    newHasOne->tableName = relatedTableName;
+    newHasOne->foreignKey = foreignKey;
+    model->hasOneRelationships[model->hasOneCount] = newHasOne;
+    model->hasOneCount++;
   });
 
   model->validates = req->blockCopy(^(instanceCallback callback) {
     model->validatesCallbacks[model->validatesCallbacksCount] = callback;
     model->validatesCallbacksCount++;
+  });
+
+  model->beforeSave = req->blockCopy(^(beforeCallback callback) {
+    model->beforeSaveCallbacks[model->beforeSaveCallbacksCount] = callback;
+    model->beforeSaveCallbacksCount++;
+  });
+
+  model->afterSave = req->blockCopy(^(instanceCallback callback) {
+    model->afterSaveCallbacks[model->afterSaveCallbacksCount] = callback;
+    model->afterSaveCallbacksCount++;
+  });
+
+  model->beforeDestroy = req->blockCopy(^(beforeCallback callback) {
+    model->beforeDestroyCallbacks[model->beforeDestroyCallbacksCount] =
+        callback;
+    model->beforeDestroyCallbacksCount++;
+  });
+
+  model->afterDestroy = req->blockCopy(^(instanceCallback callback) {
+    model->afterDestroyCallbacks[model->afterDestroyCallbacksCount] = callback;
+    model->afterDestroyCallbacksCount++;
+  });
+
+  model->beforeUpdate = req->blockCopy(^(beforeCallback callback) {
+    model->beforeUpdateCallbacks[model->beforeUpdateCallbacksCount] = callback;
+    model->beforeUpdateCallbacksCount++;
+  });
+
+  model->afterUpdate = req->blockCopy(^(instanceCallback callback) {
+    model->afterUpdateCallbacks[model->afterUpdateCallbacksCount] = callback;
+    model->afterUpdateCallbacksCount++;
+  });
+
+  model->beforeCreate = req->blockCopy(^(beforeCallback callback) {
+    model->beforeCreateCallbacks[model->beforeCreateCallbacksCount] = callback;
+    model->beforeCreateCallbacksCount++;
+  });
+
+  model->afterCreate = req->blockCopy(^(instanceCallback callback) {
+    model->afterCreateCallbacks[model->afterCreateCallbacksCount] = callback;
+    model->afterCreateCallbacksCount++;
   });
 
   return model;

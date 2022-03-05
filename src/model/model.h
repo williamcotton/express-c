@@ -84,6 +84,7 @@ typedef struct model_instance_t {
 
 typedef void * (^copyBlock)(void *);
 typedef void (^instanceCallback)(model_instance_t *instance);
+typedef int (^beforeCallback)(model_instance_t *instance);
 
 typedef struct model_t {
   char *tableName;
@@ -99,18 +100,22 @@ typedef struct model_t {
   int hasOneCount;
   instanceCallback validatesCallbacks[100];
   int validatesCallbacksCount;
-  instanceCallback beforeSaveCallbacks[100];
+  beforeCallback beforeSaveCallbacks[100];
   int beforeSaveCallbacksCount;
   instanceCallback afterSaveCallbacks[100];
   int afterSaveCallbacksCount;
-  instanceCallback beforeDestroyCallbacks[100];
+  beforeCallback beforeDestroyCallbacks[100];
   int beforeDestroyCallbacksCount;
   instanceCallback afterDestroyCallbacks[100];
   int afterDestroyCallbacksCount;
-  instanceCallback beforeUpdateCallbacks[100];
+  beforeCallback beforeUpdateCallbacks[100];
   int beforeUpdateCallbacksCount;
   instanceCallback afterUpdateCallbacks[100];
   int afterUpdateCallbacksCount;
+  beforeCallback beforeCreateCallbacks[100];
+  int beforeCreateCallbacksCount;
+  instanceCallback afterCreateCallbacks[100];
+  int afterCreateCallbacksCount;
   query_t * (^query)();
   PGresult * (^exec)(const char *, ...);
   PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
@@ -120,14 +125,16 @@ typedef struct model_t {
   void (^validatesAttribute)(char *name, char *validation);
   void (^belongsTo)(char *tableName, char *foreignKey);
   void (^hasMany)(char *tableName, char *foreignKey);
-  void (^hasOne)(char *tableName, char *foreignKey); // TODO: implement hasOne
+  void (^hasOne)(char *tableName, char *foreignKey);
   void (^validates)(instanceCallback);
-  void (^beforeSave)(instanceCallback);    // TODO: implement beforeSave
-  void (^afterSave)(instanceCallback);     // TODO: implement afterSave
-  void (^beforeDestroy)(instanceCallback); // TODO: implement beforeDestroy
-  void (^afterDestroy)(instanceCallback);  // TODO: implement afterDestroy
-  void (^beforeUpdate)(instanceCallback);  // TODO: implement beforeUpdate
-  void (^afterUpdate)(instanceCallback);   // TODO: implement afterUpdate
+  void (^beforeSave)(instanceCallback);
+  void (^afterSave)(instanceCallback);
+  void (^beforeDestroy)(instanceCallback);
+  void (^afterDestroy)(instanceCallback);
+  void (^beforeUpdate)(instanceCallback);
+  void (^afterUpdate)(instanceCallback);
+  void (^beforeCreate)(instanceCallback);
+  void (^afterCreate)(instanceCallback);
   class_attribute_t * (^getAttribute)(char *name);
   model_instance_t * (^find)(char *);
   model_instance_collection_t * (^all)();
