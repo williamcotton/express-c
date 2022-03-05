@@ -31,7 +31,7 @@ test_harness_t *testHarnessFactory() {
 }
 
 void runTests(int runAndExit, test_harness_t *testHarness,
-              const char *databaseUrl) {
+              UNUSED const char *databaseUrl) {
   tape_t *test = tape();
 
   int testStatus = test->test("express", ^(tape_t *t) {
