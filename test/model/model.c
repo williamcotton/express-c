@@ -8,7 +8,7 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wunused-variable"
 
-static void setupTest(pg_t *pg) {
+void setupTest(pg_t *pg) {
   PQclear(pg->exec("DROP TABLE IF EXISTS teams"));
   PQclear(pg->exec("CREATE TABLE teams (id serial PRIMARY KEY, name text)"));
   PQclear(pg->exec("INSERT INTO teams (name) VALUES ('design')"));
@@ -27,14 +27,14 @@ static void setupTest(pg_t *pg) {
 
 void modelTests(tape_t *t, const char *databaseUrl) {
   pg_t *pg = initPg(databaseUrl);
-  request_t *req = mockRequest();
-  pg->query = getPostgresQuery(req, pg);
+  memory_manager_t *memoryManager = createMemoryManager();
+  pg->query = getPostgresQuery(memoryManager, pg);
 
   setupTest(pg);
 
-  Team_t *Team = TeamModel(req, pg);
-  Employee_t *Employee = EmployeeModel(req, pg);
-  Island_t *Island = IslandModel(req, pg);
+  Team_t *Team = TeamModel(memoryManager, pg);
+  Employee_t *Employee = EmployeeModel(memoryManager, pg);
+  Island_t *Island = IslandModel(memoryManager, pg);
 
   t->test("model", ^(tape_t *t) {
     t->test("find existing", ^(tape_t *t) {
@@ -374,7 +374,7 @@ void modelTests(tape_t *t, const char *databaseUrl) {
     });
   });
 
-  req->free();
+  memoryManager->free();
   pg->free();
 }
 

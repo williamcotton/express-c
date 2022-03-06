@@ -194,10 +194,6 @@ void expressTests(tape_t *t) {
     });
   });
 
-  t->test("Trash", ^(tape_t *t) {
-    t->strEqual("take out the trash", t->get("/trash"), "trash");
-  });
-
   /* Mock system call failures */
 #ifdef __linux__
   // TODO: fix flaky tests

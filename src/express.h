@@ -32,6 +32,7 @@
 #include <dispatch/dispatch.h>
 #include <errno.h>
 #include <execinfo.h>
+#include <memory-manager/memory-manager.h>
 #include <picohttpparser/picohttpparser.h>
 #include <regex.h>
 #include <signal.h>
@@ -237,24 +238,16 @@ typedef struct request_t {
   key_value_t cookiesKeyValues[100];
   size_t cookiesKeyValueCount;
   char * (^cookie)(const char *key);
-  int mallocCount;
-  req_malloc_t mallocs[1024];
   void * (^malloc)(size_t size);
-  int blockCopyCount;
-  req_block_copy_t blockCopies[1024];
   void * (^blockCopy)(void *);
+  memory_manager_t *memoryManager;
   CURL *curl;
   cleanupHandler **middlewareCleanupBlocks;
   char *XRequestedWith;
   char *XForwardedFor;
-  int trashableCount;
-  freeHandler trashables[1024];
-  void (^trash)(freeHandler);
   void *user;
   void (^free)();
 } request_t;
-
-request_t *mockRequest();
 
 /* Response */
 
@@ -303,7 +296,6 @@ typedef void (^paramHandler)(request_t *req, response_t *res,
 typedef char * (^getBlock)(const char *key);
 typedef void * (^mallocBlock)(size_t);
 typedef void * (^copyBlock)(void *);
-typedef void (^trashBlock)(freeHandler);
 typedef void (^getMiddlewareSetBlock)(const char *key, void *middleware);
 typedef void * (^getMiddlewareBlock)(const char *key);
 typedef void (^sendBlock)(const char *body);

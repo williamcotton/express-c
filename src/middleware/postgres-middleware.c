@@ -48,9 +48,10 @@ int paramCount(const char *query) {
 // TODO: replace request_t with malloc and blockCopy
 // or do we have a memory_manager_t? a request has a memory_manager_t?
 
-getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
-  return req->blockCopy(^(const char *tableName) {
-    query_t *query = req->malloc(sizeof(query_t));
+getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
+                                       pg_t *pg) {
+  return memoryManager->blockCopy(^(const char *tableName) {
+    query_t *query = memoryManager->malloc(sizeof(query_t));
 
     query->paramValueCount = 0;
     query->whereConditionsCount = 0;
@@ -63,12 +64,12 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
     query->joinsConditions = "";
     query->distinctCondition = 0;
 
-    query->select = req->blockCopy(^(const char *select) {
+    query->select = memoryManager->blockCopy(^(const char *select) {
       query->selectCondition = select;
       return query;
     });
 
-    query->where = req->blockCopy(^(const char *conditions, ...) {
+    query->where = memoryManager->blockCopy(^(const char *conditions, ...) {
       int nParams = paramCount(conditions);
 
       char varNum[10];
@@ -95,46 +96,47 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       return query;
     });
 
-    query->limit = req->blockCopy(^(int limit) {
-      char *limitStr = req->malloc(sizeof(char) * 10);
+    query->limit = memoryManager->blockCopy(^(int limit) {
+      char *limitStr = memoryManager->malloc(sizeof(char) * 10);
       sprintf(limitStr, "%d", limit);
       query->limitCondition = limitStr;
       return query;
     });
 
-    query->offset = req->blockCopy(^(int offset) {
-      char *offsetStr = req->malloc(sizeof(char) * 10);
+    query->offset = memoryManager->blockCopy(^(int offset) {
+      char *offsetStr = memoryManager->malloc(sizeof(char) * 10);
       sprintf(offsetStr, "%d", offset);
       query->offsetCondition = offsetStr;
       return query;
     });
 
-    query->order = req->blockCopy(^(const char *column, char *direction) {
-      toUpper(direction);
-      if (strcmp(direction, "ASC") != 0 && strcmp(direction, "DESC") != 0) {
-        log_err("Invalid order direction: %s", direction);
-        return query;
-      }
+    query->order =
+        memoryManager->blockCopy(^(const char *column, char *direction) {
+          toUpper(direction);
+          if (strcmp(direction, "ASC") != 0 && strcmp(direction, "DESC") != 0) {
+            log_err("Invalid order direction: %s", direction);
+            return query;
+          }
 
-      char *orderCondition =
-          req->malloc(strlen(column) + strlen(direction) + 2);
-      sprintf(orderCondition, "%s %s", column, direction);
-      query->orderConditions[query->orderConditionsCount++] =
-          (char *)orderCondition;
-      return query;
-    });
+          char *orderCondition =
+              memoryManager->malloc(strlen(column) + strlen(direction) + 2);
+          sprintf(orderCondition, "%s %s", column, direction);
+          query->orderConditions[query->orderConditionsCount++] =
+              (char *)orderCondition;
+          return query;
+        });
 
-    query->joins = req->blockCopy(^(const char *joinsCondition) {
+    query->joins = memoryManager->blockCopy(^(const char *joinsCondition) {
       query->joinsConditions = (char *)joinsCondition;
       return query;
     });
 
-    query->group = req->blockCopy(^(const char *groupCondition) {
+    query->group = memoryManager->blockCopy(^(const char *groupCondition) {
       query->groupConditions = (char *)groupCondition;
       return query;
     });
 
-    query->having = req->blockCopy(^(const char *conditions, ...) {
+    query->having = memoryManager->blockCopy(^(const char *conditions, ...) {
       int nParams = paramCount(conditions);
 
       char varNum[10];
@@ -161,42 +163,44 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       return query;
     });
 
-    query->distinct = req->blockCopy(^() {
+    query->distinct = memoryManager->blockCopy(^() {
       query->distinctCondition = 1;
       return query;
     });
 
-    query->toSql = req->blockCopy(^() {
+    query->toSql = memoryManager->blockCopy(^() {
       // SELECT
       char *select = NULL;
       if (query->distinctCondition) {
-        select = req->malloc(strlen(query->selectCondition) +
-                             strlen("SELECT DISTINCT") + 2);
+        select = memoryManager->malloc(strlen(query->selectCondition) +
+                                       strlen("SELECT DISTINCT") + 2);
         sprintf(select, "SELECT DISTINCT %s", query->selectCondition);
       } else {
-        select =
-            req->malloc(strlen(query->selectCondition) + strlen("SELECT ") + 1);
+        select = memoryManager->malloc(strlen(query->selectCondition) +
+                                       strlen("SELECT ") + 1);
         sprintf(select, "SELECT %s", query->selectCondition);
       }
 
       // FROM
-      char *from = req->malloc(strlen(tableName) + strlen("FROM ") + 1);
+      char *from =
+          memoryManager->malloc(strlen(tableName) + strlen("FROM ") + 1);
       sprintf(from, "FROM %s", tableName);
 
       // JOINS
-      char *joins = req->malloc(strlen(query->joinsConditions) + 1);
+      char *joins = memoryManager->malloc(strlen(query->joinsConditions) + 1);
       sprintf(joins, "%s", query->joinsConditions);
 
       // WHERE
       char *where = NULL;
       for (int i = 0; i < query->whereConditionsCount; i++) {
         if (where == NULL) {
-          where = req->malloc(strlen(query->whereConditions[i]) +
-                              strlen(" WHERE ") + 1);
+          where = memoryManager->malloc(strlen(query->whereConditions[i]) +
+                                        strlen(" WHERE ") + 1);
           sprintf(where, "WHERE %s", query->whereConditions[i]);
         } else {
-          char *tmp = req->malloc(strlen(where) + strlen(" AND ") +
-                                  strlen(query->whereConditions[i]) + 1);
+          char *tmp =
+              memoryManager->malloc(strlen(where) + strlen(" AND ") +
+                                    strlen(query->whereConditions[i]) + 1);
           sprintf(tmp, "%s AND %s", where, query->whereConditions[i]);
           where = tmp;
         }
@@ -207,8 +211,8 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       // GROUP BY
       char *group = NULL;
       if (strlen(query->groupConditions) > 0) {
-        group = req->malloc(strlen(query->groupConditions) +
-                            strlen(" GROUP BY ") + 1);
+        group = memoryManager->malloc(strlen(query->groupConditions) +
+                                      strlen(" GROUP BY ") + 1);
         sprintf(group, "GROUP BY %s", query->groupConditions);
       }
       if (group == NULL)
@@ -218,12 +222,13 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       char *having = NULL;
       for (int i = 0; i < query->havingConditionsCount; i++) {
         if (having == NULL) {
-          having = req->malloc(strlen(query->havingConditions[i]) +
-                               strlen(" HAVING ") + 1);
+          having = memoryManager->malloc(strlen(query->havingConditions[i]) +
+                                         strlen(" HAVING ") + 1);
           sprintf(having, "HAVING %s", query->havingConditions[i]);
         } else {
-          char *tmp = req->malloc(strlen(having) + strlen(" AND ") +
-                                  strlen(query->havingConditions[i]) + 1);
+          char *tmp =
+              memoryManager->malloc(strlen(having) + strlen(" AND ") +
+                                    strlen(query->havingConditions[i]) + 1);
           sprintf(tmp, "%s AND %s", having, query->havingConditions[i]);
           having = tmp;
         }
@@ -234,8 +239,8 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       // LIMIT
       char *limit = NULL;
       if (strlen(query->limitCondition) > 0) {
-        limit =
-            req->malloc(strlen(query->limitCondition) + strlen(" LIMIT ") + 1);
+        limit = memoryManager->malloc(strlen(query->limitCondition) +
+                                      strlen(" LIMIT ") + 1);
         sprintf(limit, "LIMIT %s", query->limitCondition);
       }
       if (limit == NULL)
@@ -244,8 +249,8 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       // OFFSET
       char *offset = NULL;
       if (strlen(query->offsetCondition) > 0) {
-        offset = req->malloc(strlen(query->offsetCondition) +
-                             strlen(" OFFSET ") + 1);
+        offset = memoryManager->malloc(strlen(query->offsetCondition) +
+                                       strlen(" OFFSET ") + 1);
         sprintf(offset, "OFFSET %s", query->offsetCondition);
       }
       if (offset == NULL)
@@ -255,12 +260,13 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       char *order = NULL;
       for (int i = 0; i < query->orderConditionsCount; i++) {
         if (order == NULL) {
-          order = req->malloc(strlen(query->orderConditions[i]) +
-                              strlen(" ORDER BY ") + 1);
+          order = memoryManager->malloc(strlen(query->orderConditions[i]) +
+                                        strlen(" ORDER BY ") + 1);
           sprintf(order, "ORDER BY %s", query->orderConditions[i]);
         } else {
-          char *tmp = req->malloc(strlen(order) + strlen(" , ") +
-                                  strlen(query->orderConditions[i]) + 1);
+          char *tmp =
+              memoryManager->malloc(strlen(order) + strlen(" , ") +
+                                    strlen(query->orderConditions[i]) + 1);
           sprintf(tmp, "%s , %s", order, query->orderConditions[i]);
           order = tmp;
         }
@@ -268,10 +274,10 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       if (order == NULL)
         order = "";
 
-      char *sql =
-          req->malloc(strlen(select) + strlen(from) + strlen(joins) +
-                      strlen(where) + strlen(limit) + strlen(offset) +
-                      strlen(order) + strlen(group) + strlen(having) + 10);
+      char *sql = memoryManager->malloc(
+          strlen(select) + strlen(from) + strlen(joins) + strlen(where) +
+          strlen(limit) + strlen(offset) + strlen(order) + strlen(group) +
+          strlen(having) + 10);
       sprintf(sql, "%s %s %s %s %s %s %s %s %s", select, from, joins, where,
               group, having, limit, offset, order);
 
@@ -288,18 +294,18 @@ getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg) {
       return sql;
     });
 
-    query->all = req->blockCopy(^() {
+    query->all = memoryManager->blockCopy(^() {
       return pg->execParams(query->toSql(), query->paramValueCount, NULL,
                             query->paramValues, NULL, NULL, 0);
     });
 
-    query->find = req->blockCopy(^(char *id) {
+    query->find = memoryManager->blockCopy(^(char *id) {
       query->where("id = $", id);
       return pg->execParams(query->toSql(), query->paramValueCount, NULL,
                             query->paramValues, NULL, NULL, 0);
     });
 
-    query->count = req->blockCopy(^() {
+    query->count = memoryManager->blockCopy(^() {
       query->selectCondition = "count(*)";
       PGresult *pgres = query->all();
       if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
@@ -432,7 +438,7 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
       }
     });
 
-    pg->query = getPostgresQuery(req, pg);
+    pg->query = getPostgresQuery(req->memoryManager, pg);
 
     req->mSet("pg", pg);
 

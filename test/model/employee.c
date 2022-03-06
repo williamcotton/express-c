@@ -1,7 +1,7 @@
 #include "employee.h"
 
-model_t *EmployeeModel(request_t *req, pg_t *pg) {
-  model_t *Employee = CreateModel("employees", req, pg);
+model_t *EmployeeModel(memory_manager_t *memoryManager, pg_t *pg) {
+  model_t *Employee = CreateModel("employees", memoryManager, pg);
 
   Employee->attribute("name", "text", NULL);
   Employee->attribute("email", "text", NULL);

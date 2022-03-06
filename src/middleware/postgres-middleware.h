@@ -82,7 +82,8 @@ typedef struct postgres_connection_t {
 
 postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
-getPostgresQueryBlock getPostgresQuery(request_t *req, pg_t *pg);
+getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
+                                       pg_t *pg);
 pg_t *initPg(const char *pgUri);
 
 #endif // POSTGRES_MIDDLEWARE_H

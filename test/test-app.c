@@ -203,12 +203,6 @@ app_t *testApp() {
     res->send("all");
   });
 
-  app->get("/trash", ^(request_t *req, response_t *res) {
-    string_t *litter = string("litter");
-    req->trash(litter->free);
-    res->send("trash");
-  });
-
   router_t *router = expressRouter();
 
   router->use(^(request_t *req, UNUSED response_t *res, void (^next)(),

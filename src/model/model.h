@@ -122,7 +122,6 @@ typedef struct model_t {
   PGresult * (^exec)(const char *, ...);
   PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
                            const int *, const int *, int);
-  request_t *req;
   void (^attribute)(char *name, char *type, void *);
   void (^validatesAttribute)(char *name, char *validation, void *);
   void (^belongsTo)(char *tableName, char *foreignKey, void *);
@@ -142,6 +141,7 @@ typedef struct model_t {
   model_instance_collection_t * (^all)();
   model_instance_t * (^new)();
   struct model_t * (^lookup)(char *);
+  memory_manager_t *memoryManager;
 } __attribute__((packed)) model_t;
 
 // TODO: remove request_t dependency, replace with malloc and blockCopy
@@ -149,6 +149,7 @@ typedef struct model_t {
 // PostgresModelBase = PostgresModelFactory(pg_t *pg, mallocFunction,
 // blockCopyFunction);
 
-model_t *CreateModel(char *tableName, request_t *req, pg_t *pg);
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
+                     pg_t *pg);
 
 #endif // MODEL_H

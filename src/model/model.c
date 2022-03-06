@@ -2,15 +2,15 @@
 
 static model_instance_collection_t *
 createModelInstanceCollection(model_t *model) {
-  request_t *req = model->req;
+  memory_manager_t *memoryManager = model->memoryManager;
 
   model_instance_collection_t *collection =
-      req->malloc(sizeof(model_instance_collection_t));
+      memoryManager->malloc(sizeof(model_instance_collection_t));
 
   collection->arr = NULL;
   collection->size = 0;
 
-  collection->at = req->blockCopy(^(size_t index) {
+  collection->at = memoryManager->blockCopy(^(size_t index) {
     if (collection->arr == NULL) {
       log_err("'%s' collection->arr is NULL", model->tableName);
       return (model_instance_t *)NULL;
@@ -23,40 +23,41 @@ createModelInstanceCollection(model_t *model) {
     return collection->arr[index];
   });
 
-  collection->each = req->blockCopy(^(eachInstanceCallback callback) {
+  collection->each = memoryManager->blockCopy(^(eachInstanceCallback callback) {
     for (size_t i = 0; i < collection->size; i++) {
       callback(collection->arr[i]);
     }
   });
 
   collection->eachWithIndex =
-      req->blockCopy(^(eachInstanceWithIndexCallback callback) {
+      memoryManager->blockCopy(^(eachInstanceWithIndexCallback callback) {
         for (size_t i = 0; i < collection->size; i++) {
           callback(collection->arr[i], i);
         }
       });
 
-  collection->reduce =
-      req->blockCopy(^(void *accumulator, reducerInstanceCallback reducer) {
+  collection->reduce = memoryManager->blockCopy(
+      ^(void *accumulator, reducerInstanceCallback reducer) {
         for (size_t i = 0; i < collection->size; i++) {
           accumulator = reducer(accumulator, collection->arr[i]);
         }
         return accumulator;
       });
 
-  collection->map = req->blockCopy(^(mapInstanceCallback callback) {
-    void **arr = req->malloc(sizeof(void *) * collection->size);
+  collection->map = memoryManager->blockCopy(^(mapInstanceCallback callback) {
+    void **arr = memoryManager->malloc(sizeof(void *) * collection->size);
     for (size_t i = 0; i < collection->size; i++) {
       arr[i] = callback(collection->arr[i]);
     }
     return arr;
   });
 
-  collection->filter = req->blockCopy(^(filterInstanceCallback callback) {
+  collection->filter = memoryManager->blockCopy(^(
+      filterInstanceCallback callback) {
     model_instance_collection_t *filteredCollection =
         createModelInstanceCollection(model);
     filteredCollection->arr =
-        req->malloc(sizeof(model_instance_t *) * collection->size);
+        memoryManager->malloc(sizeof(model_instance_t *) * collection->size);
     filteredCollection->size = 0;
     for (size_t i = 0; i < collection->size; i++) {
       if (callback(collection->arr[i])) {
@@ -67,7 +68,7 @@ createModelInstanceCollection(model_t *model) {
     return filteredCollection;
   });
 
-  collection->find = req->blockCopy(^(findInstanceCallback callback) {
+  collection->find = memoryManager->blockCopy(^(findInstanceCallback callback) {
     for (size_t i = 0; i < collection->size; i++) {
       if (callback(collection->arr[i])) {
         return collection->arr[i];
@@ -80,24 +81,25 @@ createModelInstanceCollection(model_t *model) {
 }
 
 static model_instance_t *createModelInstance(model_t *model) {
-  request_t *req = model->req;
-  model_instance_t *instance = req->malloc(sizeof(model_instance_t));
+  memory_manager_t *memoryManager = model->memoryManager;
+  model_instance_t *instance = memoryManager->malloc(sizeof(model_instance_t));
   instance->attributesCount = 0;
-  instance->errors = req->malloc(sizeof(instance_errors_t));
+  instance->errors = memoryManager->malloc(sizeof(instance_errors_t));
   instance->errors->count = 0;
   instance->id = NULL;
 
-  instance->addError = req->blockCopy(^(char *attribute, char *message) {
-    instance->errors->messages[instance->errors->count] = message;
-    instance->errors->attributes[instance->errors->count] = attribute;
-    instance->errors->count++;
-  });
+  instance->addError =
+      memoryManager->blockCopy(^(char *attribute, char *message) {
+        instance->errors->messages[instance->errors->count] = message;
+        instance->errors->attributes[instance->errors->count] = attribute;
+        instance->errors->count++;
+      });
 
-  instance->isValid = req->blockCopy(^() {
+  instance->isValid = memoryManager->blockCopy(^() {
     return instance->errors->count == 0;
   });
 
-  instance->set = req->blockCopy(^(char *attribute, char *value) {
+  instance->set = memoryManager->blockCopy(^(char *attribute, char *value) {
     char *existing = instance->get(attribute);
     if (existing) {
       for (int i = 0; i < instance->attributesCount; i++) {
@@ -113,15 +115,15 @@ static model_instance_t *createModelInstance(model_t *model) {
     }
   });
 
-  instance->initAttr = req->blockCopy(^(char *attribute, char *value,
-                                        int isDirty) {
+  instance->initAttr = memoryManager->blockCopy(^(char *attribute, char *value,
+                                                  int isDirty) {
     class_attribute_t *classAttribute = model->getAttribute(attribute);
     if (classAttribute == NULL) {
       log_err("'%s' does not have attribute '%s'", model->tableName, attribute);
       return;
     }
     instance_attribute_t *instanceAttribute =
-        req->malloc(sizeof(instance_attribute_t));
+        memoryManager->malloc(sizeof(instance_attribute_t));
     instanceAttribute->classAttribute = classAttribute;
     instanceAttribute->value = value;
     instanceAttribute->isDirty = isDirty;
@@ -129,7 +131,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     instance->attributesCount++;
   });
 
-  instance->get = req->blockCopy(^(char *attribute) {
+  instance->get = memoryManager->blockCopy(^(char *attribute) {
     for (int i = 0; i < instance->attributesCount; i++) {
       if (strcmp(instance->attributes[i]->classAttribute->name, attribute) ==
           0) {
@@ -139,7 +141,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     return (char *)NULL;
   });
 
-  instance->r = req->blockCopy(^(UNUSED char *relationName) {
+  instance->r = memoryManager->blockCopy(^(UNUSED char *relationName) {
     model_t *relatedModel = model->lookup(relationName);
     if (relatedModel == NULL) {
       log_err("Could not find model '%s'", relationName);
@@ -157,8 +159,8 @@ static model_instance_t *createModelInstance(model_t *model) {
       }
     }
     if (hasManyForeignKey) {
-      whereForeignKey =
-          req->malloc(strlen(hasManyForeignKey) + strlen(instance->id) + 5);
+      whereForeignKey = memoryManager->malloc(strlen(hasManyForeignKey) +
+                                              strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
       collection = relatedModel->query()->where(whereForeignKey)->all();
       return collection;
@@ -173,8 +175,8 @@ static model_instance_t *createModelInstance(model_t *model) {
       }
     }
     if (hasOneForeignKey) {
-      whereForeignKey =
-          req->malloc(strlen(hasOneForeignKey) + strlen(instance->id) + 5);
+      whereForeignKey = memoryManager->malloc(strlen(hasOneForeignKey) +
+                                              strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
       collection =
           relatedModel->query()->where(whereForeignKey)->limit(1)->all();
@@ -191,7 +193,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     }
     if (belongsToForeignKey) {
       char *foreignKey = instance->get(belongsToForeignKey);
-      whereForeignKey = req->malloc(strlen(foreignKey) + 6);
+      whereForeignKey = memoryManager->malloc(strlen(foreignKey) + 6);
       sprintf(whereForeignKey, "id = %s", foreignKey);
       collection = relatedModel->query()->where(whereForeignKey)->all();
       return collection;
@@ -202,7 +204,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     return (model_instance_collection_t *)NULL;
   });
 
-  instance->validate = req->blockCopy(^() {
+  instance->validate = memoryManager->blockCopy(^() {
     instance->errors->count = 0;
     for (int i = 0; i < model->validationsCount; i++) {
       validation_t *validation = model->validations[i];
@@ -218,7 +220,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     return instance->errors->count == 0;
   });
 
-  instance->save = req->blockCopy(^() {
+  instance->save = memoryManager->blockCopy(^() {
     int didSave = false;
 
     for (int i = 0; i < model->beforeSaveCallbacksCount; i++) {
@@ -275,10 +277,10 @@ static model_instance_t *createModelInstance(model_t *model) {
         }
       }
 
-      saveQuery = req->malloc(strlen("UPDATE  SET () = () WHERE id = ") +
-                              strlen(model->tableName) + strlen(instance->id) +
-                              strlen(dirtyAttributeNamesString) +
-                              strlen(dirtyAttributePlaceholdersString) + 1);
+      saveQuery = memoryManager->malloc(
+          strlen("UPDATE  SET () = () WHERE id = ") + strlen(model->tableName) +
+          strlen(instance->id) + strlen(dirtyAttributeNamesString) +
+          strlen(dirtyAttributePlaceholdersString) + 1);
       sprintf(saveQuery, "UPDATE %s SET (%s) = (%s) WHERE id = %s",
               model->tableName, dirtyAttributeNamesString,
               dirtyAttributePlaceholdersString, instance->id);
@@ -292,7 +294,7 @@ static model_instance_t *createModelInstance(model_t *model) {
         }
       }
 
-      saveQuery = req->malloc(
+      saveQuery = memoryManager->malloc(
           strlen("INSERT INTO  () VALUES () RETURNING id;") +
           strlen(model->tableName) + strlen(dirtyAttributeNamesString) +
           strlen(dirtyAttributePlaceholdersString) + 1);
@@ -308,7 +310,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     if (!instance->id) {
       size_t idLen = strlen(PQgetvalue(pgres, 0, 0));
       if (idLen > 0) {
-        instance->id = req->malloc(idLen + 1);
+        instance->id = memoryManager->malloc(idLen + 1);
         sprintf(instance->id, "%s", PQgetvalue(pgres, 0, 0));
 
         for (int i = 0; i < model->afterCreateCallbacksCount; i++) {
@@ -341,7 +343,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     return didSave;
   });
 
-  instance->destroy = req->blockCopy(^() {
+  instance->destroy = memoryManager->blockCopy(^() {
     int didDestroy = 0;
 
     for (int i = 0; i < model->beforeDestroyCallbacksCount; i++) {
@@ -352,9 +354,9 @@ static model_instance_t *createModelInstance(model_t *model) {
     }
 
     if (instance->id) {
-      char *destroyQuery =
-          req->malloc(strlen("DELETE FROM  WHERE id = ") +
-                      strlen(model->tableName) + strlen(instance->id) + 1);
+      char *destroyQuery = memoryManager->malloc(
+          strlen("DELETE FROM  WHERE id = ") + strlen(model->tableName) +
+          strlen(instance->id) + 1);
       sprintf(destroyQuery, "DELETE FROM %s WHERE id = %s", model->tableName,
               instance->id);
       PGresult *pgres = model->exec(destroyQuery);
@@ -376,8 +378,9 @@ static model_instance_t *createModelInstance(model_t *model) {
   return instance;
 }
 
-model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
-  model_t *model = req->malloc(sizeof(model_t));
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
+                     pg_t *pg) {
+  model_t *model = memoryManager->malloc(sizeof(model_t));
 
   /* Global model store */
   static int modelCount = 0;
@@ -386,7 +389,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
   modelCount++;
 
   model->tableName = tableName;
-  model->req = req;
+  model->memoryManager = memoryManager;
   model->exec = pg->exec;
   model->execParams = pg->execParams;
   model->attributesCount = 0;
@@ -404,7 +407,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
   model->beforeCreateCallbacksCount = 0;
   model->afterCreateCallbacksCount = 0;
 
-  model->lookup = req->blockCopy(^(char *lookupTableName) {
+  model->lookup = memoryManager->blockCopy(^(char *lookupTableName) {
     for (int i = 0; i < modelCount; i++) {
       if (strcmp(models[i]->tableName, lookupTableName) == 0) {
         return models[i];
@@ -413,16 +416,17 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
     return (model_t *)NULL;
   });
 
-  model->query = req->blockCopy(^() {
-    query_t * (^baseQuery)(const char *) = getPostgresQuery(req, pg);
+  model->query = memoryManager->blockCopy(^() {
+    query_t * (^baseQuery)(const char *) = getPostgresQuery(memoryManager, pg);
     query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
-    modelQuery->all = req->blockCopy(^() {
+    modelQuery->all = memoryManager->blockCopy(^() {
       PGresult *result = originalAll();
       model_instance_collection_t *collection =
           createModelInstanceCollection(model);
       int recordCount = PQntuples(result);
-      collection->arr = req->malloc(sizeof(model_instance_t *) * recordCount);
+      collection->arr =
+          memoryManager->malloc(sizeof(model_instance_t *) * recordCount);
       collection->size = recordCount;
       for (int i = 0; i < recordCount; i++) {
         char *id = PQgetvalue(result, i, 0);
@@ -434,7 +438,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
           if (model->getAttribute(name)) {
             char *pgValue = PQgetvalue(result, i, j);
             size_t valueLen = strlen(pgValue) + 1;
-            char *value = req->malloc(valueLen);
+            char *value = memoryManager->malloc(valueLen);
             strlcpy(value, pgValue, valueLen);
             collection->arr[i]->initAttr(name, value, 0);
           }
@@ -446,7 +450,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
     return modelQuery;
   });
 
-  model->find = req->blockCopy(^(char *id) {
+  model->find = memoryManager->blockCopy(^(char *id) {
     if (!id) {
       log_err("id is required");
       return (model_instance_t *)NULL;
@@ -466,7 +470,7 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
       if (model->getAttribute(name)) {
         char *pgValue = PQgetvalue(result, 0, i);
         size_t valueLen = strlen(pgValue) + 1;
-        char *value = req->malloc(valueLen);
+        char *value = memoryManager->malloc(valueLen);
         strlcpy(value, pgValue, valueLen);
         instance->initAttr(name, value, 0);
       }
@@ -475,19 +479,21 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
     return instance;
   });
 
-  model->all = req->blockCopy(^() {
+  model->all = memoryManager->blockCopy(^() {
     return model->query()->all();
   });
 
-  model->attribute = req->blockCopy(^(char *attributeName, char *type) {
-    class_attribute_t *newAttribute = req->malloc(sizeof(class_attribute_t));
-    newAttribute->name = attributeName;
-    newAttribute->type = type;
-    model->attributes[model->attributesCount] = newAttribute;
-    model->attributesCount++;
-  });
+  model->attribute =
+      memoryManager->blockCopy(^(char *attributeName, char *type) {
+        class_attribute_t *newAttribute =
+            memoryManager->malloc(sizeof(class_attribute_t));
+        newAttribute->name = attributeName;
+        newAttribute->type = type;
+        model->attributes[model->attributesCount] = newAttribute;
+        model->attributesCount++;
+      });
 
-  model->getAttribute = req->blockCopy(^(char *attributeName) {
+  model->getAttribute = memoryManager->blockCopy(^(char *attributeName) {
     for (int i = 0; i < model->attributesCount; i++) {
       if (strcmp(model->attributes[i]->name, attributeName) == 0) {
         return model->attributes[i];
@@ -497,87 +503,90 @@ model_t *CreateModel(char *tableName, request_t *req, pg_t *pg) {
   });
 
   model->validatesAttribute =
-      req->blockCopy(^(char *attributeName, char *validation) {
+      memoryManager->blockCopy(^(char *attributeName, char *validation) {
         model->validations[model->validationsCount] =
-            req->malloc(sizeof(validation_t));
+            memoryManager->malloc(sizeof(validation_t));
         model->validations[model->validationsCount]->attributeName =
             attributeName;
         model->validations[model->validationsCount]->validation = validation;
         model->validationsCount++;
       });
 
-  model->new = req->blockCopy(^(UNUSED char *id) {
+  model->new = memoryManager->blockCopy(^(UNUSED char *id) {
     model_instance_t *instance = createModelInstance(model);
     return instance;
   });
 
   model->belongsTo =
-      req->blockCopy(^(char *relatedTableName, char *foreignKey) {
-        belongs_to_t *newBelongsTo = req->malloc(sizeof(belongs_to_t));
+      memoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+        belongs_to_t *newBelongsTo =
+            memoryManager->malloc(sizeof(belongs_to_t));
         newBelongsTo->tableName = relatedTableName;
         newBelongsTo->foreignKey = foreignKey;
         model->belongsToRelationships[model->belongsToCount] = newBelongsTo;
         model->belongsToCount++;
       });
 
-  model->hasMany = req->blockCopy(^(char *relatedTableName, char *foreignKey) {
-    has_many_t *newHasMany = req->malloc(sizeof(has_many_t));
-    newHasMany->tableName = relatedTableName;
-    newHasMany->foreignKey = foreignKey;
-    model->hasManyRelationships[model->hasManyCount] = newHasMany;
-    model->hasManyCount++;
-  });
+  model->hasMany =
+      memoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+        has_many_t *newHasMany = memoryManager->malloc(sizeof(has_many_t));
+        newHasMany->tableName = relatedTableName;
+        newHasMany->foreignKey = foreignKey;
+        model->hasManyRelationships[model->hasManyCount] = newHasMany;
+        model->hasManyCount++;
+      });
 
-  model->hasOne = req->blockCopy(^(char *relatedTableName, char *foreignKey) {
-    has_one_t *newHasOne = req->malloc(sizeof(has_one_t));
-    newHasOne->tableName = relatedTableName;
-    newHasOne->foreignKey = foreignKey;
-    model->hasOneRelationships[model->hasOneCount] = newHasOne;
-    model->hasOneCount++;
-  });
+  model->hasOne =
+      memoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+        has_one_t *newHasOne = memoryManager->malloc(sizeof(has_one_t));
+        newHasOne->tableName = relatedTableName;
+        newHasOne->foreignKey = foreignKey;
+        model->hasOneRelationships[model->hasOneCount] = newHasOne;
+        model->hasOneCount++;
+      });
 
-  model->validates = req->blockCopy(^(instanceCallback callback) {
+  model->validates = memoryManager->blockCopy(^(instanceCallback callback) {
     model->validatesCallbacks[model->validatesCallbacksCount] = callback;
     model->validatesCallbacksCount++;
   });
 
-  model->beforeSave = req->blockCopy(^(beforeCallback callback) {
+  model->beforeSave = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeSaveCallbacks[model->beforeSaveCallbacksCount] = callback;
     model->beforeSaveCallbacksCount++;
   });
 
-  model->afterSave = req->blockCopy(^(instanceCallback callback) {
+  model->afterSave = memoryManager->blockCopy(^(instanceCallback callback) {
     model->afterSaveCallbacks[model->afterSaveCallbacksCount] = callback;
     model->afterSaveCallbacksCount++;
   });
 
-  model->beforeDestroy = req->blockCopy(^(beforeCallback callback) {
+  model->beforeDestroy = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeDestroyCallbacks[model->beforeDestroyCallbacksCount] =
         callback;
     model->beforeDestroyCallbacksCount++;
   });
 
-  model->afterDestroy = req->blockCopy(^(instanceCallback callback) {
+  model->afterDestroy = memoryManager->blockCopy(^(instanceCallback callback) {
     model->afterDestroyCallbacks[model->afterDestroyCallbacksCount] = callback;
     model->afterDestroyCallbacksCount++;
   });
 
-  model->beforeUpdate = req->blockCopy(^(beforeCallback callback) {
+  model->beforeUpdate = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeUpdateCallbacks[model->beforeUpdateCallbacksCount] = callback;
     model->beforeUpdateCallbacksCount++;
   });
 
-  model->afterUpdate = req->blockCopy(^(instanceCallback callback) {
+  model->afterUpdate = memoryManager->blockCopy(^(instanceCallback callback) {
     model->afterUpdateCallbacks[model->afterUpdateCallbacksCount] = callback;
     model->afterUpdateCallbacksCount++;
   });
 
-  model->beforeCreate = req->blockCopy(^(beforeCallback callback) {
+  model->beforeCreate = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeCreateCallbacks[model->beforeCreateCallbacksCount] = callback;
     model->beforeCreateCallbacksCount++;
   });
 
-  model->afterCreate = req->blockCopy(^(instanceCallback callback) {
+  model->afterCreate = memoryManager->blockCopy(^(instanceCallback callback) {
     model->afterCreateCallbacks[model->afterCreateCallbacksCount] = callback;
     model->afterCreateCallbacksCount++;
   });

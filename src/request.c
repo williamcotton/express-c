@@ -125,31 +125,6 @@ static void collectRegexRouteHandlers(router_t *router,
                               regExRouteHandlerCount);
 }
 
-static mallocBlock reqMallocFactory(request_t *req) {
-  req->mallocCount = 0;
-  return Block_copy(^(size_t size) {
-    void *ptr = malloc(size);
-    req->mallocs[req->mallocCount++] = (req_malloc_t){.ptr = ptr};
-    return ptr;
-  });
-}
-
-static copyBlock reqBlockCopyFactory(request_t *req) {
-  req->blockCopyCount = 0;
-  return Block_copy(^(void *block) {
-    void *ptr = Block_copy(block);
-    req->blockCopies[req->blockCopyCount++] = (req_block_copy_t){.ptr = ptr};
-    return ptr;
-  });
-}
-
-static trashBlock reqTrashFactory(request_t *req) {
-  req->trashableCount = 0;
-  return Block_copy(^(freeHandler freeFn) {
-    req->trashables[req->trashableCount++] = freeFn;
-  });
-}
-
 static getBlock reqQueryFactory(request_t *req) {
   return Block_copy(^(const char *key) {
     for (size_t i = 0; i != req->queryKeyValueCount; ++i) {
@@ -368,7 +343,9 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   memset(req->rawRequest, 0, sizeof(req->rawRequest));
   req->rawRequestSize = 0;
 
-  req->malloc = reqMallocFactory(req);
+  req->memoryManager = createMemoryManager();
+
+  req->malloc = req->memoryManager->malloc;
 
   char *method, *originalUrl;
   int parseBytes = 0, minorVersion;
@@ -415,8 +392,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   long long maxBodyLen = (MAX_REQUEST_SIZE)-parseBytes;
   check(req->contentLength <= maxBodyLen, "Request body too large");
 
-  req->blockCopy = reqBlockCopyFactory(req);
-  req->trash = reqTrashFactory(req);
+  req->blockCopy = req->memoryManager->blockCopy;
   req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
 
   req->curl = curl_easy_init(); // TODO: move to global scope
@@ -491,10 +467,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   return;
 error:
   req->method = NULL;
-  for (int i = 0; i < req->mallocCount; i++) {
-    free(req->mallocs[i].ptr);
-  }
-  Block_release(req->malloc);
+  req->memoryManager->free();
   if (parseBytes > 0)
     Block_release(req->get);
   return;
@@ -514,15 +487,7 @@ void freeRequest(request_t *req) {
   free(req->session);
   free((void *)req->ips);
   free((void *)req->subdomains);
-  for (int i = 0; i < req->mallocCount; i++) {
-    free(req->mallocs[i].ptr);
-  }
-  for (int i = 0; i < req->blockCopyCount; i++) {
-    Block_release(req->blockCopies[i].ptr);
-  }
-  for (int i = 0; i < req->trashableCount; i++) {
-    req->trashables[i]();
-  }
+  req->memoryManager->free();
   free((void *)req->path);
   Block_release(req->get);
   Block_release(req->query);
@@ -531,45 +496,7 @@ void freeRequest(request_t *req) {
   Block_release(req->cookie);
   Block_release(req->m);
   Block_release(req->mSet);
-  Block_release(req->malloc);
-  Block_release(req->blockCopy);
-  Block_release(req->trash);
   curl_easy_cleanup(req->curl);
   free((void *)req->queryString);
   free(req);
-}
-
-request_t *mockRequest() {
-  request_t *req = malloc(sizeof(request_t));
-
-  req->mallocCount = 0;
-  req->malloc = Block_copy(^(size_t size) {
-    void *ptr = malloc(size);
-    req->mallocs[req->mallocCount++] = (req_malloc_t){.ptr = ptr};
-    return ptr;
-  });
-
-  req->blockCopyCount = 0;
-  req->blockCopy = Block_copy(^(void *block) {
-    void *ptr = Block_copy(block);
-    req->blockCopies[req->blockCopyCount++] = (req_block_copy_t){.ptr = ptr};
-    return ptr;
-  });
-
-  req->free = Block_copy(^() {
-    for (int i = 0; i < req->mallocCount; i++) {
-      free(req->mallocs[i].ptr);
-    }
-    Block_release(req->malloc);
-    for (int i = 0; i < req->blockCopyCount; i++) {
-      Block_release(req->blockCopies[i].ptr);
-    }
-    Block_release(req->blockCopy);
-    dispatch_async(dispatch_get_main_queue(), ^() {
-      Block_release(req->free);
-      free(req);
-    });
-  });
-
-  return req;
 }

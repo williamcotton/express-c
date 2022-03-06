@@ -76,6 +76,8 @@ typedef void (^resolveCallback)(query_t *scope);
 typedef struct resource_t {
   char *type;
   model_t *model;
+  void *context;
+  memory_manager_t *memoryManager;
   int defaultPageSize;
   char *endpointNamespace;
   default_sort_t defaultSort;
@@ -128,4 +130,5 @@ typedef struct resource_t {
   request_t *req;
 } __attribute__((packed)) resource_t;
 
-resource_t *CreateResource(char *name, request_t *req, model_t *model);
+resource_t *CreateResource(char *type, model_t *model, void *context,
+                           memory_manager_t *memoryManager);
