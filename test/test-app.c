@@ -4,6 +4,7 @@
 router_t *postgresRouter(const char *pgUri, int poolSize);
 router_t *cJSONMustacheRouter();
 router_t *janssonMustacheRouter();
+router_t *janssonJsonapiRouter();
 router_t *cookieSessionRouter();
 router_t *jwtRouter();
 
@@ -33,6 +34,7 @@ app_t *testApp() {
 
   app->useRouter("/cjson-mustache", cJSONMustacheRouter());
   app->useRouter("/jansson-mustache", janssonMustacheRouter());
+  app->useRouter("/jansson-jsonapi", janssonJsonapiRouter());
   app->useRouter("/cookie-session", cookieSessionRouter());
   app->useRouter("/jwt", jwtRouter());
 
