@@ -4,6 +4,9 @@
 
 // TODO: rename to jansson_postgres_resource
 
+#ifndef RESOURCE_H
+#define RESOURCE_H
+
 struct resource_instance_collection_t;
 struct resource_instance_t;
 struct resource_t;
@@ -67,11 +70,41 @@ typedef struct resource_instance_t {
   json_t * (^toJSONAPI)();
 } resource_instance_t;
 
-typedef void (^filterCallback)(query_t *scope, char *value);
-typedef void (^sortCallback)(query_t *scope, char *direction);
-typedef void (^paginateCallback)(query_t *scope, int page, int perPage);
+typedef query_t * (^filterCallback)(query_t *scope, char *value);
+typedef query_t * (^sortCallback)(query_t *scope, char *direction);
+typedef query_t * (^paginateCallback)(query_t *scope, int page, int perPage);
 typedef void (^statCallback)(query_t *scope, char *attribute);
-typedef void (^resolveCallback)(query_t *scope);
+typedef model_instance_collection_t * (^resolveCallback)(query_t *scope);
+typedef query_t * (^baseScopeCallback)(model_t *model);
+
+typedef struct resource_filter_t {
+  char *attribute;
+  char *operator;
+  filterCallback callback;
+} resource_filter_t;
+
+typedef struct resource_sort_t {
+  char *attribute;
+  sortCallback callback;
+} resource_sort_t;
+
+typedef struct resource_paginate_t {
+  paginateCallback callback;
+} resource_paginate_t;
+
+typedef struct resource_stat_t {
+  char *attribute;
+  char *stat;
+  statCallback callback;
+} resource_stat_t;
+
+typedef struct resource_resolve_t {
+  resolveCallback callback;
+} resource_resolve_t;
+
+typedef struct resource_base_scope_t {
+  baseScopeCallback callback;
+} resource_base_scope_t;
 
 typedef struct resource_t {
   char *type;
@@ -105,6 +138,15 @@ typedef struct resource_t {
   int beforeCreateCallbacksCount;
   instanceCallback afterCreateCallbacks[100];
   int afterCreateCallbacksCount;
+  resource_filter_t *filters[100];
+  int filtersCount;
+  resource_sort_t *sorters[100];
+  int sortersCount;
+  resource_paginate_t *paginator;
+  resource_stat_t *stats[100];
+  int statsCount;
+  resource_resolve_t *resolver;
+  resource_base_scope_t *baseScoper;
   void (^attribute)(char *, char *, void *);
   void (^belongsTo)(char *, void *);
   void (^hasMany)(char *, void *);
@@ -123,7 +165,7 @@ typedef struct resource_t {
   void (^resolve)(resolveCallback);
   void (^paginate)(paginateCallback);
   void (^stat)(char *attribute, char *stat, statCallback);
-  void (^baseScope)(query_t *);
+  void (^baseScope)(baseScopeCallback);
   resource_instance_t * (^find)(json_t *query);
   resource_instance_t ** (^all)(json_t *query);
   resource_instance_t * (^build)(json_t *query);
@@ -132,3 +174,5 @@ typedef struct resource_t {
 
 resource_t *CreateResource(char *type, model_t *model, void *context,
                            memory_manager_t *memoryManager);
+
+#endif // RESOURCE_H

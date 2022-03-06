@@ -89,7 +89,8 @@
     "team.h": "c",
     "mustach-jansson.h": "c",
     "filesystem": "c",
-    "memory-manager.h": "c"
+    "memory-manager.h": "c",
+    "employee.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

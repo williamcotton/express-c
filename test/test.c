@@ -10,6 +10,7 @@ app_t *testApp();
 
 void expressTests(tape_t *t);
 void modelTests(tape_t *t, const char *databaseUrl);
+void resourceTests(tape_t *t, const char *databaseUrl);
 
 test_harness_t *testHarnessFactory() {
   __block app_t *app = testApp();
@@ -39,6 +40,7 @@ void runTests(int runAndExit, test_harness_t *testHarness,
     expressTests(t);
 #if defined(__linux__) || defined(DEV_ENV)
     modelTests(t, databaseUrl);
+    resourceTests(t, databaseUrl);
 #endif
   });
 
