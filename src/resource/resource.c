@@ -11,6 +11,17 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
   resource->attributesCount = 0;
   resource->belongsToCount = 0;
   resource->hasManyCount = 0;
+  resource->filtersCount = 0;
+  resource->sortersCount = 0;
+  resource->statsCount = 0;
+  resource->beforeSaveCallbacksCount = 0;
+  resource->afterSaveCallbacksCount = 0;
+  resource->beforeDestroyCallbacksCount = 0;
+  resource->afterDestroyCallbacksCount = 0;
+  resource->beforeUpdateCallbacksCount = 0;
+  resource->afterUpdateCallbacksCount = 0;
+  resource->beforeCreateCallbacksCount = 0;
+  resource->afterCreateCallbacksCount = 0;
 
   resource->belongsTo =
       memoryManager->blockCopy(^(char *relatedResourceName, char *foreignKey) {
