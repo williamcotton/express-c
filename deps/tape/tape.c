@@ -41,6 +41,100 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
+struct memory_struct {
+  char *buffer;
+  size_t size;
+};
+
+// write response data to the memory buffer.
+static size_t mem_write(void *contents, size_t size, size_t nmemb,
+                        void *userp) {
+  // initialize memory_struct
+  size_t realsize = size * nmemb;
+  struct memory_struct *mem = (struct memory_struct *)userp;
+
+  char *ptr = realloc(mem->buffer, mem->size + realsize + 1);
+  if (ptr == NULL) {
+    /* out of memory! */
+    printf("not enough memory (realloc returned NULL)\n");
+    return 0;
+  }
+
+  // copy the response contents to memory_struct buffer.
+  mem->buffer = ptr;
+  memcpy(&(mem->buffer[mem->size]), contents, realsize); // NOLINT
+  mem->size += realsize;
+  mem->buffer[mem->size] = 0;
+
+  // return the size of content that is copied.
+  return realsize;
+}
+
+static string_t *fetch(char *url, char *method, string_collection_t *headers,
+                       char *json) {
+  struct memory_struct mem;
+  CURL *curl;
+  CURLcode res;
+
+  mem.buffer = malloc(1);
+  mem.size = 0;
+
+  curl_global_init(CURL_GLOBAL_ALL);
+
+  // initialize curl
+  curl = curl_easy_init();
+
+  // headers list
+  __block struct curl_slist *headersList = NULL;
+  if (headers) {
+    headers->each(^(string_t *header) {
+      headersList = curl_slist_append(headersList, header->value);
+    });
+  }
+
+  if (strcmp(method, "POST") == 0) {
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+  } else if (strcmp(method, "PUT") == 0) {
+    curl_easy_setopt(curl, CURLOPT_PUT, 1L);
+  } else if (strcmp(method, "DELETE") == 0) {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+  } else {
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+  }
+
+  if (json != NULL) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+  }
+
+  // specify url, callback function to receive response, buffer to hold
+  // response and lastly user agent for http request.
+  curl_easy_setopt(curl, CURLOPT_URL, url);
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headersList);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, mem_write);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&mem);
+  curl_easy_setopt(curl, CURLOPT_USERAGENT, "tape-test");
+
+  // make the http request.
+  res = curl_easy_perform(curl);
+
+  // check for errors.
+  if (res != CURLE_OK) {
+    fprintf(stderr, "curl_easy_perform() failed: %s\n",
+            curl_easy_strerror(res));
+    return NULL;
+  }
+
+  // cleanup
+  curl_easy_cleanup(curl);
+  curl_global_cleanup();
+
+  string_t *response = string(mem.buffer);
+  free(mem.buffer);
+
+  return response;
+}
+
 static string_t *curl(char *cmd) {
   system(cmd);
   FILE *file = fopen("./test/test-response.html", "r");
@@ -331,6 +425,16 @@ testHandler testHandlerFactory(tape_t *root, int level) {
     t->sendData = ^(char *data) {
       return sendData(data);
     };
+
+    t->fetch =
+        ^(char *path, char *method, string_collection_t *headers, char *json) {
+          char *baseUrl = "http://127.0.0.1:3032";
+          string_t *url = string(baseUrl);
+          url->concat(path);
+          string_t *response = fetch(url->value, method, headers, json);
+          t->trash(response->free);
+          return response;
+        };
 
     t->test = testHandlerFactory(root, level + 1);
 

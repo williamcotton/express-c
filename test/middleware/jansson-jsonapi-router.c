@@ -6,11 +6,37 @@
 router_t *janssonJsonapiRouter() {
   router_t *router = expressRouter();
 
-  embedded_files_data_t embeddedFiles = {0};
-  router->use(janssonJsonapiMiddleware("test/files", embeddedFiles));
+  router->use(janssonJsonapiMiddleware());
 
   router->get("/", ^(UNUSED request_t *req, response_t *res) {
-    res->send("ok");
+    jsonapi_params_t *jsonapi = req->m("jsonapi");
+    if (jsonapi != NULL) {
+      res->send("ok");
+      return;
+    }
+    res->send("not ok");
+  });
+
+  router->get("/query", ^(request_t *req, response_t *res) {
+    jsonapi_params_t *jsonapi = req->m("jsonapi");
+    if (jsonapi != NULL && jsonapi->query != NULL) {
+      char *jsonString = json_dumps(jsonapi->query, 0);
+      res->send(jsonString);
+      free(jsonString);
+    }
+    res->send("not ok");
+  });
+
+  router->post("/", ^(UNUSED request_t *req, response_t *res) {
+    jsonapi_params_t *jsonapi = req->m("jsonapi");
+    if (jsonapi != NULL) {
+      json_t *data = json_object_get(jsonapi->body, "data");
+      json_t *type = json_object_get(data, "type");
+      res->send(json_string_value(type));
+      json_decref(data);
+      return;
+    }
+    res->send("not ok");
   });
 
   return router;

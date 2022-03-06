@@ -56,6 +56,8 @@ typedef struct tape_t {
   string_t * (^delete)(char *);
   void (^sendData)(char *);
   string_t * (^getHeaders)(char *);
+  string_t * (^fetch)(char *path, char *method, string_collection_t *headers,
+                      char *json);
   int trashableCount;
   freeHandler trashables[1024];
   void (^trash)(freeHandler);

@@ -1,5 +1,6 @@
 #include <express.h>
 #include <jansson.h>
+#include <middleware/jansson-jsonapi-middleware.h>
 #include <model/model.h>
 
 // TODO: rename to jansson_postgres_resource
@@ -166,9 +167,9 @@ typedef struct resource_t {
   void (^paginate)(paginateCallback);
   void (^stat)(char *attribute, char *stat, statCallback);
   void (^baseScope)(baseScopeCallback);
-  resource_instance_t * (^find)(json_t *query);
-  resource_instance_t ** (^all)(json_t *query);
-  resource_instance_t * (^build)(json_t *query);
+  resource_instance_t * (^find)(jsonapi_params_t *params);
+  resource_instance_t ** (^all)(jsonapi_params_t *params);
+  resource_instance_t * (^build)(jsonapi_params_t *params);
   request_t *req;
 } __attribute__((packed)) resource_t;
 
