@@ -303,7 +303,7 @@ static model_instance_t *createModelInstance(model_t *model) {
               dirtyAttributePlaceholdersString);
     }
 
-    PGresult *pgres = model->execParams(
+    PGresult *pgres = model->pg->execParams(
         saveQuery, dirtyAttributesCount, NULL,
         (const char *const *)dirtyAttributeValues, NULL, NULL, 0);
 
@@ -359,7 +359,7 @@ static model_instance_t *createModelInstance(model_t *model) {
           strlen(instance->id) + 1);
       sprintf(destroyQuery, "DELETE FROM %s WHERE id = %s", model->tableName,
               instance->id);
-      PGresult *pgres = model->exec(destroyQuery);
+      PGresult *pgres = model->pg->exec(destroyQuery);
       if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
         log_err("%s", PQresultErrorMessage(pgres));
       } else {
@@ -378,8 +378,7 @@ static model_instance_t *createModelInstance(model_t *model) {
   return instance;
 }
 
-model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
-                     pg_t *pg) {
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager) {
   model_t *model = memoryManager->malloc(sizeof(model_t));
 
   /* Global model store */
@@ -390,8 +389,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
 
   model->tableName = tableName;
   model->memoryManager = memoryManager;
-  model->exec = pg->exec;
-  model->execParams = pg->execParams;
+  model->pg = NULL;
   model->attributesCount = 0;
   model->validationsCount = 0;
   model->hasManyCount = 0;
@@ -407,6 +405,10 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
   model->beforeCreateCallbacksCount = 0;
   model->afterCreateCallbacksCount = 0;
 
+  model->setPg = memoryManager->blockCopy(^(pg_t *pg) {
+    model->pg = pg;
+  });
+
   model->lookup = memoryManager->blockCopy(^(char *lookupTableName) {
     for (int i = 0; i < modelCount; i++) {
       if (strcmp(models[i]->tableName, lookupTableName) == 0) {
@@ -417,7 +419,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
   });
 
   model->query = memoryManager->blockCopy(^() {
-    query_t * (^baseQuery)(const char *) = getPostgresQuery(memoryManager, pg);
+    query_t * (^baseQuery)(const char *) =
+        getPostgresQuery(memoryManager, model->pg);
     query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
     modelQuery->all = memoryManager->blockCopy(^() {

@@ -119,9 +119,8 @@ typedef struct model_t {
   instanceCallback afterCreateCallbacks[100];
   int afterCreateCallbacksCount;
   query_t * (^query)();
-  PGresult * (^exec)(const char *, ...);
-  PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
-                           const int *, const int *, int);
+  pg_t *pg;
+  void (^setPg)(pg_t *pg);
   void (^attribute)(char *name, char *type, void *);
   void (^validatesAttribute)(char *name, char *validation, void *);
   void (^belongsTo)(char *tableName, char *foreignKey, void *);
@@ -149,7 +148,6 @@ typedef struct model_t {
 // PostgresModelBase = PostgresModelFactory(pg_t *pg, mallocFunction,
 // blockCopyFunction);
 
-model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
-                     pg_t *pg);
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager);
 
 #endif // MODEL_H

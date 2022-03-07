@@ -1,7 +1,7 @@
 #include "team.h"
 
-model_t *TeamModel(memory_manager_t *memoryManager, pg_t *pg) {
-  model_t *Team = CreateModel("teams", memoryManager, pg);
+model_t *TeamModel(memory_manager_t *memoryManager) {
+  model_t *Team = CreateModel("teams", memoryManager);
 
   Team->attribute("name", "text", NULL);
 

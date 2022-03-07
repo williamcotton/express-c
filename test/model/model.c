@@ -32,9 +32,12 @@ void modelTests(tape_t *t, const char *databaseUrl) {
 
   setupTest(pg);
 
-  Team_t *Team = TeamModel(memoryManager, pg);
-  Employee_t *Employee = EmployeeModel(memoryManager, pg);
-  Island_t *Island = IslandModel(memoryManager, pg);
+  Team_t *Team = TeamModel(memoryManager);
+  Team->setPg(pg);
+  Employee_t *Employee = EmployeeModel(memoryManager);
+  Employee->setPg(pg);
+  Island_t *Island = IslandModel(memoryManager);
+  Island->setPg(pg);
 
   t->test("model", ^(tape_t *t) {
     t->test("find existing", ^(tape_t *t) {

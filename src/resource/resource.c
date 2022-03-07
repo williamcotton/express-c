@@ -409,8 +409,8 @@ resource_t *CreateResource(char *type, model_t *model) {
     });
   });
 
-  resource->baseScope(^(model_t *_model) {
-    return _model->query();
+  resource->baseScope(^(model_t *baseModel) {
+    return baseModel->query();
   });
 
   resource->paginate(^(query_t *scope, int page, int perPage) {
