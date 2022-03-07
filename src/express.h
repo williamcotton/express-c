@@ -388,6 +388,7 @@ typedef struct router_t {
   int paramHandlerCount;
   errorHandler *errorHandlers;
   int errorHandlerCount;
+  memory_manager_t *memoryManager;
 } router_t;
 
 router_t *expressRouter();

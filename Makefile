@@ -29,7 +29,7 @@ TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
 BUILD_DIR = build
 
 ifeq ($(BUILD_ENV),development)
-	DEV_CFLAGS += -DDEV_ENV
+	TEST_CFLAGS += -DDEV_ENV
 endif
 
 ifeq ($(PLATFORM),LINUX)

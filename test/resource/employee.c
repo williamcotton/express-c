@@ -1,8 +1,7 @@
 #include "employee.h"
 
-resource_t *EmployeeResource(request_t *req, model_t *model) {
-  resource_t *Employee =
-      CreateResource("employees", model, req, req->memoryManager);
+resource_t *EmployeeResource(model_t *model) {
+  resource_t *Employee = CreateResource("employees", model);
 
   Employee->attribute("name", "string", NULL);
   Employee->attribute("email", "string", NULL);

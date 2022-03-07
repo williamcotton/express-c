@@ -64,6 +64,7 @@ typedef struct resource_instance_collection_t {
 typedef struct resource_instance_t {
   char *id;
   char *type;
+  void *context;
   instance_errors_t errors;
   model_instance_t *modelInstance;
   instance_errors_t (^save)();
@@ -112,7 +113,6 @@ typedef struct resource_base_scope_t {
 typedef struct resource_t {
   char *type;
   model_t *model;
-  void *context;
   memory_manager_t *memoryManager;
   int defaultPageSize;
   const char *endpointNamespace;
@@ -176,7 +176,6 @@ typedef struct resource_t {
   request_t *req;
 } __attribute__((packed)) resource_t;
 
-resource_t *CreateResource(char *type, model_t *model, void *context,
-                           memory_manager_t *memoryManager);
+resource_t *CreateResource(char *type, model_t *model);
 
 #endif // RESOURCE_H

@@ -17,9 +17,9 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
                 void (^cleanup)(cleanupHandler)) {
     pg_t *pg = req->m("pg");
 
-    resource_t *Team = TeamResource(req, TeamModel(req->memoryManager, pg));
+    resource_t *Team = TeamResource(TeamModel(req->memoryManager, pg));
     resource_t *Employee =
-        EmployeeResource(req, EmployeeModel(req->memoryManager, pg));
+        EmployeeResource(EmployeeModel(req->memoryManager, pg));
 
     req->mSet("Team", Team);
     req->mSet("Employee", Employee);

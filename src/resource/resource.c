@@ -182,8 +182,8 @@ static query_t *applyQueryToScope(json_t *query, query_t *baseScope,
   return baseScope;
 }
 
-resource_t *CreateResource(char *type, model_t *model, void *context,
-                           memory_manager_t *memoryManager) {
+resource_t *CreateResource(char *type, model_t *model) {
+  memory_manager_t *memoryManager = model->memoryManager;
   resource_t *resource = memoryManager->malloc(sizeof(resource_t));
 
   /* Global resource store */
@@ -192,10 +192,9 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
   resources[resourceCount] = resource;
   resourceCount++;
 
-  resource->memoryManager = memoryManager;
+  resource->memoryManager = model->memoryManager;
   resource->type = type;
   resource->model = model;
-  resource->context = context;
 
   resource->attributesCount = 0;
   resource->belongsToCount = 0;
@@ -212,7 +211,7 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
   resource->beforeCreateCallbacksCount = 0;
   resource->afterCreateCallbacksCount = 0;
 
-  resource->lookup = memoryManager->blockCopy(^(char *lookupType) {
+  resource->lookup = resource->memoryManager->blockCopy(^(char *lookupType) {
     for (int i = 0; i < resourceCount; i++) {
       if (strcmp(resources[i]->type, lookupType) == 0) {
         return resources[i];

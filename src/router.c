@@ -238,6 +238,7 @@ router_t *expressRouter() {
   router->paramHandlerCount = 0;
   router->errorHandlers = malloc(sizeof(errorHandler));
   router->errorHandlerCount = 0;
+  router->memoryManager = createMemoryManager();
 
   int (^isBaseRouter)(void) = ^{
     return router->isBaseRouter;
@@ -435,6 +436,8 @@ router_t *expressRouter() {
       Block_release(router->appCleanupBlocks[i]);
     }
     free(router->appCleanupBlocks);
+
+    router->memoryManager->free();
 
     /* Free router */
     Block_release(router->get);
