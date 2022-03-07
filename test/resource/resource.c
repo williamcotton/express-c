@@ -28,13 +28,19 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
     t->ok("true", true);
 
     t->test("all", ^(tape_t *t) {
-      t->strEqual("with jsonapi header",
-                  t->fetch("/api/v1/teams", "GET", headers, NULL), "ok");
+      t->strEqual(
+          "no filters", t->fetch("/api/v1/teams", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
     });
 
     t->test("find", ^(tape_t *t) {
       t->strEqual("with jsonapi header",
-                  t->fetch("/api/v1/teams/1", "GET", headers, NULL), "ok");
+                  t->fetch("/api/v1/teams/1", "GET", headers, NULL),
+                  "{\"data\": {\"type\": \"teams\", \"id\": \"1\", "
+                  "\"attributes\": {\"name\": \"design\"}}}");
     });
   });
 

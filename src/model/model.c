@@ -429,7 +429,9 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
           memoryManager->malloc(sizeof(model_instance_t *) * recordCount);
       collection->size = recordCount;
       for (int i = 0; i < recordCount; i++) {
-        char *id = PQgetvalue(result, i, 0);
+        char *idValue = PQgetvalue(result, i, 0);
+        char *id = memoryManager->malloc(strlen(idValue) + 1);
+        strncpy(id, idValue, strlen(idValue) + 1);
         collection->arr[i] = createModelInstance(model);
         collection->arr[i]->id = id;
         int fieldsCount = PQnfields(result);

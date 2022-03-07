@@ -1,5 +1,133 @@
 #include "resource.h"
 
+static resource_instance_t *
+createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
+                       jsonapi_params_t *params) {
+  memory_manager_t *memoryManager = resource->model->memoryManager;
+
+  resource_instance_t *instance =
+      memoryManager->malloc(sizeof(resource_instance_t));
+
+  instance->modelInstance = modelInstance;
+  instance->id = modelInstance->id;
+  instance->type = resource->type;
+
+  instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+    UNUSED json_t *fields = json_object_get(params->query, "fields");
+    json_t *attributes = json_object();
+
+    for (int i = 0; i < resource->attributesCount; i++) {
+      class_attribute_t *attribute = resource->attributes[i];
+      json_t *value = json_string(modelInstance->get(attribute->name));
+      json_object_set(attributes, attribute->name, value);
+    }
+
+    json_t *data = json_pack("{s:s, s:s:, s:o}", "type", instance->type, "id",
+                             instance->id, "attributes", attributes);
+
+    return data;
+  });
+
+  return instance;
+};
+
+static resource_instance_collection_t *
+createResourceInstanceCollection(resource_t *resource,
+                                 model_instance_collection_t *modelCollection,
+                                 jsonapi_params_t *params) {
+  memory_manager_t *memoryManager = resource->model->memoryManager;
+
+  resource_instance_collection_t *collection =
+      (resource_instance_collection_t *)memoryManager->malloc(
+          sizeof(resource_instance_collection_t));
+
+  collection->arr = NULL;
+  collection->size = 0;
+
+  collection->arr = memoryManager->malloc(sizeof(resource_instance_t *) *
+                                          modelCollection->size);
+  collection->size = modelCollection->size;
+  collection->data = modelCollection;
+
+  for (size_t i = 0; i < collection->size; i++) {
+    model_instance_t *modelInstance = modelCollection->arr[i];
+    resource_instance_t *resourceInstance =
+        createResourceInstance(resource, modelInstance, params);
+    collection->arr[i] = resourceInstance;
+  }
+
+  collection->at = memoryManager->blockCopy(^(size_t index) {
+    return collection->arr[index];
+  });
+
+  collection->each =
+      memoryManager->blockCopy(^(eachResourceInstanceCallback callback) {
+        for (size_t i = 0; i < collection->size; i++) {
+          callback(collection->arr[i]);
+        }
+      });
+
+  collection->filter =
+      memoryManager->blockCopy(^(filterResourceInstanceCallback callback) {
+        resource_instance_collection_t *filteredCollection =
+            createResourceInstanceCollection(resource, modelCollection, params);
+        for (size_t i = 0; i < collection->size; i++) {
+          if (callback(collection->arr[i])) {
+            filteredCollection->arr[filteredCollection->size++] =
+                collection->arr[i];
+          }
+        }
+        return filteredCollection;
+      });
+
+  collection->find =
+      memoryManager->blockCopy(^(findResourceInstanceCallback callback) {
+        for (size_t i = 0; i < collection->size; i++) {
+          if (callback(collection->arr[i])) {
+            return collection->arr[i];
+          }
+        }
+        return (resource_instance_t *)NULL;
+      });
+
+  collection->eachWithIndex = memoryManager->blockCopy(
+      ^(eachResourceInstanceWithIndexCallback callback) {
+        for (size_t i = 0; i < collection->size; i++) {
+          callback(collection->arr[i], i);
+        }
+      });
+
+  collection->reduce = memoryManager->blockCopy(
+      ^(void *accumulator, reducerResourceInstanceCallback callback) {
+        for (size_t i = 0; i < collection->size; i++) {
+          accumulator = callback(accumulator, collection->arr[i]);
+        }
+        return accumulator;
+      });
+
+  collection->map =
+      memoryManager->blockCopy(^(mapResourceInstanceCallback callback) {
+        void **map =
+            (void **)memoryManager->malloc(sizeof(void *) * collection->size);
+        for (size_t i = 0; i < collection->size; i++) {
+          map[i] = callback(collection->arr[i]);
+        }
+        return map;
+      });
+
+  collection->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+    json_t *data = json_array();
+    collection->each(^(resource_instance_t *instance) {
+      json_array_append_new(data, instance->toJSONAPI());
+    });
+    json_t *response = json_pack("{s:o}", "data", data);
+
+    return response;
+  });
+
+  return collection;
+};
+
 static query_t *applyFiltersToScope(UNUSED json_t *filters, query_t *baseScope,
                                     UNUSED resource_t *resource) {
   return baseScope;
@@ -292,12 +420,41 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
     query_t *queriedScope =
         applyQueryToScope(params->query, baseScope, resource);
 
-    model_instance_collection_t *allModelInstances =
+    model_instance_collection_t *modelCollection =
         resource->resolver->callback(queriedScope);
 
-    debug("allModelInstances->size: %zu", allModelInstances->size);
-    return allModelInstances;
+    resource_instance_collection_t *collection =
+        createResourceInstanceCollection(resource, modelCollection, params);
+
+    return collection;
   });
+
+  resource->find =
+      memoryManager->blockCopy(^(jsonapi_params_t *params, char *id) {
+        query_t *baseScope = resource->baseScoper->callback(resource->model);
+
+        baseScope = baseScope->where("id = $", id);
+
+        query_t *queriedScope =
+            applyQueryToScope(params->query, baseScope, resource);
+
+        model_instance_collection_t *modelCollection =
+            resource->resolver->callback(queriedScope);
+
+        resource_instance_collection_t *collection =
+            createResourceInstanceCollection(resource, modelCollection, params);
+
+        resource_instance_t *instance = collection->at(0);
+
+        json_t *data = instance->toJSONAPI();
+
+        instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+          json_t *response = json_pack("{s:o}", "data", data);
+          return response;
+        });
+
+        return instance;
+      });
 
   return resource;
 }

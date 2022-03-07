@@ -62,6 +62,8 @@ typedef struct resource_instance_collection_t {
 } resource_instance_collection_t;
 
 typedef struct resource_instance_t {
+  char *id;
+  char *type;
   instance_errors_t errors;
   model_instance_t *modelInstance;
   instance_errors_t (^save)();
@@ -167,7 +169,7 @@ typedef struct resource_t {
   void (^paginate)(paginateCallback);
   void (^stat)(char *attribute, char *stat, statCallback);
   void (^baseScope)(baseScopeCallback);
-  resource_instance_t * (^find)(jsonapi_params_t *params);
+  resource_instance_t * (^find)(jsonapi_params_t *params, char *id);
   resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
   struct resource_t * (^lookup)(char *);

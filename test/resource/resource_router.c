@@ -9,11 +9,8 @@
 
 router_t *resourceRouter(const char *pgUri, int poolSize) {
   router_t *router = expressRouter();
-
   postgres_connection_t *postgres = initPostgressConnection(pgUri, poolSize);
-
   router->use(postgresMiddlewareFactory(postgres));
-
   router->use(janssonJsonapiMiddleware("/api/v1"));
 
   router->use(^(request_t *req, UNUSED response_t *res, void (^next)(),
@@ -34,19 +31,22 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     next();
   });
 
-  router->get("/teams", ^(request_t *req, response_t *res) {
+  router->get("/teams", ^(request_t *req, UNUSED response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
 
     resource_t *Team = req->m("Team");
-    UNUSED resource_instance_collection_t *teams = Team->all(jsonapi->params);
+    resource_instance_collection_t *teams = Team->all(jsonapi->params);
 
-    res->send("ok");
+    jsonapi->send(teams->toJSONAPI());
   });
 
-  router->get("/teams/1", ^(request_t *req, response_t *res) {
+  router->get("/teams/:id", ^(request_t *req, UNUSED response_t *res) {
     UNUSED jsonapi_t *jsonapi = req->m("jsonapi");
 
-    res->send("ok");
+    resource_t *Team = req->m("Team");
+    resource_instance_t *team = Team->find(jsonapi->params, req->params("id"));
+
+    jsonapi->send(team->toJSONAPI());
   });
 
   router->cleanup(Block_copy(^{
