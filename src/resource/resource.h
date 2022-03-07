@@ -168,8 +168,9 @@ typedef struct resource_t {
   void (^stat)(char *attribute, char *stat, statCallback);
   void (^baseScope)(baseScopeCallback);
   resource_instance_t * (^find)(jsonapi_params_t *params);
-  resource_instance_t ** (^all)(jsonapi_params_t *params);
+  resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
+  struct resource_t * (^lookup)(char *);
   request_t *req;
 } __attribute__((packed)) resource_t;
 

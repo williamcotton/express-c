@@ -141,7 +141,7 @@ static model_instance_t *createModelInstance(model_t *model) {
     return (char *)NULL;
   });
 
-  instance->r = memoryManager->blockCopy(^(UNUSED char *relationName) {
+  instance->r = memoryManager->blockCopy(^(char *relationName) {
     model_t *relatedModel = model->lookup(relationName);
     if (relatedModel == NULL) {
       log_err("Could not find model '%s'", relationName);

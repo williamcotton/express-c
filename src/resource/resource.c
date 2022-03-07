@@ -1,8 +1,61 @@
 #include "resource.h"
 
+static query_t *applyFiltersToScope(UNUSED json_t *filters, query_t *baseScope,
+                                    UNUSED resource_t *resource) {
+  return baseScope;
+}
+
+static query_t *applySortersToScope(UNUSED json_t *sorters, query_t *baseScope,
+                                    UNUSED resource_t *resource) {
+  return baseScope;
+}
+
+static query_t *applyPaginatorToScope(UNUSED json_t *paginator,
+                                      query_t *baseScope,
+                                      UNUSED resource_t *resource) {
+  return baseScope;
+}
+
+static query_t *applyFieldsToScope(UNUSED json_t *fields, query_t *baseScope,
+                                   UNUSED resource_t *resource) {
+  return baseScope;
+}
+
+static query_t *applyQueryToScope(json_t *query, query_t *baseScope,
+                                  resource_t *resource) {
+  json_t *filters = json_object_get(query, "filter");
+  if (filters) {
+    baseScope = applyFiltersToScope(filters, baseScope, resource);
+  }
+
+  json_t *sorters = json_object_get(query, "sort");
+  if (sorters) {
+    baseScope = applySortersToScope(sorters, baseScope, resource);
+  }
+
+  json_t *paginator = json_object_get(query, "page");
+  if (paginator) {
+    baseScope = applyPaginatorToScope(paginator, baseScope, resource);
+  }
+
+  json_t *fields = json_object_get(query, "fields");
+  if (fields) {
+    baseScope = applyFieldsToScope(fields, baseScope, resource);
+  }
+
+  return baseScope;
+}
+
 resource_t *CreateResource(char *type, model_t *model, void *context,
                            memory_manager_t *memoryManager) {
   resource_t *resource = memoryManager->malloc(sizeof(resource_t));
+
+  /* Global resource store */
+  static int resourceCount = 0;
+  static resource_t *resources[100];
+  resources[resourceCount] = resource;
+  resourceCount++;
+
   resource->memoryManager = memoryManager;
   resource->type = type;
   resource->model = model;
@@ -22,6 +75,15 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
   resource->afterUpdateCallbacksCount = 0;
   resource->beforeCreateCallbacksCount = 0;
   resource->afterCreateCallbacksCount = 0;
+
+  resource->lookup = memoryManager->blockCopy(^(char *lookupType) {
+    for (int i = 0; i < resourceCount; i++) {
+      if (strcmp(resources[i]->type, lookupType) == 0) {
+        return resources[i];
+      }
+    }
+    return (resource_t *)NULL;
+  });
 
   resource->belongsTo =
       memoryManager->blockCopy(^(char *relatedResourceName, char *foreignKey) {
@@ -222,6 +284,19 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
 
   resource->resolve(^(query_t *scope) {
     return (model_instance_collection_t *)scope->all();
+  });
+
+  resource->all = memoryManager->blockCopy(^(jsonapi_params_t *params) {
+    query_t *baseScope = resource->baseScoper->callback(resource->model);
+
+    query_t *queriedScope =
+        applyQueryToScope(params->query, baseScope, resource);
+
+    model_instance_collection_t *allModelInstances =
+        resource->resolver->callback(queriedScope);
+
+    debug("allModelInstances->size: %zu", allModelInstances->size);
+    return allModelInstances;
   });
 
   return resource;

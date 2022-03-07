@@ -8,14 +8,14 @@ router_t *cookieSessionRouter() {
 
   router->use(cookieSessionMiddlewareFactory());
 
-  router->get("/set", ^(UNUSED request_t *req, response_t *res) {
+  router->get("/set", ^(request_t *req, response_t *res) {
     cJSON *json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "title", "test");
     req->session->set("test", json);
     res->send("ok");
   });
 
-  router->get("/get", ^(UNUSED request_t *req, response_t *res) {
+  router->get("/get", ^(request_t *req, response_t *res) {
     cJSON *json = req->session->get("test");
     char *str = cJSON_PrintUnformatted(json);
     res->send(str);

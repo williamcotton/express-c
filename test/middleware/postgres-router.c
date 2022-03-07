@@ -37,7 +37,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/execParams/:id", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/execParams/:id", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     const char *id = req->params("id");
     const char *const paramValues[] = {id};
@@ -47,7 +47,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/exec/:one/:two", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/exec/:one/:two", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     PGresult *pgres = pg->exec("SELECT CONCAT($1::varchar, $2::varchar)",
                                req->params("one"), req->params("two"));
@@ -55,7 +55,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/find", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/find", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres = pg->query("test")->find("2");
@@ -69,7 +69,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/all", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/all", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres = pg->query("test")->all();
@@ -83,7 +83,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/select", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/select", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres = pg->query("test")->select("city")->all();
@@ -97,7 +97,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/where", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/where", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres = pg->query("test")
@@ -114,7 +114,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/count", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/count", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     int count = pg->query("test")->where("age = $", "123")->count();
@@ -126,7 +126,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     res->sendf("%d", count);
   });
 
-  router->get("/query/limit", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/limit", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres =
@@ -142,7 +142,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/offset", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/offset", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres =
@@ -157,7 +157,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/order", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/order", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     PGresult *pgres = pg->query("test")->order("id", "DESC")->all();
@@ -171,7 +171,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
-  router->get("/query/tosql", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/query/tosql", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);
     char *sql = pg->query("test")

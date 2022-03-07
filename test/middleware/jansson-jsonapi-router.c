@@ -8,7 +8,7 @@ router_t *janssonJsonapiRouter() {
 
   router->use(janssonJsonapiMiddleware("/jansson-jsonapi"));
 
-  router->get("/", ^(UNUSED request_t *req, response_t *res) {
+  router->get("/", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
     check(jsonapi != NULL, "jsonapi middleware not found");
     return res->send("ok");
@@ -25,7 +25,7 @@ router_t *janssonJsonapiRouter() {
     res->send("not ok");
   });
 
-  router->post("/", ^(UNUSED request_t *req, response_t *res) {
+  router->post("/", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
     check(jsonapi != NULL, "jsonapi middleware not found");
     json_t *data = json_object_get(jsonapi->params->body, "data");
