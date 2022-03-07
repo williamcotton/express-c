@@ -23,10 +23,9 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
   string_collection_t *headers = stringCollection(0, NULL);
   string_t *contentType = string("Content-Type: application/vnd.api+json");
   headers->push(contentType);
+  __block string_t *res;
 
   t->test("resource", ^(tape_t *t) {
-    t->ok("true", true);
-
     t->test("all", ^(tape_t *t) {
       t->strEqual(
           "no filters", t->fetch("/api/v1/teams", "GET", headers, NULL),
@@ -34,13 +33,187 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
           "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
           "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
-    });
 
-    t->test("find", ^(tape_t *t) {
-      t->strEqual("with jsonapi header",
-                  t->fetch("/api/v1/teams/1", "GET", headers, NULL),
-                  "{\"data\": {\"type\": \"teams\", \"id\": \"1\", "
-                  "\"attributes\": {\"name\": \"design\"}}}");
+      t->strEqual(
+          "sort name asc",
+          t->fetch("/api/v1/teams?sort=name", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}, {\"type\": \"teams\", "
+          "\"id\": \"2\", \"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "sort id desc",
+          t->fetch("/api/v1/teams?sort=-id", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"3\", \"attributes\": "
+          "{\"name\": \"engineering\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"1\", \"attributes\": {\"name\": \"design\"}}]}");
+
+      t->strEqual("page size 1 and page number 2",
+                  t->fetch("/api/v1/teams?page[size]=1&page[number]=2", "GET",
+                           headers, NULL),
+                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
+                  "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual("filter name eq",
+                  t->fetch("/api/v1/teams?filter[name][eq]=Product", "GET",
+                           headers, NULL),
+                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
+                  "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "filter name not eq",
+          t->fetch("/api/v1/teams?filter[name][not_eq]=Product", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual("filter name eql",
+                  t->fetch("/api/v1/teams?filter[name][eql]=product", "GET",
+                           headers, NULL),
+                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
+                  "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "filter name not eql",
+          t->fetch("/api/v1/teams?filter[name][not_eql]=product", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual("filter name match",
+                  t->fetch("/api/v1/teams?filter[name][match]=rod", "GET",
+                           headers, NULL),
+                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
+                  "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "filter name not match",
+          t->fetch("/api/v1/teams?filter[name][not_match]=rod", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual("filter name prefix",
+                  t->fetch("/api/v1/teams?filter[name][prefix]=prod", "GET",
+                           headers, NULL),
+                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
+                  "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "filter name not prefix",
+          t->fetch("/api/v1/teams?filter[name][not_prefix]=prod", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual("filter name suffix",
+                  t->fetch("/api/v1/teams?filter[name][suffix]=duct", "GET",
+                           headers, NULL),
+                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
+                  "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "filter name not suffix",
+          t->fetch("/api/v1/teams?filter[name][not_suffix]=duct", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}]}");
+
+      res = t->fetch("/api/v1/meetings?filter[max_size][eq]=5", "GET", headers,
+                     NULL);
+      t->ok("filter max_size eq",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_size][not_eq]=5", "GET",
+                     headers, NULL);
+      t->ok("filter max_size eq",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[date][eq]=2018-06-18", "GET",
+                     headers, NULL);
+      t->ok("filter date eq",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[date][not_eq]=2018-06-18", "GET",
+                     headers, NULL);
+      t->ok("filter date not eq",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch(
+          "/api/v1/meetings?filter[timestamp][eq]=2018-06-18T05:00:00-06:00",
+          "GET", headers, NULL);
+      t->ok("filter timestamp eq",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch(
+          "/api/v1/"
+          "meetings?filter[timestamp][not_eq]=2018-06-18T05:00:00-06:00",
+          "GET", headers, NULL);
+      t->ok("filter timestamp not eq",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_temp][eq]=72.295618", "GET",
+                     headers, NULL);
+      t->ok("filter max_temp eq",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_temp][not_eq]=72.295618",
+                     "GET", headers, NULL);
+      t->ok("filter max_temp not eq",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[budget][eq]=85000.25", "GET",
+                     headers, NULL);
+      t->ok("filter budget eq",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[budget][not_eq]=85000.25", "GET",
+                     headers, NULL);
+      t->ok("filter budget not eq",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[open][eq]=true", "GET", headers,
+                     NULL);
+      t->ok("filter open eq",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[open][not_eq]=true", "GET",
+                     headers, NULL);
+      t->ok("filter open not eq",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_size][gt]=5", "GET", headers,
+                     NULL);
+      t->ok("filter max_size gt",
+            res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_size][gte]=5", "GET", headers,
+                     NULL);
+      t->ok("filter max_size gte",
+            res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_size][lt]=5", "GET", headers,
+                     NULL);
+      t->ok("filter max_size lt",
+            !res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
+
+      res = t->fetch("/api/v1/meetings?filter[max_size][lte]=5", "GET", headers,
+                     NULL);
+      t->ok("filter max_size lte",
+            !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      t->test("find", ^(tape_t *t) {
+        t->strEqual("id 1", t->fetch("/api/v1/teams/1", "GET", headers, NULL),
+                    "{\"data\": {\"type\": \"teams\", \"id\": \"1\", "
+                    "\"attributes\": {\"name\": \"design\"}}}");
+      });
     });
   });
 

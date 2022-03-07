@@ -1,6 +1,8 @@
 #include "../model/employee.h"
+#include "../model/meeting.h"
 #include "../model/team.h"
 #include "employee.h"
+#include "meeting.h"
 #include "team.h"
 #include <express.h>
 #include <jansson.h>
@@ -19,15 +21,19 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     Team_t *TeamM = TeamModel(req->memoryManager);
     Employee_t *EmployeeM = EmployeeModel(req->memoryManager);
+    Meeting_t *MeetingM = MeetingModel(req->memoryManager);
 
     TeamM->setPg(pg);
     EmployeeM->setPg(pg);
+    MeetingM->setPg(pg);
 
     resource_t *Team = TeamResource(TeamM);
     resource_t *Employee = EmployeeResource(EmployeeM);
+    resource_t *Meeting = MeetingResource(MeetingM);
 
     req->mSet("Team", Team);
     req->mSet("Employee", Employee);
+    req->mSet("Meeting", Meeting);
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
 
@@ -52,6 +58,15 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_instance_t *team = Team->find(jsonapi->params, req->params("id"));
 
     jsonapi->send(team->toJSONAPI());
+  });
+
+  router->get("/meetings", ^(request_t *req, UNUSED response_t *res) {
+    jsonapi_t *jsonapi = req->m("jsonapi");
+
+    resource_t *Meeting = req->m("Meeting");
+    resource_instance_collection_t *meetings = Meeting->all(jsonapi->params);
+
+    jsonapi->send(meetings->toJSONAPI());
   });
 
   router->cleanup(Block_copy(^{
