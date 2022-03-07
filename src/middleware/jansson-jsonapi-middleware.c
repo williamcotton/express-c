@@ -2,7 +2,7 @@
 
 #define JSON_API_MIME_TYPE "application/vnd.api+json"
 
-middlewareHandler janssonJsonapiMiddleware() {
+middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
   return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
     char *contentType = (char *)req->get("Content-Type");
@@ -11,6 +11,8 @@ middlewareHandler janssonJsonapiMiddleware() {
 
       jansson_jsonapi_middleware_t *jsonapi =
           req->malloc(sizeof(jansson_jsonapi_middleware_t));
+
+      jsonapi->endpointNamespace = endpointNamespace;
 
       jsonapi->params = req->malloc(sizeof(jansson_jsonapi_params_t));
       jsonapi->params->body = NULL;

@@ -37,9 +37,9 @@ void runTests(int runAndExit, test_harness_t *testHarness,
 
   int testStatus = test->test("express", ^(tape_t *t) {
     t->clearState();
-    expressTests(t);
+    // expressTests(t);
 #if defined(__linux__) || defined(DEV_ENV)
-    modelTests(t, databaseUrl);
+    // modelTests(t, databaseUrl);
     resourceTests(t, databaseUrl);
 #endif
   });

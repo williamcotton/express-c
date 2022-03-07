@@ -113,7 +113,7 @@ typedef struct resource_t {
   void *context;
   memory_manager_t *memoryManager;
   int defaultPageSize;
-  char *endpointNamespace;
+  const char *endpointNamespace;
   default_sort_t defaultSort;
   class_attribute_t *attributes[100];
   int attributesCount;

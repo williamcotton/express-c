@@ -26,10 +26,25 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
   UNUSED resource_t *Team = TeamResource(req, TeamM);
   UNUSED resource_t *Employee = EmployeeResource(req, EmployeeM);
 
+  string_collection_t *headers = stringCollection(0, NULL);
+  string_t *contentType = string("Content-Type: application/vnd.api+json");
+  headers->push(contentType);
+
   t->test("resource", ^(tape_t *t) {
     t->ok("true", true);
+
+    t->test("all", ^(tape_t *t) {
+      t->strEqual("with jsonapi header",
+                  t->fetch("/api/v1/teams", "GET", headers, NULL), "ok");
+    });
+
+    t->test("find", ^(tape_t *t) {
+      t->strEqual("with jsonapi header",
+                  t->fetch("/api/v1/teams/1", "GET", headers, NULL), "ok");
+    });
   });
 
+  headers->free();
   memoryManager->free();
   pg->free();
 }

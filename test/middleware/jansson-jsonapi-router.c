@@ -6,7 +6,7 @@
 router_t *janssonJsonapiRouter() {
   router_t *router = expressRouter();
 
-  router->use(janssonJsonapiMiddleware());
+  router->use(janssonJsonapiMiddleware("/jansson-jsonapi"));
 
   router->get("/", ^(UNUSED request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");

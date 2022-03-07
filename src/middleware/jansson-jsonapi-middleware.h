@@ -35,6 +35,7 @@ typedef jansson_jsonapi_params_t jsonapi_params_t;
 
 typedef struct jansson_jsonapi_middleware_t {
   jansson_jsonapi_params_t *params;
+  const char *endpointNamespace;
   void (^send)(json_t *);
 } jansson_jsonapi_middleware_t;
 

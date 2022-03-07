@@ -7,6 +7,7 @@ router_t *janssonMustacheRouter();
 router_t *janssonJsonapiRouter();
 router_t *cookieSessionRouter();
 router_t *jwtRouter();
+router_t *resourceRouter();
 
 app_t *testApp() {
 
@@ -37,6 +38,7 @@ app_t *testApp() {
   app->useRouter("/jansson-jsonapi", janssonJsonapiRouter());
   app->useRouter("/cookie-session", cookieSessionRouter());
   app->useRouter("/jwt", jwtRouter());
+  app->useRouter("/api/v1", resourceRouter(TEST_DATABASE_URL, poolSize));
 
   typedef struct super_t {
     char *uuid;
