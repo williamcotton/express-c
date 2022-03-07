@@ -280,6 +280,7 @@ static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req) {
 
 static getBlock reqBodyFactory(request_t *req) {
   req->bodyKeyValueCount = 0;
+  req->bodyString = NULL;
   if (strncmp(req->method, "POST", 4) == 0 ||
       strncmp(req->method, "PATCH", 5) == 0 ||
       strncmp(req->method, "PUT", 3) == 0) {

@@ -126,6 +126,7 @@ static string_t *fetch(char *url, char *method, string_collection_t *headers,
   }
 
   // cleanup
+  curl_slist_free_all(headersList);
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
@@ -433,6 +434,7 @@ testHandler testHandlerFactory(tape_t *root, int level) {
           url->concat(path);
           string_t *response = fetch(url->value, method, headers, json);
           t->trash(response->free);
+          t->trash(url->free);
           return response;
         };
 

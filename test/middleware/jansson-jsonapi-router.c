@@ -32,8 +32,8 @@ router_t *janssonJsonapiRouter() {
     if (jsonapi != NULL) {
       json_t *data = json_object_get(jsonapi->body, "data");
       json_t *type = json_object_get(data, "type");
-      res->send(json_string_value(type));
-      json_decref(data);
+      const char *typeString = json_string_value(type);
+      res->send(typeString);
       return;
     }
     res->send("not ok");

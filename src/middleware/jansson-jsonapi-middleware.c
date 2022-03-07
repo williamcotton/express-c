@@ -3,14 +3,14 @@
 #define JSON_API_MIME_TYPE "application/vnd.api+json"
 
 middlewareHandler janssonJsonapiMiddleware() {
-  return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
-                      void (^next)(), void (^cleanup)(cleanupHandler)) {
+  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),
+                      void (^cleanup)(cleanupHandler)) {
     char *contentType = (char *)req->get("Content-Type");
     if (contentType != NULL &&
         strncmp(contentType, JSON_API_MIME_TYPE, 25) == 0) {
 
       jansson_jsonapi_middleware_t *jsonapi =
-          malloc(sizeof(jansson_jsonapi_middleware_t));
+          req->malloc(sizeof(jansson_jsonapi_middleware_t));
 
       jsonapi->body = NULL;
       if (req->bodyString != NULL) {
@@ -20,8 +20,9 @@ middlewareHandler janssonJsonapiMiddleware() {
       jsonapi->query = NULL;
       if (req->queryString != NULL) {
         json_t *query = json_object();
+        json_t *nested = NULL;
         for (size_t i = 0; i < req->queryKeyValueCount; i++) {
-          json_t *nested = query;
+          nested = query;
           char *decodedKey =
               curl_easy_unescape(req->curl, req->queryKeyValues[i].key,
                                  req->queryKeyValues[i].keyLen, NULL);
@@ -74,13 +75,15 @@ middlewareHandler janssonJsonapiMiddleware() {
       req->mSet("jsonapi", jsonapi);
     };
 
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq) {
+    cleanup(Block_copy(^(request_t *finishedReq) {
       jansson_jsonapi_middleware_t *jsonapi = finishedReq->m("jsonapi");
       if (jsonapi != NULL) {
         if (jsonapi->body != NULL) {
           json_decref(jsonapi->body);
         }
-        free(jsonapi);
+        if (jsonapi->query != NULL) {
+          json_decref(jsonapi->query);
+        }
       }
     }));
 

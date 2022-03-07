@@ -9,7 +9,8 @@ void janssonJasonapiMiddlewareTests(tape_t *t) {
   t->test("jansson jsonapi middleware", ^(tape_t *t) {
     t->test("get", ^(tape_t *t) {
       string_collection_t *headers = stringCollection(0, NULL);
-      headers->push(string("Content-Type: application/vnd.api+json"));
+      string_t *contentType = string("Content-Type: application/vnd.api+json");
+      headers->push(contentType);
 
       t->strEqual("with jsonapi header",
                   t->fetch("/jansson-jsonapi", "GET", headers, NULL), "ok");
@@ -22,20 +23,24 @@ void janssonJasonapiMiddlewareTests(tape_t *t) {
 
     t->test("query", ^(tape_t *t) {
       string_collection_t *headers = stringCollection(0, NULL);
-      headers->push(string("Content-Type: application/vnd.api+json"));
+      string_t *contentType = string("Content-Type: application/vnd.api+json");
+      headers->push(contentType);
 
-      t->strEqual(
-          "with jsonapi header",
+      string_t *response =
           t->fetch("/jansson-jsonapi/"
                    "query?filter[id][not_eq]=1,2,3&filter[a]=false&sort=foo,"
                    "books.title,-books.pages&stats[total]=count,sum&fields["
                    "people]=name,age&filter[name]=%22Jane%22",
-                   "GET", headers, NULL),
-          "{\"filter\": {\"id\": {\"not_eq\": [\"1\", \"2\", \"3\"]}, \"a\": "
-          "[\"false\"], \"name\": [\"\\\"Jane\\\"\"]}, \"sort\": [\"foo\", "
-          "\"books.title\", \"-books.pages\"], \"stats\": {\"total\": "
-          "[\"count\", \"sum\"]}, \"fields\": {\"people\": [\"name\", "
-          "\"age\"]}}");
+                   "GET", headers, NULL);
+
+      t->strEqual("with jsonapi header", response,
+                  "{\"filter\": {\"id\": {\"not_eq\": [\"1\", \"2\", \"3\"]}, "
+                  "\"a\": "
+                  "[\"false\"], \"name\": [\"\\\"Jane\\\"\"]}, \"sort\": "
+                  "[\"foo\", "
+                  "\"books.title\", \"-books.pages\"], \"stats\": {\"total\": "
+                  "[\"count\", \"sum\"]}, \"fields\": {\"people\": [\"name\", "
+                  "\"age\"]}}");
 
       t->strEqual("without jsonapi header", t->get("/jansson-jsonapi/query"),
                   "not ok");
@@ -45,7 +50,8 @@ void janssonJasonapiMiddlewareTests(tape_t *t) {
 
     t->test("post", ^(tape_t *t) {
       string_collection_t *headers = stringCollection(0, NULL);
-      headers->push(string("Content-Type: application/vnd.api+json"));
+      string_t *contentType = string("Content-Type: application/vnd.api+json");
+      headers->push(contentType);
 
       char *json =
           "{\"data\":{\"type\":\"posts\",\"attributes\":{\"title\":\"foo\"}}}"
