@@ -12,12 +12,21 @@ middlewareHandler janssonJsonapiMiddleware() {
       jansson_jsonapi_middleware_t *jsonapi =
           req->malloc(sizeof(jansson_jsonapi_middleware_t));
 
-      jsonapi->body = NULL;
+      jsonapi->params = req->malloc(sizeof(jansson_jsonapi_params_t));
+      jsonapi->params->body = NULL;
+      jsonapi->params->query = NULL;
+
+      jsonapi->send = req->blockCopy(^(json_t *json) {
+        char *jsonString = json_dumps(json, 0);
+        res->set("Content-Type", JSON_API_MIME_TYPE);
+        res->send(jsonString);
+        free(jsonString);
+      });
+
       if (req->bodyString != NULL) {
-        jsonapi->body = json_loads(req->bodyString, 0, NULL);
+        jsonapi->params->body = json_loads(req->bodyString, 0, NULL);
       }
 
-      jsonapi->query = NULL;
       if (req->queryString != NULL) {
         json_t *query = json_object();
         json_t *nested = NULL;
@@ -30,7 +39,7 @@ middlewareHandler janssonJsonapiMiddleware() {
           for (size_t j = 0; j < req->queryKeyValues[i].keyLen; j++) {
             if (decodedKey[j] == '[') {
               size_t keyDiff = j - startOfKey;
-              if (startOfKey > 0) {
+              if (startOfKey > 0 && keyDiff > 1) {
                 keyDiff--;
               }
               char *key = req->malloc(keyDiff + 1);
@@ -69,7 +78,7 @@ middlewareHandler janssonJsonapiMiddleware() {
           free(decodedKey);
           free(decodedValue);
         }
-        jsonapi->query = query;
+        jsonapi->params->query = query;
       }
 
       req->mSet("jsonapi", jsonapi);
@@ -78,11 +87,11 @@ middlewareHandler janssonJsonapiMiddleware() {
     cleanup(Block_copy(^(request_t *finishedReq) {
       jansson_jsonapi_middleware_t *jsonapi = finishedReq->m("jsonapi");
       if (jsonapi != NULL) {
-        if (jsonapi->body != NULL) {
-          json_decref(jsonapi->body);
+        if (jsonapi->params->body != NULL) {
+          json_decref(jsonapi->params->body);
         }
-        if (jsonapi->query != NULL) {
-          json_decref(jsonapi->query);
+        if (jsonapi->params->query != NULL) {
+          json_decref(jsonapi->params->query);
         }
       }
     }));

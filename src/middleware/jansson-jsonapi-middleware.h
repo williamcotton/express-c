@@ -26,12 +26,19 @@
 #include <express.h>
 #include <jansson.h>
 
-typedef struct jansson_jsonapi_middleware_t {
+typedef struct jansson_jsonapi_params_t {
   json_t *body;
   json_t *query;
+} jansson_jsonapi_params_t;
+
+typedef jansson_jsonapi_params_t jsonapi_params_t;
+
+typedef struct jansson_jsonapi_middleware_t {
+  jansson_jsonapi_params_t *params;
+  void (^send)(json_t *);
 } jansson_jsonapi_middleware_t;
 
-typedef jansson_jsonapi_middleware_t jsonapi_params_t;
+typedef jansson_jsonapi_middleware_t jsonapi_t;
 
 middlewareHandler janssonJsonapiMiddleware();
 

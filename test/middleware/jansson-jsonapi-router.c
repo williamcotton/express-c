@@ -9,33 +9,33 @@ router_t *janssonJsonapiRouter() {
   router->use(janssonJsonapiMiddleware());
 
   router->get("/", ^(UNUSED request_t *req, response_t *res) {
-    jsonapi_params_t *jsonapi = req->m("jsonapi");
-    if (jsonapi != NULL) {
-      res->send("ok");
-      return;
-    }
+    jsonapi_t *jsonapi = req->m("jsonapi");
+    check(jsonapi != NULL, "jsonapi middleware not found");
+    return res->send("ok");
+  error:
     res->send("not ok");
   });
 
   router->get("/query", ^(request_t *req, response_t *res) {
-    jsonapi_params_t *jsonapi = req->m("jsonapi");
-    if (jsonapi != NULL && jsonapi->query != NULL) {
-      char *jsonString = json_dumps(jsonapi->query, 0);
-      res->send(jsonString);
-      free(jsonString);
-    }
+    jsonapi_t *jsonapi = req->m("jsonapi");
+    check(jsonapi != NULL, "jsonapi middleware not found");
+    check(jsonapi->params->query != NULL, "query not found");
+    return jsonapi->send(jsonapi->params->query);
+  error:
     res->send("not ok");
   });
 
   router->post("/", ^(UNUSED request_t *req, response_t *res) {
-    jsonapi_params_t *jsonapi = req->m("jsonapi");
-    if (jsonapi != NULL) {
-      json_t *data = json_object_get(jsonapi->body, "data");
-      json_t *type = json_object_get(data, "type");
-      const char *typeString = json_string_value(type);
-      res->send(typeString);
-      return;
-    }
+    jsonapi_t *jsonapi = req->m("jsonapi");
+    check(jsonapi != NULL, "jsonapi middleware not found");
+    json_t *data = json_object_get(jsonapi->params->body, "data");
+    check(data != NULL, "data not found");
+    json_t *type = json_object_get(data, "type");
+    check(type != NULL, "type not found");
+    const char *typeString = json_string_value(type);
+    check(typeString != NULL, "type not a string");
+    return res->send(typeString);
+  error:
     res->send("not ok");
   });
 
