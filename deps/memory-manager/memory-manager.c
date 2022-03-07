@@ -48,16 +48,16 @@ memory_manager_t *createMemoryManager() {
   });
 
   memoryManager->free = Block_copy(^() {
+    for (int i = 0; i < memoryManager->cleanupHandlersCount; i++) {
+      memoryManager->cleanupHandlers[i]();
+    }
+
     for (int i = 0; i < memoryManager->mallocCount; i++) {
       free(memoryManager->mallocs[i].ptr);
     }
 
     for (int i = 0; i < memoryManager->blockCopyCount; i++) {
       Block_release(memoryManager->blockCopies[i].ptr);
-    }
-
-    for (int i = 0; i < memoryManager->cleanupHandlersCount; i++) {
-      memoryManager->cleanupHandlers[i]();
     }
 
     Block_release(memoryManager->malloc);

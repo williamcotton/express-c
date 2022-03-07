@@ -20,6 +20,9 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
       class_attribute_t *attribute = resource->attributes[i];
       json_t *value = json_string(modelInstance->get(attribute->name));
       json_object_set(attributes, attribute->name, value);
+      memoryManager->cleanup(memoryManager->blockCopy(^{
+        json_decref(value);
+      }));
     }
 
     json_t *data = json_pack("{s:s, s:s:, s:o}", "type", instance->type, "id",
@@ -120,7 +123,12 @@ createResourceInstanceCollection(resource_t *resource,
     collection->each(^(resource_instance_t *instance) {
       json_array_append_new(data, instance->toJSONAPI());
     });
-    json_t *response = json_pack("{s:o}", "data", data);
+
+    __block json_t *response = json_pack("{s:o}", "data", data);
+
+    memoryManager->cleanup(memoryManager->blockCopy(^{
+      json_decref(response);
+    }));
 
     return response;
   });
@@ -449,7 +457,12 @@ resource_t *CreateResource(char *type, model_t *model, void *context,
         json_t *data = instance->toJSONAPI();
 
         instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
-          json_t *response = json_pack("{s:o}", "data", data);
+          __block json_t *response = json_pack("{s:o}", "data", data);
+
+          memoryManager->cleanup(memoryManager->blockCopy(^{
+            json_decref(response);
+          }));
+
           return response;
         });
 
