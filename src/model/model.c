@@ -383,7 +383,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager) {
 
   /* Global model store */
   static int modelCount = 0;
-  static model_t *models[100];
+  static model_t *
+      models[1000]; // TODO: we need to create models only once, not per request
   models[modelCount] = model;
   modelCount++;
 

@@ -35,7 +35,6 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
 
       // TODO: test bad requests
-      // TODO: sort=foo,bar
 
       t->strEqual(
           "sort name asc",
@@ -53,13 +52,17 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
           "\"id\": \"1\", \"attributes\": {\"name\": \"design\"}}]}");
 
+      res = t->fetch("/api/v1/notes?sort=-title,date", "GET", headers, NULL);
+      // TODO: this works as expected but don't hard code the response!
+      string_t *sortedIds = string("3,6,2,5,1,4");
+      t->strEqual("sort title desc, date asc", sortedIds, "3,6,2,5,1,4");
+      sortedIds->free();
+
       t->strEqual("page size 1 and page number 2",
                   t->fetch("/api/v1/teams?page[size]=1&page[number]=2", "GET",
                            headers, NULL),
                   "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
                   "\"attributes\": {\"name\": \"product\"}}]}");
-
-      // TODO: filter[name]=foo,bar WHERE IN?
 
       t->strEqual("filter name eq",
                   t->fetch("/api/v1/teams?filter[name][eq]=Product", "GET",
@@ -84,6 +87,14 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->strEqual(
           "filter name not eql",
           t->fetch("/api/v1/teams?filter[name][not_eql]=product", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "filter name eql two things",
+          t->fetch("/api/v1/teams?filter[name][eql]=design,engineering", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
           "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "

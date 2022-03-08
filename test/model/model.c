@@ -37,6 +37,23 @@ void setupTest(pg_t *pg) {
                    "max_temp, budget, open) VALUES (3, "
                    "5, '2021-03-08', '2021-03-08 10:00:00-06', 71.3235838, "
                    "45000.20, false)"));
+
+  PQclear(pg->exec("DROP TABLE IF EXISTS notes"));
+  PQclear(pg->exec(
+      "CREATE TABLE notes (id serial PRIMARY KEY, employee_id INTEGER, "
+      "title TEXT, date DATE)"));
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+                   "'a', '2022-03-08')"));
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+                   "'b', '2022-03-08')"));
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+                   "'c', '2022-03-08')"));
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+                   "'a', '2022-03-09')"));
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+                   "'b', '2022-03-09')"));
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+                   "'c', '2022-03-09')"));
 };
 
 void modelTests(tape_t *t, const char *databaseUrl) {

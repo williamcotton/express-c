@@ -72,7 +72,8 @@ typedef struct resource_instance_t {
   json_t * (^toJSONAPI)();
 } resource_instance_t;
 
-typedef query_t * (^filterCallback)(query_t *scope, const char *value);
+typedef query_t * (^filterCallback)(query_t *scope, const char **values,
+                                    int count);
 typedef query_t * (^sortCallback)(query_t *scope, const char *direction);
 typedef query_t * (^paginateCallback)(query_t *scope, int page, int perPage);
 typedef void (^statCallback)(query_t *scope, const char *attribute);
