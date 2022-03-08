@@ -16,6 +16,7 @@ void postgresMiddlewareTests(tape_t *t) {
       t->strEqual("all", t->get("/pg/query/all"), "test123");
       t->strEqual("select", t->get("/pg/query/select"), "testcity");
       t->strEqual("where", t->get("/pg/query/where"), "another123");
+      t->strEqual("where", t->get("/pg/query/where_in"), "123,456");
       t->strEqual("count", t->get("/pg/query/count"), "2");
       t->strEqual("limit", t->get("/pg/query/limit"), "1");
       t->strEqual("offset", t->get("/pg/query/offset"), "another123");

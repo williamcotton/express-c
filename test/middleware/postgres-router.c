@@ -114,6 +114,25 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
     PQclear(pgres);
   });
 
+  router->get("/query/where_in", ^(request_t *req, response_t *res) {
+    pg_t *pg = req->m("pg");
+    setupTestTable(pg);
+    const char **paramValues;
+    paramValues = (const char **)malloc(sizeof(char *) * 2);
+    paramValues[0] = "test123";
+    paramValues[1] = "test456";
+    PGresult *pgres =
+        pg->query("test")->whereIn("name", true, paramValues, 2)->all();
+    if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+      res->status = 500;
+      res->sendf("<pre>%s</pre>", PQresultErrorMessage(pgres));
+      PQclear(pgres);
+      return;
+    }
+    res->sendf("%s,%s", PQgetvalue(pgres, 0, 2), PQgetvalue(pgres, 1, 2));
+    PQclear(pgres);
+  });
+
   router->get("/query/count", ^(request_t *req, response_t *res) {
     pg_t *pg = req->m("pg");
     setupTestTable(pg);

@@ -75,6 +75,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       char varNum[10];
       sprintf(varNum, "$%d", query->paramValueCount + 1);
 
+      // TODO: replace with basic char * functions
       string_t *whereConditions = string(conditions);
       char *sequentialConditions =
           strdup(whereConditions->replace("$", varNum)->value);
@@ -95,6 +96,31 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
       return query;
     });
+
+    query->whereIn = memoryManager->blockCopy(
+        ^(const char *column, int in, const char **values, int nValues) {
+          char varNum[10];
+          // TODO: replace with basic char * functions
+          string_t *whereConditionsString = string("");
+          whereConditionsString->concat(column);
+          if (in) {
+            whereConditionsString->concat(" IN (");
+          } else {
+            whereConditionsString->concat(" NOT IN (");
+          }
+          for (int i = 0; i < nValues; i++) {
+            sprintf(varNum, "$%d", query->paramValueCount + 1);
+            whereConditionsString->concat(varNum);
+            if (i != nValues - 1) {
+              whereConditionsString->concat(",");
+            }
+            query->paramValues[query->paramValueCount++] = values[i];
+          }
+          whereConditionsString->concat(")");
+          query->whereConditions[query->whereConditionsCount++] =
+              whereConditionsString->value;
+          return query;
+        });
 
     query->limit = memoryManager->blockCopy(^(int limit) {
       char *limitStr = memoryManager->malloc(sizeof(char) * 10);
@@ -142,6 +168,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       char varNum[10];
       sprintf(varNum, "$%d", query->paramValueCount + 1);
 
+      // TODO: replace with basic char * functions
       string_t *havingConditions = string(conditions);
       char *sequentialConditions =
           strdup(havingConditions->replace("$", varNum)->value);
