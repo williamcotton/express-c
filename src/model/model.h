@@ -1,4 +1,3 @@
-#include <express.h>
 #include <middleware/postgres-middleware.h>
 
 #ifndef MODEL_H
@@ -140,13 +139,10 @@ typedef struct model_t {
   model_instance_collection_t * (^all)();
   model_instance_t * (^new)();
   struct model_t * (^lookup)(char *);
-  memory_manager_t *memoryManager;
+  memory_manager_t *instanceMemoryManager;
+  void (^setInstanceMemoryManager)(memory_manager_t *memoryManager);
+  memory_manager_t *appMemoryManager;
 } __attribute__((packed)) model_t;
-
-// TODO: remove request_t dependency, replace with malloc and blockCopy
-// PostgresModellBase->new(char *tableName);
-// PostgresModelBase = PostgresModelFactory(pg_t *pg, mallocFunction,
-// blockCopyFunction);
 
 model_t *CreateModel(char *tableName, memory_manager_t *memoryManager);
 

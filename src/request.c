@@ -265,6 +265,7 @@ static getMiddlewareBlock reqMiddlewareFactory(request_t *req) {
       if (strcmp(req->middlewareKeyValues[i].key, key) == 0)
         return req->middlewareKeyValues[i].value;
     }
+    log_err("Middleware key not found: %s", key);
     return NULL;
   });
 }

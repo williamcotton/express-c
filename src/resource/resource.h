@@ -1,4 +1,3 @@
-#include <express.h>
 #include <jansson.h>
 #include <middleware/jansson-jsonapi-middleware.h>
 #include <model/model.h>
@@ -112,7 +111,6 @@ typedef struct resource_base_scope_t {
 typedef struct resource_t {
   char *type;
   model_t *model;
-  memory_manager_t *memoryManager;
   int defaultPageSize;
   const char *endpointNamespace;
   default_sort_t defaultSort;
@@ -172,9 +170,25 @@ typedef struct resource_t {
   resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
   struct resource_t * (^lookup)(char *);
-  request_t *req;
 } __attribute__((packed)) resource_t;
 
+typedef model_t *(*ModelFunction)(memory_manager_t *);
+typedef resource_t *(*ResourceFunction)(model_t *);
+
+typedef struct resource_library_item_t {
+  const char *name;
+  model_t *Model;
+  resource_t *Resource;
+
+} resource_library_item_t;
+
+typedef struct resource_library_t {
+  resource_library_item_t *items[100];
+  int count;
+  void (^add)(const char *name, ModelFunction, ResourceFunction);
+} resource_library_t;
+
 resource_t *CreateResource(char *type, model_t *model);
+resource_library_t *initResourceLibrary();
 
 #endif // RESOURCE_H

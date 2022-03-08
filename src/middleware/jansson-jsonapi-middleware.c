@@ -18,13 +18,6 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
       jsonapi->params->body = NULL;
       jsonapi->params->query = NULL;
 
-      jsonapi->send = req->blockCopy(^(json_t *json) {
-        char *jsonString = json_dumps(json, 0);
-        res->set("Content-Type", JSON_API_MIME_TYPE);
-        res->send(jsonString);
-        free(jsonString);
-      });
-
       if (req->bodyString != NULL) {
         jsonapi->params->body = json_loads(req->bodyString, 0, NULL);
       }
@@ -84,6 +77,14 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
       }
 
       req->mSet("jsonapi", jsonapi);
+
+      res->sSet("jsonapi", req->blockCopy(^(response_t *_res, void *value) {
+        json_t *json = value;
+        char *jsonString = json_dumps(json, 0);
+        _res->set("Content-Type", JSON_API_MIME_TYPE);
+        _res->send(jsonString);
+        free(jsonString);
+      }));
     };
 
     cleanup(Block_copy(^(request_t *finishedReq) {

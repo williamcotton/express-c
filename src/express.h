@@ -250,6 +250,14 @@ typedef struct request_t {
 } request_t;
 
 /* Response */
+struct response_t;
+
+typedef void (^responseSenderCallback)(struct response_t *res, void *value);
+
+typedef struct response_sender_t {
+  const char *key;
+  responseSenderCallback callback;
+} response_sender_t;
 
 typedef struct response_t {
   void (^send)(const char *);
@@ -275,6 +283,10 @@ typedef struct response_t {
   void (^download)(const char *, const char *);
   int status;
   int didSend;
+  response_sender_t *senders[100];
+  int sendersCount;
+  void (^s)(const char *, void *);
+  void (^sSet)(const char *, responseSenderCallback);
 } response_t;
 
 /* Handlers */
@@ -307,6 +319,8 @@ typedef void (^setError)(error_t *err);
 typedef void (^setCookie)(const char *cookieKey, const char *cookieValue,
                           cookie_opts_t opts);
 typedef void (^clearCookieBlock)(const char *key, cookie_opts_t opts);
+typedef void (^setSenderBlock)(const char *key, responseSenderCallback);
+typedef void (^senderBlock)(const char *key, void *value);
 
 /* Public functions */
 

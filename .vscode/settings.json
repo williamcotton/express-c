@@ -92,7 +92,8 @@
     "memory-manager.h": "c",
     "employee.h": "c",
     "meeting.h": "c",
-    "model.h": "c"
+    "model.h": "c",
+    "memory_resource": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

@@ -20,26 +20,13 @@
   THE SOFTWARE.
 */
 
-#ifndef JANSSON_JSONAPI_MIDDLEWARE_H
-#define JANSSON_JSONAPI_MIDDLEWARE_H
+#ifndef RESOURCE_MIDDLEWARE_H
+#define RESOURCE_MIDDLEWARE_H
 
 #include <express.h>
-#include <jansson.h>
+#include <model/model.h>
+#include <resource/resource.h>
 
-typedef struct jansson_jsonapi_params_t {
-  json_t *body;
-  json_t *query;
-} jansson_jsonapi_params_t;
+middlewareHandler resourceMiddleware(resource_library_t *resourceLibrary);
 
-typedef jansson_jsonapi_params_t jsonapi_params_t;
-
-typedef struct jansson_jsonapi_middleware_t {
-  jansson_jsonapi_params_t *params;
-  const char *endpointNamespace;
-} jansson_jsonapi_middleware_t;
-
-typedef jansson_jsonapi_middleware_t jsonapi_t;
-
-middlewareHandler janssonJsonapiMiddleware();
-
-#endif // JANSSON_JSONAPI_MIDDLEWARE_H
+#endif // RESOURCE_MIDDLEWARE_H

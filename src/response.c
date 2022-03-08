@@ -321,6 +321,27 @@ static setError resErrorFactory(response_t *res) {
   });
 }
 
+static setSenderBlock resSetSenderFactory(request_t *req, response_t *res) {
+  return Block_copy(^(const char *key, responseSenderCallback callback) {
+    response_sender_t *sender = req->malloc(sizeof(response_sender_t));
+    sender->key = key;
+    sender->callback = callback;
+    res->senders[res->sendersCount++] = sender;
+  });
+}
+
+static senderBlock resSenderFactory(response_t *res) {
+  return Block_copy(^(const char *key, void *value) {
+    for (int i = 0; i < res->sendersCount; i++) {
+      if (strcmp(res->senders[i]->key, key) == 0) {
+        res->senders[i]->callback(res, value);
+        return;
+      }
+    }
+    log_err("No sender found for key %s", key);
+  });
+}
+
 void freeResponse(response_t *res) {
   Block_release(res->send);
   Block_release(res->sendFile);
@@ -356,4 +377,7 @@ void buildResponse(client_t client, request_t *req, response_t *res) {
   res->download = resDownloadFactory(req, res);
   res->error = resErrorFactory(res);
   res->didSend = 0;
+  res->sendersCount = 0;
+  res->s = resSenderFactory(res);
+  res->sSet = resSetSenderFactory(req, res);
 }
