@@ -18,12 +18,36 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
 
     for (int i = 0; i < resource->attributesCount; i++) {
       class_attribute_t *attribute = resource->attributes[i];
-      json_t *value = json_string(modelInstance->get(attribute->name));
+      json_t *value = NULL;
+      char *attributeType = attribute->type;
+
+      if (modelInstance->get(attribute->name) == NULL) {
+        continue;
+      }
+
+      if (strcmp(attributeType, "integer") == 0 ||
+          strcmp(attributeType, "integer_id") == 0) {
+        value = json_integer(atoll(modelInstance->get(attribute->name)));
+      } else if (strcmp(attributeType, "big_decimal") == 0 ||
+                 strcmp(attributeType, "float") == 0) {
+        char *eptr;
+        value = json_real(strtod(modelInstance->get(attribute->name), &eptr));
+      } else if (strcmp(attributeType, "boolean") == 0) {
+        value = json_boolean(
+            strcmp(modelInstance->get(attribute->name), "t") == 0 ||
+            strcmp(modelInstance->get(attribute->name), "true") == 0);
+      } else {
+        value = json_string(modelInstance->get(attribute->name));
+      }
+
       json_object_set(attributes, attribute->name, value);
       memoryManager->cleanup(memoryManager->blockCopy(^{
         json_decref(value);
       }));
     }
+
+    // TODO: add relationships
+    // TODO: add links
 
     json_t *data = json_pack("{s:s, s:s:, s:o}", "type", instance->type, "id",
                              instance->id, "attributes", attributes);
@@ -124,6 +148,11 @@ createResourceInstanceCollection(resource_t *resource,
       json_array_append_new(data, instance->toJSONAPI());
     });
 
+    // TODO: add meta
+    // TODO: add links
+    // TODO: add included
+    // TODO: add errors
+
     __block json_t *response = json_pack("{s:o}", "data", data);
 
     memoryManager->cleanup(memoryManager->blockCopy(^{
@@ -141,9 +170,11 @@ static query_t *applyFiltersToScope(UNUSED json_t *filters, query_t *baseScope,
   const char *attribute = NULL;
   json_t *operatorValues;
   json_object_foreach(filters, attribute, operatorValues) {
+    check(operatorValues != NULL, "operatorValues is NULL");
     const char *oper = NULL;
     json_t *valueArray;
     json_object_foreach(operatorValues, oper, valueArray) {
+      check(valueArray != NULL, "valueArray is NULL");
       json_t *jsonValue = json_array_get(valueArray, 0);
       const char *value = json_string_value(jsonValue);
       for (int i = 0; i < resource->filtersCount; i++) {
@@ -155,7 +186,7 @@ static query_t *applyFiltersToScope(UNUSED json_t *filters, query_t *baseScope,
       }
     }
   }
-
+error:
   return baseScope;
 }
 
@@ -164,6 +195,7 @@ static query_t *applySortersToScope(json_t *sorters, query_t *baseScope,
   size_t index;
   json_t *jsonValue;
   json_array_foreach(sorters, index, jsonValue) {
+    check(jsonValue != NULL, "Invalid sorter");
     const char *value = json_string_value(jsonValue);
     const char *attribute = NULL;
     const char *direction = NULL;
@@ -181,7 +213,7 @@ static query_t *applySortersToScope(json_t *sorters, query_t *baseScope,
       }
     }
   }
-
+error:
   return baseScope;
 }
 
@@ -204,13 +236,42 @@ static query_t *applyPaginatorToScope(json_t *paginator, query_t *baseScope,
 
   baseScope =
       resource->paginator->callback(baseScope, atoi(page), atoi(perPage));
-
 error:
   return baseScope;
 }
 
 static query_t *applyFieldsToScope(UNUSED json_t *fields, query_t *baseScope,
                                    UNUSED resource_t *resource) {
+
+  char *selectConditions = malloc(1);
+  selectConditions[0] = '\0';
+  const char *resourceType = NULL;
+  json_t *fieldValues;
+  json_object_foreach(fields, resourceType, fieldValues) {
+    check(resourceType != NULL, "Invalid fields: resource type is required");
+    size_t index;
+    json_t *jsonValue;
+    json_array_foreach(fieldValues, index, jsonValue) {
+      const char *value = json_string_value(jsonValue);
+      check(value != NULL,
+            "Invalid fields: fields must be an array of strings");
+      char *selectCondition =
+          malloc(strlen(resourceType) + strlen(".") + strlen(value) + 1);
+      sprintf(selectCondition, "%s.%s", resourceType, value);
+      if (strlen(selectConditions) > 0) {
+        size_t newLen = strlen(selectConditions) + strlen(selectCondition) + 2;
+        selectConditions = realloc(selectConditions, newLen);
+        strncat(selectConditions, ",", 1);
+        strncat(selectConditions, selectCondition, newLen);
+      } else {
+        selectConditions =
+            realloc(selectConditions, strlen(selectCondition) + 1);
+        selectConditions = selectCondition;
+      }
+    }
+  }
+  baseScope = baseScope->select(selectConditions);
+error:
   return baseScope;
 }
 
@@ -348,9 +409,6 @@ resource_t *CreateResource(char *type, model_t *model) {
     newAttribute->type = attributeType;
     resource->attributes[resource->attributesCount] = newAttribute;
     resource->attributesCount++;
-
-    // TODO: add default filters
-    // https://github.com/graphiti-api/graphiti/blob/master/lib/graphiti/adapters/active_record.rb
 
     if (strcmp(attributeType, "integer") == 0 ||
         strcmp(attributeType, "integer_id") == 0 ||
@@ -592,6 +650,8 @@ resource_t *CreateResource(char *type, model_t *model) {
         json_t *data = instance->toJSONAPI();
 
         instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+          // TODO: add included
+
           __block json_t *response = json_pack("{s:o}", "data", data);
 
           memoryManager->cleanup(memoryManager->blockCopy(^{

@@ -60,6 +60,10 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     jsonapi->send(team->toJSONAPI());
   });
 
+  // TODO: router->post("/team", ^(request_t *req, UNUSED response_t *res) {
+  // TODO: router->patch("/team", ^(request_t *req, UNUSED response_t *res) {
+  // TODO: router->delete("/team", ^(request_t *req, UNUSED response_t *res) {
+
   router->get("/meetings", ^(request_t *req, UNUSED response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
 

@@ -34,6 +34,9 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
           "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
 
+      // TODO: test bad requests
+      // TODO: sort=foo,bar
+
       t->strEqual(
           "sort name asc",
           t->fetch("/api/v1/teams?sort=name", "GET", headers, NULL),
@@ -55,6 +58,8 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                            headers, NULL),
                   "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
                   "\"attributes\": {\"name\": \"product\"}}]}");
+
+      // TODO: filter[name]=foo,bar WHERE IN?
 
       t->strEqual("filter name eq",
                   t->fetch("/api/v1/teams?filter[name][eq]=Product", "GET",
@@ -208,6 +213,14 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                      NULL);
       t->ok("filter max_size lte",
             !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      t->strEqual("fields",
+                  t->fetch("/api/v1/meetings?fields[meetings]=max_size,open",
+                           "GET", headers, NULL),
+                  "{\"data\": [{\"type\": \"meetings\", \"id\": \"10\", "
+                  "\"attributes\": {\"max_size\": 10, \"open\": true}}, "
+                  "{\"type\": \"meetings\", \"id\": \"5\", \"attributes\": "
+                  "{\"max_size\": 5, \"open\": false}}]}");
 
       t->test("find", ^(tape_t *t) {
         t->strEqual("id 1", t->fetch("/api/v1/teams/1", "GET", headers, NULL),

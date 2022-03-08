@@ -57,7 +57,6 @@ typedef struct resource_instance_collection_t {
   void * (^reduce)(void *accumulator, reducerResourceInstanceCallback);
   void ** (^map)(mapResourceInstanceCallback);
   model_instance_collection_t *data;
-  json_t * (^toJson)();
   json_t * (^toJSONAPI)();
 } resource_instance_collection_t;
 
@@ -67,10 +66,9 @@ typedef struct resource_instance_t {
   void *context;
   instance_errors_t errors;
   model_instance_t *modelInstance;
-  instance_errors_t (^save)();
-  instance_errors_t (^destroy)();
-  instance_errors_t (^update_attributes)();
-  json_t * (^toJson)();
+  instance_errors_t (^save)();              // TODO: implement save
+  instance_errors_t (^destroy)();           // TODO: implement destroy
+  instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
   json_t * (^toJSONAPI)();
 } resource_instance_t;
 
