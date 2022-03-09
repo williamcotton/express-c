@@ -53,7 +53,7 @@ static void parseQueryString(const char *buf, const char *bufEnd,
       keyEnd = buf;
       keyLen = keyEnd - keyStart;
       valueStart = buf + 1;
-    } else if (*buf == '&' || *buf == '\0') {
+    } else if ((*buf == '&' || *buf == '\0') && valueStart != NULL) {
       valueEnd = buf;
       valueLen = valueEnd - valueStart;
       if (*keyValueCount < max) {
