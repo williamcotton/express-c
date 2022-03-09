@@ -46,7 +46,11 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Team = req->m("Team");
     resource_instance_t *team = Team->find(jsonapi->params, req->params("id"));
 
+    check(team, "Team not found");
+
     res->s("jsonapi", team->toJSONAPI());
+  error:
+    res->send("404"); // TODO: jsonapi error
   });
 
   // TODO: router->post("/team", ^(request_t *req, UNUSED response_t *res) {

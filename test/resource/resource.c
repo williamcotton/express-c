@@ -34,7 +34,13 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
           "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
 
-      // TODO: test bad requests
+      t->strEqual(
+          "bad request",
+          t->fetch("/api/v1/teams?sdfsdfsd=sdfsd", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
 
       t->strEqual(
           "sort name asc",
@@ -43,6 +49,14 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
           "\"attributes\": {\"name\": \"engineering\"}}, {\"type\": \"teams\", "
           "\"id\": \"2\", \"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "bad sort request",
+          t->fetch("/api/v1/teams?sort=sdfsd", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
 
       t->strEqual(
           "sort id desc",
@@ -58,17 +72,143 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->strEqual("sort title desc, date asc", sortedIds, "3,6,2,5,1,4");
       sortedIds->free();
 
+      t->strEqual(
+          "bad sort request",
+          t->fetch("/api/v1/teams?sort=id,-sdfsd", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad sort request",
+          t->fetch("/api/v1/teams?sort=[]sd[f]sdf]", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad sort request",
+          t->fetch("/api/v1/teams?sort[gorp]=ssdf", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad sort request",
+          t->fetch("/api/v1/teams?sort=[fubar][gorp]=", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
       t->strEqual("page size 1 and page number 2",
                   t->fetch("/api/v1/teams?page[size]=1&page[number]=2", "GET",
                            headers, NULL),
                   "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
                   "\"attributes\": {\"name\": \"product\"}}]}");
 
+      t->strEqual(
+          "bad page request",
+          t->fetch("/api/v1/teams?page[size]=1", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad page request",
+          t->fetch("/api/v1/teams?page[number]=1", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad page request",
+          t->fetch("/api/v1/teams?page[sdfsdf]", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad page request",
+          t->fetch("/api/v1/teams?page=1", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
       t->strEqual("filter name eq",
                   t->fetch("/api/v1/teams?filter[name][eq]=Product", "GET",
                            headers, NULL),
                   "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
                   "\"attributes\": {\"name\": \"product\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[name]=Product", "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[name][sdfsd]=Product", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd]=Product", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd][sdfsdf]=Product", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd]=[Product]", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd]=[sdf][sdfsd],Product",
+                   "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+
+      t->strEqual(
+          "bad filter request",
+          t->fetch("/api/v1/teams?filter[sdfsdf]sdfsd]=Product", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
+          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
 
       t->strEqual(
           "filter name not eq",
@@ -152,6 +292,16 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->ok("filter max_size eq",
             res->contains("\"id\": \"1\"") && !res->contains("\"id\": \"2\""));
 
+      t->strEqual("bad filter request",
+                  t->fetch("/api/v1/meetings?filter[max_size][not_eq]=sdfsdf",
+                           "GET", headers, NULL),
+                  "{\"data\": []}");
+
+      t->strEqual("bad filter request",
+                  t->fetch("/api/v1/meetings?filter[max_size][eq]=sdfsdf",
+                           "GET", headers, NULL),
+                  "{\"data\": []}");
+
       res = t->fetch("/api/v1/meetings?filter[date][eq]=2018-06-18", "GET",
                      headers, NULL);
       t->ok("filter date eq",
@@ -161,6 +311,21 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                      headers, NULL);
       t->ok("filter date not eq",
             !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
+
+      t->strEqual("bad filter request",
+                  t->fetch("/api/v1/meetings?filter[date][eq]=sdfsdf", "GET",
+                           headers, NULL),
+                  "{\"data\": []}");
+
+      t->strEqual("bad filter request",
+                  t->fetch("/api/v1/meetings?filter[date][not_eq]=sdfsdf",
+                           "GET", headers, NULL),
+                  "{\"data\": []}");
+
+      t->strEqual("bad filter request",
+                  t->fetch("/api/v1/meetings?filter[date][not_eq]=", "GET",
+                           headers, NULL),
+                  "{\"data\": []}");
 
       res = t->fetch(
           "/api/v1/meetings?filter[timestamp][eq]=2018-06-18T05:00:00-06:00",
@@ -225,6 +390,10 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->ok("filter max_size lte",
             !res->contains("\"id\": \"1\"") && res->contains("\"id\": \"2\""));
 
+      t->ok("bad filter request",
+            t->fetch("/api/v1/meetings?filter=sdfsdf", "GET", headers, NULL)
+                    ->size > 0);
+
       t->strEqual("fields",
                   t->fetch("/api/v1/meetings?fields[meetings]=max_size,open",
                            "GET", headers, NULL),
@@ -233,10 +402,36 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                   "{\"type\": \"meetings\", \"id\": \"5\", \"attributes\": "
                   "{\"max_size\": 5, \"open\": false}}]}");
 
+      t->strEqual("bad fields request",
+                  t->fetch("/api/v1/meetings?fields[meetings]=sdfsdf", "GET",
+                           headers, NULL),
+                  "{\"data\": []}");
+
+      t->strEqual("bad fields request",
+                  t->fetch("/api/v1/meetings?fields[meetinsdfsdgs]=sdfsdf",
+                           "GET", headers, NULL),
+                  "{\"data\": []}");
+
+      t->ok("bad fields request",
+            t->fetch("/api/v1/meetings?fields=sdfsdf", "GET", headers, NULL)
+                    ->size > 0);
+
+      t->ok("bad fields request",
+            t->fetch("/api/v1/meetings?fields=[meetings][sdfsdf]=123", "GET",
+                     headers, NULL)
+                    ->size > 0);
+
       t->test("find", ^(tape_t *t) {
         t->strEqual("id 1", t->fetch("/api/v1/teams/1", "GET", headers, NULL),
                     "{\"data\": {\"type\": \"teams\", \"id\": \"1\", "
                     "\"attributes\": {\"name\": \"design\"}}}");
+
+        t->ok("bad find request",
+              t->fetch("/api/v1/teams/23423", "GET", headers, NULL)->size > 0);
+
+        t->ok("bad find request",
+              t->fetch("/api/v1/teams/sdfsdkj", "GET", headers, NULL)->size >
+                  0);
       });
     });
   });

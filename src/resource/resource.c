@@ -98,6 +98,9 @@ createResourceInstanceCollection(resource_t *resource,
   }
 
   collection->at = memoryManager->blockCopy(^(size_t index) {
+    if (index >= collection->size) {
+      return (resource_instance_t *)NULL;
+    }
     return collection->arr[index];
   });
 
@@ -261,11 +264,11 @@ error:
 
 static query_t *applyFieldsToScope(UNUSED json_t *fields, query_t *baseScope,
                                    UNUSED resource_t *resource) {
-
   char *selectConditions = malloc(1);
   selectConditions[0] = '\0';
   const char *resourceType = NULL;
   json_t *fieldValues;
+  check(json_is_object(fields), "Invalid fields: fields must be an object");
   json_object_foreach(fields, resourceType, fieldValues) {
     check(resourceType != NULL, "Invalid fields: resource type is required");
     size_t index;
@@ -714,6 +717,10 @@ resource_t *CreateResource(char *type, model_t *model) {
 
         model_instance_collection_t *modelCollection =
             resource->resolver->callback(queriedScope);
+
+        if (modelCollection->size == 0) {
+          return (resource_instance_t *)NULL;
+        }
 
         resource_instance_collection_t *collection =
             createResourceInstanceCollection(resource, modelCollection, params);
