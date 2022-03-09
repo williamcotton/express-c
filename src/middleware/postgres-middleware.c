@@ -118,7 +118,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
           }
           whereConditionsString->concat(")");
           query->whereConditions[query->whereConditionsCount++] =
-              whereConditionsString->value;
+              strdup(whereConditionsString->value);
+          whereConditionsString->free();
           return query;
         });
 

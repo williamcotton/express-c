@@ -1,16 +1,19 @@
 #include "resource.h"
 
 resource_library_t *initResourceLibrary(memory_manager_t *appMemoryManager) {
-  resource_library_t *library = malloc(sizeof(resource_library_t));
+  resource_library_t *library =
+      appMemoryManager->malloc(sizeof(resource_library_t));
   library->count = 0;
-  library->add = Block_copy(^(const char *name, ModelFunction ModelFunction,
-                              ResourceFunction ResourceFunction) {
-    resource_library_item_t *item = malloc(sizeof(resource_library_item_t));
-    item->name = name;
-    item->Model = ModelFunction(appMemoryManager);
-    item->Resource = ResourceFunction(item->Model);
-    library->items[library->count++] = item;
-  });
+  library->add = appMemoryManager->blockCopy(
+      ^(const char *name, ModelFunction ModelFunction,
+        ResourceFunction ResourceFunction) {
+        resource_library_item_t *item =
+            appMemoryManager->malloc(sizeof(resource_library_item_t));
+        item->name = name;
+        item->Model = ModelFunction(appMemoryManager);
+        item->Resource = ResourceFunction(item->Model);
+        library->items[library->count++] = item;
+      });
   return library;
 }
 
@@ -264,10 +267,9 @@ error:
   return baseScope;
 }
 
-static query_t *applyFieldsToScope(UNUSED json_t *fields, query_t *baseScope,
+static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
                                    UNUSED resource_t *resource) {
-  char *selectConditions = malloc(1);
-  selectConditions[0] = '\0';
+  char *selectConditions = NULL;
   const char *resourceType = NULL;
   json_t *fieldValues;
   check(json_is_object(fields), "Invalid fields: fields must be an object");
@@ -279,28 +281,34 @@ static query_t *applyFieldsToScope(UNUSED json_t *fields, query_t *baseScope,
       const char *value = json_string_value(jsonValue);
       check(value != NULL,
             "Invalid fields: fields must be an array of strings");
+      debug("malloc selectCondition");
       char *selectCondition =
           malloc(strlen(resourceType) + strlen(".") + strlen(value) + 1);
       sprintf(selectCondition, "%s.%s", resourceType, value);
-      if (strlen(selectConditions) > 0) {
+      if (selectConditions == NULL) {
+        debug("malloc selectConditions");
+        selectConditions = malloc(strlen(selectCondition) + 1);
+        debug("dup selectCondition");
+        size_t len = strlen(selectCondition);
+        memcpy(selectConditions, selectCondition, len);
+        selectConditions[len] = '\0';
+      } else {
         size_t newLen = strlen(selectConditions) + strlen(selectCondition) + 2;
         selectConditions = realloc(selectConditions, newLen);
         strncat(selectConditions, ",", 1);
         strncat(selectConditions, selectCondition, newLen);
-      } else {
-        selectConditions =
-            realloc(selectConditions, strlen(selectCondition) + 1);
-        selectConditions = strdup(selectCondition);
       }
+      debug("freeing selectCondition");
       free(selectCondition);
     }
   }
-  resource->model->instanceMemoryManager->cleanup(
-      resource->model->instanceMemoryManager->blockCopy(^{
-        free(selectConditions);
-      }));
   baseScope = baseScope->select(selectConditions);
 error:
+  resource->model->instanceMemoryManager->cleanup(
+      resource->model->instanceMemoryManager->blockCopy(^{
+        debug("cleanup selectConditions");
+        free(selectConditions);
+      }));
   return baseScope;
 }
 

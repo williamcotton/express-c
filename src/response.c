@@ -357,6 +357,8 @@ void freeResponse(response_t *res) {
   Block_release(res->type);
   Block_release(res->json);
   Block_release(res->error);
+  Block_release(res->sSet);
+  Block_release(res->s);
   free(res);
 }
 
