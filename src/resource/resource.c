@@ -193,7 +193,9 @@ static query_t *applyFiltersToScope(UNUSED json_t *filters, query_t *baseScope,
     json_object_foreach(operatorValues, oper, valueArray) {
       check(valueArray != NULL, "valueArray is NULL");
       int count = (int)json_array_size(valueArray);
-      const char **values = (const char **)malloc(sizeof(char *) * count);
+      const char **values =
+          (const char **)resource->model->instanceMemoryManager->malloc(
+              sizeof(char *) * count);
       size_t index;
       json_t *jsonValue;
       json_array_foreach(valueArray, index, jsonValue) {
@@ -288,10 +290,15 @@ static query_t *applyFieldsToScope(UNUSED json_t *fields, query_t *baseScope,
       } else {
         selectConditions =
             realloc(selectConditions, strlen(selectCondition) + 1);
-        selectConditions = selectCondition;
+        selectConditions = strdup(selectCondition);
       }
+      free(selectCondition);
     }
   }
+  resource->model->instanceMemoryManager->cleanup(
+      resource->model->instanceMemoryManager->blockCopy(^{
+        free(selectConditions);
+      }));
   baseScope = baseScope->select(selectConditions);
 error:
   return baseScope;
