@@ -433,6 +433,14 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               t->fetch("/api/v1/teams/sdfsdkj", "GET", headers, NULL)->size >
                   0);
       });
+
+      t->test("include", ^(tape_t *t) {
+        t->strEqual(
+            "single related resources",
+            t->fetch("/api/v1/teams/2?include=employees", "GET", headers, NULL),
+            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", "
+            "\"attributes\": {\"name\": \"product\"}}}");
+      });
     });
   });
 

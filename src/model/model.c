@@ -141,12 +141,16 @@ static model_instance_t *createModelInstance(model_t *model) {
     return (char *)NULL;
   });
 
-  instance->r = memoryManager->blockCopy(^(char *relationName) {
+  instance->r = memoryManager->blockCopy(^(const char *relationName) {
     model_t *relatedModel = model->lookup(relationName);
     if (relatedModel == NULL) {
       log_err("Could not find model '%s'", relationName);
       return (model_instance_collection_t *)NULL;
     }
+
+    relatedModel->setPg(model->pg);
+    relatedModel->setInstanceMemoryManager(memoryManager);
+
     model_instance_collection_t *collection = NULL;
     char *whereForeignKey = NULL;
 
@@ -415,7 +419,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         model->instanceMemoryManager = instanceMemoryManager;
       });
 
-  model->lookup = appMemoryManager->blockCopy(^(char *lookupTableName) {
+  model->lookup = appMemoryManager->blockCopy(^(const char *lookupTableName) {
     for (int i = 0; i < modelCount; i++) {
       if (strcmp(models[i]->tableName, lookupTableName) == 0) {
         return models[i];
@@ -427,8 +431,21 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
   model->query = appMemoryManager->blockCopy(^() {
     query_t * (^baseQuery)(const char *) =
         getPostgresQuery(model->instanceMemoryManager, model->pg);
-    query_t *modelQuery = baseQuery(model->tableName);
+    __block query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
+
+    modelQuery->includes = model->instanceMemoryManager->blockCopy(^(
+        char **includesResources, int count) {
+      for (int i = 0; i < count; i++) {
+        model_t *relatedModel = model->lookup(includesResources[i]);
+        if (relatedModel) {
+          modelQuery->includesArray[modelQuery->includesCount++] = relatedModel;
+          debug("Adding related model %s", relatedModel->tableName);
+        }
+      }
+      return modelQuery;
+    });
+
     modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
       PGresult *result = originalAll();
       model_instance_collection_t *collection =

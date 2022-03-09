@@ -29,6 +29,29 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
   instance->id = modelInstance->id;
   instance->type = resource->type;
 
+  instance->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
+    json_t *includedArray = json_object_get(params->query, "include");
+    if (includedArray == NULL)
+      return (json_t *)NULL;
+
+    int count = (int)json_array_size(includedArray);
+    const char **includedResources =
+        memoryManager->malloc(sizeof(char *) * count);
+
+    size_t index;
+    json_t *includedResource;
+    json_array_foreach(includedArray, index, includedResource) {
+      includedResources[index] = json_string_value(includedResource);
+      resource_t *resource = resource->lookup(includedResources[index]);
+      model_instance_collection_t *relatedModelInstances =
+          modelInstance->r(includedResources[index]);
+      debug("relatedModels->size = %zu", relatedModelInstances->size);
+      debug("includedResource: %s", includedResources[index]);
+    }
+
+    return (json_t *)NULL;
+  });
+
   instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
     UNUSED json_t *fields = json_object_get(params->query, "fields");
     json_t *attributes = json_object();
@@ -165,6 +188,7 @@ createResourceInstanceCollection(resource_t *resource,
   collection->toJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *data = json_array();
     collection->each(^(resource_instance_t *instance) {
+      instance->includedToJSONAPI();
       json_array_append_new(data, instance->toJSONAPI());
     });
 
@@ -281,14 +305,11 @@ static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
       const char *value = json_string_value(jsonValue);
       check(value != NULL,
             "Invalid fields: fields must be an array of strings");
-      debug("malloc selectCondition");
       char *selectCondition =
           malloc(strlen(resourceType) + strlen(".") + strlen(value) + 1);
       sprintf(selectCondition, "%s.%s", resourceType, value);
       if (selectConditions == NULL) {
-        debug("malloc selectConditions");
         selectConditions = malloc(strlen(selectCondition) + 1);
-        debug("dup selectCondition");
         size_t len = strlen(selectCondition);
         memcpy(selectConditions, selectCondition, len);
         selectConditions[len] = '\0';
@@ -298,7 +319,6 @@ static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
         strncat(selectConditions, ",", 1);
         strncat(selectConditions, selectCondition, newLen);
       }
-      debug("freeing selectCondition");
       free(selectCondition);
     }
   }
@@ -306,11 +326,27 @@ static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
 error:
   resource->model->instanceMemoryManager->cleanup(
       resource->model->instanceMemoryManager->blockCopy(^{
-        debug("cleanup selectConditions");
         free(selectConditions);
       }));
   return baseScope;
 }
+
+static query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
+                                    UNUSED resource_t *resource) {
+
+  int count = (int)json_array_size(include);
+  const char **includedResources =
+      resource->model->instanceMemoryManager->malloc(sizeof(char *) * count);
+
+  size_t index;
+  json_t *includedResource;
+  json_array_foreach(include, index, includedResource) {
+    includedResources[index] = json_string_value(includedResource);
+    debug("includedResource: %s", includedResources[index]);
+  }
+
+  return baseScope = baseScope->includes(includedResources, count);
+};
 
 static query_t *applyQueryToScope(json_t *query, query_t *baseScope,
                                   resource_t *resource) {
@@ -333,6 +369,11 @@ static query_t *applyQueryToScope(json_t *query, query_t *baseScope,
   json_t *fields = json_object_get(query, "fields");
   if (fields) {
     baseScope = applyFieldsToScope(fields, baseScope, resource);
+  }
+
+  json_t *include = json_object_get(query, "include");
+  if (include) {
+    baseScope = applyIncludeToScope(include, baseScope, resource);
   }
 
   return baseScope;
@@ -366,7 +407,7 @@ resource_t *CreateResource(char *type, model_t *model) {
   resource->beforeCreateCallbacksCount = 0;
   resource->afterCreateCallbacksCount = 0;
 
-  resource->lookup = appMemoryManager->blockCopy(^(char *lookupType) {
+  resource->lookup = appMemoryManager->blockCopy(^(const char *lookupType) {
     for (int i = 0; i < resourceCount; i++) {
       if (strcmp(resources[i]->type, lookupType) == 0) {
         return resources[i];
@@ -747,6 +788,8 @@ resource_t *CreateResource(char *type, model_t *model) {
         instance->toJSONAPI =
             model->instanceMemoryManager->blockCopy(^json_t *() {
               // TODO: add included
+
+              instance->includedToJSONAPI();
 
               __block json_t *response = json_pack("{s:o}", "data", data);
 

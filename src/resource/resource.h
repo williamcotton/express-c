@@ -69,6 +69,7 @@ typedef struct resource_instance_t {
   instance_errors_t (^destroy)();           // TODO: implement destroy
   instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
   json_t * (^toJSONAPI)();
+  json_t * (^includedToJSONAPI)();
 } resource_instance_t;
 
 typedef query_t * (^filterCallback)(query_t *scope, const char **values,
@@ -169,7 +170,7 @@ typedef struct resource_t {
   resource_instance_t * (^find)(jsonapi_params_t *params, char *id);
   resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
-  struct resource_t * (^lookup)(char *);
+  struct resource_t * (^lookup)(const char *);
 } __attribute__((packed)) resource_t;
 
 typedef model_t *(*ModelFunction)(memory_manager_t *);

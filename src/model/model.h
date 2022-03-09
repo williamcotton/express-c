@@ -77,7 +77,7 @@ typedef struct model_instance_t {
   char * (^get)(char *attribute);
   void (^set)(char *attribute, char *value);
   void (^initAttr)(char *attribute, char *value, int isDirty);
-  model_instance_collection_t * (^r)(char *relationName);
+  model_instance_collection_t * (^r)(const char *relationName);
   int (^save)();
   int (^validate)();
   int (^destroy)();
@@ -138,7 +138,7 @@ typedef struct model_t {
   model_instance_t * (^find)(char *);
   model_instance_collection_t * (^all)();
   model_instance_t * (^new)();
-  struct model_t * (^lookup)(char *);
+  struct model_t * (^lookup)(const char *);
   memory_manager_t *instanceMemoryManager;
   void (^setInstanceMemoryManager)(memory_manager_t *memoryManager);
   memory_manager_t *appMemoryManager;

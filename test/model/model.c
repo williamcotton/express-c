@@ -65,10 +65,13 @@ void modelTests(tape_t *t, const char *databaseUrl) {
 
   Team_t *Team = TeamModel(memoryManager);
   Team->setPg(pg);
+  Team->setInstanceMemoryManager(memoryManager);
   Employee_t *Employee = EmployeeModel(memoryManager);
   Employee->setPg(pg);
+  Employee->setInstanceMemoryManager(memoryManager);
   Island_t *Island = IslandModel(memoryManager);
   Island->setPg(pg);
+  Island->setInstanceMemoryManager(memoryManager);
 
   t->test("model", ^(tape_t *t) {
     t->test("find existing", ^(tape_t *t) {
@@ -404,6 +407,17 @@ void modelTests(tape_t *t, const char *databaseUrl) {
         t->strEqual("name", name, "Charlie");
 
         name->free();
+      });
+    });
+
+    t->test("includes", ^(tape_t *t) {
+      t->test("find", ^(tape_t *t) {
+        team_t *team = Team->find("2");
+
+        string_t *nameValue = string(team->get("name"));
+        t->strEqual("name", nameValue, "design");
+
+        nameValue->free();
       });
     });
   });
