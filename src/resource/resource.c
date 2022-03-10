@@ -477,12 +477,21 @@ resource_t *CreateResource(char *type, model_t *model) {
         resource->sortersCount++;
       });
 
-  resource->resolve = appMemoryManager->blockCopy(^(resolveCallback callback) {
-    resource_resolve_t *newResolve =
-        appMemoryManager->malloc(sizeof(resource_resolve_t));
-    newResolve->callback = callback;
-    resource->resolver = newResolve;
-  });
+  resource->resolveAll =
+      appMemoryManager->blockCopy(^(resolveAllCallback callback) {
+        resource_resolve_all_t *newResolveAll =
+            appMemoryManager->malloc(sizeof(resource_resolve_all_t));
+        newResolveAll->callback = callback;
+        resource->allResolver = newResolveAll;
+      });
+
+  resource->resolveFind =
+      appMemoryManager->blockCopy(^(resolveFindCallback callback) {
+        resource_resolve_find_t *newResolveFind =
+            appMemoryManager->malloc(sizeof(resource_resolve_find_t));
+        newResolveFind->callback = callback;
+        resource->findResolver = newResolveFind;
+      });
 
   resource->paginate =
       appMemoryManager->blockCopy(^(paginateCallback callback) {
@@ -763,9 +772,14 @@ resource_t *CreateResource(char *type, model_t *model) {
     return scope->limit(perPage)->offset((page - 1) * perPage);
   });
 
-  resource->resolve(^(query_t *scope) {
-    debug("resolve");
+  resource->resolveAll(^(query_t *scope) {
+    debug("resolveAll");
     return (model_instance_collection_t *)scope->all();
+  });
+
+  resource->resolveFind(^(query_t *scope, char *id) {
+    debug("resolveFind");
+    return (model_instance_t *)scope->find(id);
   });
 
   resource->all = appMemoryManager->blockCopy(^(jsonapi_params_t *params) {
@@ -775,7 +789,7 @@ resource_t *CreateResource(char *type, model_t *model) {
         applyQueryToScope(params->query, baseScope, resource);
 
     model_instance_collection_t *modelCollection =
-        resource->resolver->callback(queriedScope);
+        resource->allResolver->callback(queriedScope);
 
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
@@ -787,30 +801,18 @@ resource_t *CreateResource(char *type, model_t *model) {
       appMemoryManager->blockCopy(^(jsonapi_params_t *params, char *id) {
         query_t *baseScope = resource->baseScoper->callback(resource->model);
 
-        baseScope = baseScope->where("id = $", id);
-
         query_t *queriedScope =
             applyQueryToScope(params->query, baseScope, resource);
 
-        model_instance_collection_t *modelCollection =
-            resource->resolver->callback(queriedScope);
+        model_instance_t *modelInstance =
+            resource->findResolver->callback(queriedScope, id);
 
-        if (modelCollection->size == 0) {
+        if (modelInstance == NULL) {
           return (resource_instance_t *)NULL;
         }
 
-        resource_instance_collection_t *collection =
-            createResourceInstanceCollection(resource, modelCollection, params);
-
-        resource_instance_t *instance = collection->at(0);
-
-        for (int i = 0; i < modelCollection->includesCount; i++) {
-          instance->modelInstance->includesArray[i] =
-              modelCollection->includesArray[i];
-          instance->modelInstance->includedModelInstanceCollections[i] =
-              modelCollection->includedModelInstanceCollections[i];
-        }
-        instance->modelInstance->includesCount = modelCollection->includesCount;
+        resource_instance_t *instance =
+            createResourceInstance(resource, modelInstance, params);
 
         instance->toJSONAPI =
             model->instanceMemoryManager->blockCopy(^json_t *() {

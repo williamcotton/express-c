@@ -485,10 +485,10 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           model_t *relatedModel = modelQuery->includesArray[j];
           debug("Adding related model %s", relatedModel->tableName);
           collection->includesArray[j] = modelQuery->includesArray[j];
-          if (recordCount == 1) {
-            collection->includedModelInstanceCollections[j] =
-                collection->arr[i]->r(relatedModel->tableName);
-          }
+          // if (recordCount == 1) {
+          //   collection->includedModelInstanceCollections[j] =
+          //       collection->arr[i]->r(relatedModel->tableName);
+          // }
         }
         collection->includesCount = modelQuery->includesCount;
       }
@@ -520,6 +520,14 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           instance->initAttr(name, value, 0);
         }
       }
+      for (int i = 0; i < modelQuery->includesCount; i++) {
+        model_t *relatedModel = modelQuery->includesArray[i];
+        debug("Adding related model %s", relatedModel->tableName);
+        instance->includesArray[i] = modelQuery->includesArray[i];
+        instance->includedModelInstanceCollections[i] =
+            instance->r(relatedModel->tableName);
+      }
+      instance->includesCount = modelQuery->includesCount;
       PQclear(result);
       return instance;
     });

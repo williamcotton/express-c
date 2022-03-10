@@ -78,7 +78,8 @@ typedef query_t * (^filterCallback)(query_t *scope, const char **values,
 typedef query_t * (^sortCallback)(query_t *scope, const char *direction);
 typedef query_t * (^paginateCallback)(query_t *scope, int page, int perPage);
 typedef void (^statCallback)(query_t *scope, const char *attribute);
-typedef model_instance_collection_t * (^resolveCallback)(query_t *scope);
+typedef model_instance_collection_t * (^resolveAllCallback)(query_t *scope);
+typedef model_instance_t * (^resolveFindCallback)(query_t *scope, char *id);
 typedef query_t * (^baseScopeCallback)(model_t *model);
 
 typedef struct resource_filter_t {
@@ -102,9 +103,13 @@ typedef struct resource_stat_t {
   statCallback callback;
 } resource_stat_t;
 
-typedef struct resource_resolve_t {
-  resolveCallback callback;
-} resource_resolve_t;
+typedef struct resource_resolve_all_t {
+  resolveAllCallback callback;
+} resource_resolve_all_t;
+
+typedef struct resource_resolve_find_t {
+  resolveFindCallback callback;
+} resource_resolve_find_t;
 
 typedef struct resource_base_scope_t {
   baseScopeCallback callback;
@@ -147,7 +152,8 @@ typedef struct resource_t {
   resource_paginate_t *paginator;
   resource_stat_t *stats[100];
   int statsCount;
-  resource_resolve_t *resolver;
+  resource_resolve_all_t *allResolver;
+  resource_resolve_find_t *findResolver;
   resource_base_scope_t *baseScoper;
   void (^attribute)(char *, char *, void *);
   void (^belongsTo)(char *, void *);
@@ -164,7 +170,8 @@ typedef struct resource_t {
   void (^afterCreate)(instanceCallback);
   void (^filter)(char *attribute, char *operator, filterCallback);
   void (^sort)(char *attribute, sortCallback);
-  void (^resolve)(resolveCallback);
+  void (^resolveAll)(resolveAllCallback);
+  void (^resolveFind)(resolveFindCallback);
   void (^paginate)(paginateCallback);
   void (^stat)(char *attribute, char *stat, statCallback);
   void (^baseScope)(baseScopeCallback);
