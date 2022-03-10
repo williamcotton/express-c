@@ -6,6 +6,7 @@ resource_t *TeamResource(model_t *model) {
   Team->attribute("name", "string", NULL);
 
   Team->hasMany("employees", NULL);
+  Team->hasMany("meetings", NULL);
 
   return Team;
 }

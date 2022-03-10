@@ -13,6 +13,7 @@ model_t *TeamModel(memory_manager_t *memoryManager) {
   });
 
   Team->hasMany("employees", "team_id", NULL);
+  Team->hasMany("meetings", "team_id", NULL);
 
   return Team;
 }

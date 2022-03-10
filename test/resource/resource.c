@@ -407,10 +407,18 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                            headers, NULL),
                   "{\"data\": []}");
 
-      t->strEqual("bad fields request",
-                  t->fetch("/api/v1/meetings?fields[meetinsdfsdgs]=sdfsdf",
-                           "GET", headers, NULL),
-                  "{\"data\": []}");
+      t->strEqual(
+          "bad fields request",
+          t->fetch("/api/v1/meetings?fields[meetinsdfsdgs]=sdfsdf", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"meetings\", \"id\": \"1\", \"attributes\": "
+          "{\"max_size\": 10, \"date\": \"2018-06-18\", \"timestamp\": "
+          "\"2018-06-18 06:00:00-05\", \"max_temp\": 72.295615999999995, "
+          "\"budget\": 85000.25, \"open\": true, \"team_id\": 3}}, {\"type\": "
+          "\"meetings\", \"id\": \"2\", \"attributes\": {\"max_size\": 5, "
+          "\"date\": \"2021-03-08\", \"timestamp\": \"2021-03-08 "
+          "10:00:00-06\", \"max_temp\": 71.323586000000006, \"budget\": "
+          "45000.199999999997, \"open\": false, \"team_id\": 2}}]}");
 
       t->ok("bad fields request",
             t->fetch("/api/v1/meetings?fields=sdfsdf", "GET", headers, NULL)
@@ -438,8 +446,33 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
         t->strEqual(
             "single related resources",
             t->fetch("/api/v1/teams/2?include=employees", "GET", headers, NULL),
-            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", "
-            "\"attributes\": {\"name\": \"product\"}}}");
+            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+            "{\"name\": \"product\"}}, \"included\": [{\"type\": "
+            "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
+            "\"Alice\", \"email\": \"alice@email.com\"}}, {\"type\": "
+            "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": \"Bob\", "
+            "\"email\": \"bob@email.com\"}}]}");
+
+        t->strEqual(
+            "single related resources",
+            t->fetch("/api/v1/teams/2?include=employees,meetings", "GET",
+                     headers, NULL),
+            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+            "{\"name\": \"product\"}}, \"included\": [{\"type\": "
+            "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
+            "\"Alice\", \"email\": \"alice@email.com\"}}, {\"type\": "
+            "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": \"Bob\", "
+            "\"email\": \"bob@email.com\"}}, {\"type\": \"meetings\", \"id\": "
+            "\"2\", \"attributes\": {\"max_size\": 5, \"date\": "
+            "\"2021-03-08\", \"timestamp\": \"2021-03-08 10:00:00-06\", "
+            "\"max_temp\": 71.323586000000006, \"budget\": 45000.199999999997, "
+            "\"open\": false, \"team_id\": 2}}]}");
+
+        t->strEqual(
+            "bad include request",
+            t->fetch("/api/v1/teams/2?include=sdfdsfd", "GET", headers, NULL),
+            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+            "{\"name\": \"product\"}}}");
       });
     });
   });

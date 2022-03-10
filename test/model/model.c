@@ -34,7 +34,7 @@ void setupTest(pg_t *pg) {
                    "10, '2018-06-18', '2018-06-18 05:00:00-06', 72.295618, "
                    "85000.25, true)"));
   PQclear(pg->exec("INSERT INTO meetings (team_id, max_size, date, timestamp, "
-                   "max_temp, budget, open) VALUES (3, "
+                   "max_temp, budget, open) VALUES (2, "
                    "5, '2021-03-08', '2021-03-08 10:00:00-06', 71.3235838, "
                    "45000.20, false)"));
 
@@ -44,15 +44,15 @@ void setupTest(pg_t *pg) {
       "title TEXT, date DATE)"));
   PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
                    "'a', '2022-03-08')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'b', '2022-03-08')"));
   PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
                    "'c', '2022-03-08')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'a', '2022-03-09')"));
   PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
                    "'b', '2022-03-09')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'c', '2022-03-09')"));
 };
 

@@ -17,6 +17,11 @@ resource_library_t *initResourceLibrary(memory_manager_t *appMemoryManager) {
   return library;
 }
 
+static resource_instance_collection_t *
+createResourceInstanceCollection(resource_t *resource,
+                                 model_instance_collection_t *modelCollection,
+                                 jsonapi_params_t *params);
+
 static resource_instance_t *
 createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
                        jsonapi_params_t *params) {
@@ -34,22 +39,36 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
     if (includedArray == NULL)
       return (json_t *)NULL;
 
-    int count = (int)json_array_size(includedArray);
-    const char **includedResources =
-        memoryManager->malloc(sizeof(char *) * count);
+    json_t *includedJSONAPI = json_array();
 
     size_t index;
-    json_t *includedResource;
-    json_array_foreach(includedArray, index, includedResource) {
-      includedResources[index] = json_string_value(includedResource);
-      resource_t *resource = resource->lookup(includedResources[index]);
+    json_t *includedResourceType;
+    json_array_foreach(includedArray, index, includedResourceType) {
+      resource_t *includedResource =
+          resource->lookup(json_string_value(includedResourceType));
+
+      if (includedResource == NULL)
+        continue;
+
       model_instance_collection_t *relatedModelInstances =
-          modelInstance->r(includedResources[index]);
-      debug("relatedModels->size = %zu", relatedModelInstances->size);
-      debug("includedResource: %s", includedResources[index]);
+          modelInstance->r(includedResource->type);
+
+      resource_instance_collection_t *relatedResourceInstances =
+          createResourceInstanceCollection(includedResource,
+                                           relatedModelInstances, params);
+
+      relatedResourceInstances->each(^(resource_instance_t *relatedInstance) {
+        json_t *relatedJSONAPI = relatedInstance->toJSONAPI();
+        json_array_append_new(includedJSONAPI, relatedJSONAPI);
+      });
     }
 
-    return (json_t *)NULL;
+    if (json_array_size(includedJSONAPI) == 0) {
+      json_decref(includedJSONAPI);
+      return (json_t *)NULL;
+    }
+
+    return includedJSONAPI;
   });
 
   instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
@@ -299,12 +318,16 @@ static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
   check(json_is_object(fields), "Invalid fields: fields must be an object");
   json_object_foreach(fields, resourceType, fieldValues) {
     check(resourceType != NULL, "Invalid fields: resource type is required");
+    // check if resource type is valid
+    check(resource->lookup(resourceType) != NULL,
+          "Invalid fields: resource type is invalid");
     size_t index;
     json_t *jsonValue;
     json_array_foreach(fieldValues, index, jsonValue) {
       const char *value = json_string_value(jsonValue);
       check(value != NULL,
             "Invalid fields: fields must be an array of strings");
+      // TODO: check if value is a valid field on resource
       char *selectCondition =
           malloc(strlen(resourceType) + strlen(".") + strlen(value) + 1);
       sprintf(selectCondition, "%s.%s", resourceType, value);
@@ -342,7 +365,6 @@ static query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
   json_t *includedResource;
   json_array_foreach(include, index, includedResource) {
     includedResources[index] = json_string_value(includedResource);
-    debug("includedResource: %s", includedResources[index]);
   }
 
   return baseScope = baseScope->includes(includedResources, count);
@@ -787,11 +809,13 @@ resource_t *CreateResource(char *type, model_t *model) {
 
         instance->toJSONAPI =
             model->instanceMemoryManager->blockCopy(^json_t *() {
-              // TODO: add included
-
-              instance->includedToJSONAPI();
-
               __block json_t *response = json_pack("{s:o}", "data", data);
+
+              json_t *included = instance->includedToJSONAPI();
+
+              if (included) {
+                json_object_set_new(response, "included", included);
+              }
 
               model->instanceMemoryManager->cleanup(
                   model->instanceMemoryManager->blockCopy(^{
