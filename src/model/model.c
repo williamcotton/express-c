@@ -87,6 +87,7 @@ static model_instance_t *createModelInstance(model_t *model) {
   instance->errors = memoryManager->malloc(sizeof(instance_errors_t));
   instance->errors->count = 0;
   instance->id = NULL;
+  instance->includesCount = 0;
 
   instance->addError =
       memoryManager->blockCopy(^(char *attribute, char *message) {
@@ -167,6 +168,8 @@ static model_instance_t *createModelInstance(model_t *model) {
                                               strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
       collection = relatedModel->query()->where(whereForeignKey)->all();
+      // instance->includedModelInstanceCollections
+      //     [instance->includedModelInstanceCollectionsCount++] = collection;
       return collection;
     }
 
@@ -184,6 +187,8 @@ static model_instance_t *createModelInstance(model_t *model) {
       sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
       collection =
           relatedModel->query()->where(whereForeignKey)->limit(1)->all();
+      // instance->includedModelInstanceCollections
+      //     [instance->includedModelInstanceCollectionsCount++] = collection;
       return collection;
     }
 
@@ -200,6 +205,8 @@ static model_instance_t *createModelInstance(model_t *model) {
       whereForeignKey = memoryManager->malloc(strlen(foreignKey) + 6);
       sprintf(whereForeignKey, "id = %s", foreignKey);
       collection = relatedModel->query()->where(whereForeignKey)->all();
+      // instance->includedModelInstanceCollections
+      //     [instance->includedModelInstanceCollectionsCount++] = collection;
       return collection;
     }
 
@@ -433,6 +440,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         getPostgresQuery(model->instanceMemoryManager, model->pg);
     __block query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
+    void * (^originalFind)(char *) = modelQuery->find;
 
     modelQuery->includes = model->instanceMemoryManager->blockCopy(^(
         char **includesResources, int count) {
@@ -447,6 +455,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
     });
 
     modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
+      debug("Running all query");
       PGresult *result = originalAll();
       model_instance_collection_t *collection =
           createModelInstanceCollection(model);
@@ -460,6 +469,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         strncpy(id, idValue, strlen(idValue) + 1);
         collection->arr[i] = createModelInstance(model);
         collection->arr[i]->id = id;
+
         int fieldsCount = PQnfields(result);
         for (int j = 0; j < fieldsCount; j++) {
           char *name = PQfname(result, j);
@@ -471,40 +481,54 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
             collection->arr[i]->initAttr(name, value, 0);
           }
         }
+        for (int j = 0; j < modelQuery->includesCount; j++) {
+          model_t *relatedModel = modelQuery->includesArray[j];
+          debug("Adding related model %s", relatedModel->tableName);
+          collection->includesArray[j] = modelQuery->includesArray[j];
+          if (recordCount == 1) {
+            collection->includedModelInstanceCollections[j] =
+                collection->arr[i]->r(relatedModel->tableName);
+          }
+        }
+        collection->includesCount = modelQuery->includesCount;
       }
       PQclear(result);
       return collection;
     });
+
+    modelQuery->find = appMemoryManager->blockCopy(^(char *id) {
+      if (!id) {
+        log_err("id is required");
+        return (model_instance_t *)NULL;
+      }
+      PGresult *result = originalFind(id);
+      int recordCount = PQntuples(result);
+      if (recordCount == 0) {
+        PQclear(result);
+        return (model_instance_t *)NULL;
+      }
+      model_instance_t *instance = createModelInstance(model);
+      instance->id = id;
+      int fieldsCount = PQnfields(result);
+      for (int i = 0; i < fieldsCount; i++) {
+        char *name = PQfname(result, i);
+        if (model->getAttribute(name)) {
+          char *pgValue = PQgetvalue(result, 0, i);
+          size_t valueLen = strlen(pgValue) + 1;
+          char *value = model->instanceMemoryManager->malloc(valueLen);
+          strlcpy(value, pgValue, valueLen);
+          instance->initAttr(name, value, 0);
+        }
+      }
+      PQclear(result);
+      return instance;
+    });
+
     return modelQuery;
   });
 
   model->find = appMemoryManager->blockCopy(^(char *id) {
-    if (!id) {
-      log_err("id is required");
-      return (model_instance_t *)NULL;
-    }
-    void * (^originalFind)(char *) = model->query()->find;
-    PGresult *result = originalFind(id);
-    int recordCount = PQntuples(result);
-    if (recordCount == 0) {
-      PQclear(result);
-      return (model_instance_t *)NULL;
-    }
-    model_instance_t *instance = createModelInstance(model);
-    instance->id = id;
-    int fieldsCount = PQnfields(result);
-    for (int i = 0; i < fieldsCount; i++) {
-      char *name = PQfname(result, i);
-      if (model->getAttribute(name)) {
-        char *pgValue = PQgetvalue(result, 0, i);
-        size_t valueLen = strlen(pgValue) + 1;
-        char *value = model->instanceMemoryManager->malloc(valueLen);
-        strlcpy(value, pgValue, valueLen);
-        instance->initAttr(name, value, 0);
-      }
-    }
-    PQclear(result);
-    return instance;
+    return model->query()->find(id);
   });
 
   model->all = appMemoryManager->blockCopy(^() {

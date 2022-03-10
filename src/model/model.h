@@ -58,6 +58,9 @@ typedef void * (^mapInstanceCallback)(struct model_instance_t *instance);
 typedef struct model_instance_collection_t {
   struct model_instance_t **arr;
   size_t size;
+  struct model_instance_collection_t *includedModelInstanceCollections[100];
+  struct model_t *includesArray[100];
+  int includesCount;
   struct model_instance_t * (^at)(size_t index);
   void (^each)(eachInstanceCallback);
   struct model_instance_collection_t * (^filter)(filterInstanceCallback);
@@ -72,6 +75,9 @@ typedef struct model_instance_t {
   instance_errors_t *errors;
   instance_attribute_t *attributes[100];
   int attributesCount;
+  model_instance_collection_t *includedModelInstanceCollections[100];
+  struct model_t *includesArray[100];
+  int includesCount;
   int (^isValid)();
   void (^addError)(char *attribute, char *message);
   char * (^get)(char *attribute);

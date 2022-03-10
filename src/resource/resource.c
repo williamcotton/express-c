@@ -35,23 +35,20 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
   instance->type = resource->type;
 
   instance->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
-    json_t *includedArray = json_object_get(params->query, "include");
-    if (includedArray == NULL)
-      return (json_t *)NULL;
-
     json_t *includedJSONAPI = json_array();
 
-    size_t index;
-    json_t *includedResourceType;
-    json_array_foreach(includedArray, index, includedResourceType) {
-      resource_t *includedResource =
-          resource->lookup(json_string_value(includedResourceType));
+    for (int i = 0; i < modelInstance->includesCount; i++) {
+      model_t *includedModelType = modelInstance->includesArray[i];
+      // TODO: lookup by model->tableName in case resource->type and
+      // model->tableName are different
+      resource_t *includedResource = resource->lookup(
+          includedModelType->tableName); // this is a future bug!
 
       if (includedResource == NULL)
         continue;
 
       model_instance_collection_t *relatedModelInstances =
-          modelInstance->r(includedResource->type);
+          modelInstance->includedModelInstanceCollections[i];
 
       resource_instance_collection_t *relatedResourceInstances =
           createResourceInstanceCollection(includedResource,
@@ -767,6 +764,7 @@ resource_t *CreateResource(char *type, model_t *model) {
   });
 
   resource->resolve(^(query_t *scope) {
+    debug("resolve");
     return (model_instance_collection_t *)scope->all();
   });
 
@@ -805,6 +803,14 @@ resource_t *CreateResource(char *type, model_t *model) {
             createResourceInstanceCollection(resource, modelCollection, params);
 
         resource_instance_t *instance = collection->at(0);
+
+        for (int i = 0; i < modelCollection->includesCount; i++) {
+          instance->modelInstance->includesArray[i] =
+              modelCollection->includesArray[i];
+          instance->modelInstance->includedModelInstanceCollections[i] =
+              modelCollection->includedModelInstanceCollections[i];
+        }
+        instance->modelInstance->includesCount = modelCollection->includesCount;
 
         instance->toJSONAPI =
             model->instanceMemoryManager->blockCopy(^json_t *() {

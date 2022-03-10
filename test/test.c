@@ -9,7 +9,8 @@
 app_t *testApp();
 
 void expressTests(tape_t *t);
-void modelTests(tape_t *t, const char *databaseUrl);
+void modelTests(tape_t *t, const char *databaseUrl,
+                memory_manager_t *memoryManager);
 void resourceTests(tape_t *t, const char *databaseUrl);
 
 test_harness_t *testHarnessFactory() {
@@ -34,16 +35,19 @@ test_harness_t *testHarnessFactory() {
 void runTests(int runAndExit, test_harness_t *testHarness,
               UNUSED const char *databaseUrl) {
   tape_t *test = tape();
+  // TODO: add memoryManager instance to tape
+  memory_manager_t *memoryManager = createMemoryManager();
 
   int testStatus = test->test("express", ^(tape_t *t) {
     t->clearState();
-    // expressTests(t);
+    expressTests(t);
 #if defined(__linux__) || defined(DEV_ENV)
-    // modelTests(t, databaseUrl);
+    modelTests(t, databaseUrl, memoryManager);
     resourceTests(t, databaseUrl);
 #endif
   });
 
+  memoryManager->free();
   Block_release(test->test);
   free(test);
 

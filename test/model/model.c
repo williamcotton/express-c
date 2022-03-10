@@ -56,9 +56,9 @@ void setupTest(pg_t *pg) {
                    "'c', '2022-03-09')"));
 };
 
-void modelTests(tape_t *t, const char *databaseUrl) {
+void modelTests(tape_t *t, const char *databaseUrl,
+                memory_manager_t *memoryManager) {
   pg_t *pg = initPg(databaseUrl);
-  memory_manager_t *memoryManager = createMemoryManager();
   pg->query = getPostgresQuery(memoryManager, pg);
 
   setupTest(pg);
@@ -415,14 +415,13 @@ void modelTests(tape_t *t, const char *databaseUrl) {
         team_t *team = Team->find("2");
 
         string_t *nameValue = string(team->get("name"));
-        t->strEqual("name", nameValue, "design");
+        t->strEqual("name", nameValue, "product");
 
         nameValue->free();
       });
     });
   });
 
-  memoryManager->free();
   pg->free();
 }
 

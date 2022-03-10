@@ -220,8 +220,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       sprintf(from, " FROM %s", tableName);
 
       // JOINS
-      char *joins = memoryManager->malloc(strlen(query->joinsConditions) + 1);
-      sprintf(joins, "%s", query->joinsConditions);
+      char *joins = memoryManager->malloc(strlen(query->joinsConditions) + 2);
+      sprintf(joins, " %s", query->joinsConditions);
 
       // WHERE
       char *where = NULL;
