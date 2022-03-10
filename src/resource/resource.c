@@ -34,30 +34,27 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
   instance->id = modelInstance->id;
   instance->type = resource->type;
 
+  for (int i = 0; i < modelInstance->includesCount; i++) {
+    model_t *includedModel = modelInstance->includesArray[i];
+    resource_t *includedResource =
+        resource->lookupByModel(includedModel->tableName);
+    if (includedResource == NULL)
+      continue;
+    model_instance_collection_t *relatedModelInstances =
+        modelInstance->includedModelInstanceCollections[i];
+    instance->relatedResourceInstances[i] = createResourceInstanceCollection(
+        includedResource, relatedModelInstances, params);
+  }
+
   instance->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *includedJSONAPI = json_array();
 
     for (int i = 0; i < modelInstance->includesCount; i++) {
-      model_t *includedModelType = modelInstance->includesArray[i];
-      // TODO: lookup by model->tableName in case resource->type and
-      // model->tableName are different
-      resource_t *includedResource = resource->lookup(
-          includedModelType->tableName); // this is a future bug!
-
-      if (includedResource == NULL)
-        continue;
-
-      model_instance_collection_t *relatedModelInstances =
-          modelInstance->includedModelInstanceCollections[i];
-
-      resource_instance_collection_t *relatedResourceInstances =
-          createResourceInstanceCollection(includedResource,
-                                           relatedModelInstances, params);
-
-      relatedResourceInstances->each(^(resource_instance_t *relatedInstance) {
-        json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
-        json_array_append_new(includedJSONAPI, relatedJSONAPI);
-      });
+      instance->relatedResourceInstances[i]->each(
+          ^(resource_instance_t *relatedInstance) {
+            json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
+            json_array_append_new(includedJSONAPI, relatedJSONAPI);
+          });
     }
 
     if (json_array_size(includedJSONAPI) == 0) {
@@ -102,14 +99,61 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
       }));
     }
 
-    // TODO: add relationships
+    json_t *relationships = json_object();
+
+    for (int i = 0; i < modelInstance->includesCount; i++) {
+      instance->relatedResourceInstances[i]->each(^(
+          resource_instance_t *relatedInstance) {
+        json_t *relatedData = json_object();
+        json_object_set(relatedData, "id", json_string(relatedInstance->id));
+        json_object_set(relatedData, "type",
+                        json_string(relatedInstance->type));
+        json_t *related = json_object();
+        json_object_set(related, "data", relatedData);
+        json_object_set(relationships, relatedInstance->type, related);
+      });
+    }
+
+    for (int i = 0; i < resource->relationshipsCount; i++) {
+      char *relatedType = resource->relationshipNames()[i];
+      json_t *relatedRelationship = json_object_get(relationships, relatedType);
+      if (relatedRelationship == NULL) {
+        json_t *relatedMeta = json_object();
+        json_object_set(relatedMeta, "included", json_false());
+        json_t *related = json_object();
+        json_object_set(related, "meta", relatedMeta);
+        json_object_set(relationships, relatedType, related);
+      }
+    }
+
     // TODO: add links
 
-    json_t *dataJSONAPI =
-        json_pack("{s:s, s:s:, s:o}", "type", instance->type, "id",
-                  instance->id, "attributes", attributes);
+    json_t *dataJSONAPI = json_pack(
+        "{s:s, s:s:, s:o, s:o}", "type", instance->type, "id", instance->id,
+        "attributes", attributes, "relationships", relationships);
 
     return dataJSONAPI;
+  });
+
+  instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+    json_t *data = instance->dataJSONAPI();
+
+    json_t *meta = json_object();
+
+    __block json_t *response =
+        json_pack("{s:o, s:o}", "data", data, "meta", meta);
+
+    json_t *included = instance->includedToJSONAPI();
+
+    if (included) {
+      json_object_set_new(response, "included", included);
+    }
+
+    memoryManager->cleanup(memoryManager->blockCopy(^{
+      json_decref(response);
+    }));
+
+    return response;
   });
 
   return instance;
@@ -209,12 +253,14 @@ createResourceInstanceCollection(resource_t *resource,
       json_array_append_new(data, instance->dataJSONAPI());
     });
 
-    // TODO: add meta
     // TODO: add links
     // TODO: add included
     // TODO: add errors
 
-    __block json_t *response = json_pack("{s:o}", "data", data);
+    json_t *meta = json_object();
+
+    __block json_t *response =
+        json_pack("{s:o, s:o}", "data", data, "meta", meta);
 
     memoryManager->cleanup(memoryManager->blockCopy(^{
       json_decref(response);
@@ -415,6 +461,7 @@ resource_t *CreateResource(char *type, model_t *model) {
   resource->attributesCount = 0;
   resource->belongsToCount = 0;
   resource->hasManyCount = 0;
+  resource->relationshipsCount = 0;
   resource->filtersCount = 0;
   resource->sortersCount = 0;
   resource->statsCount = 0;
@@ -436,8 +483,19 @@ resource_t *CreateResource(char *type, model_t *model) {
     return (resource_t *)NULL;
   });
 
+  resource->lookupByModel =
+      appMemoryManager->blockCopy(^(const char *lookupTableName) {
+        for (int i = 0; i < resourceCount; i++) {
+          if (strcmp(resources[i]->model->tableName, lookupTableName) == 0) {
+            return resources[i];
+          }
+        }
+        return (resource_t *)NULL;
+      });
+
   resource->belongsTo = appMemoryManager->blockCopy(^(char *relatedResourceName,
                                                       char *foreignKey) {
+    resource->relationshipsCount++;
     belongs_to_resource_t *newBelongsTo =
         appMemoryManager->malloc(sizeof(belongs_to_resource_t));
     newBelongsTo->resourceName = relatedResourceName;
@@ -448,6 +506,7 @@ resource_t *CreateResource(char *type, model_t *model) {
 
   resource->hasMany = appMemoryManager->blockCopy(
       ^(char *relatedResourceName, char *foreignKey) {
+        resource->relationshipsCount++;
         has_many_resource_t *newHasMany =
             appMemoryManager->malloc(sizeof(has_many_resource_t));
         newHasMany->resourceName = relatedResourceName;
@@ -455,6 +514,19 @@ resource_t *CreateResource(char *type, model_t *model) {
         resource->hasManyRelationships[resource->hasManyCount] = newHasMany;
         resource->hasManyCount++;
       });
+
+  resource->relationshipNames = appMemoryManager->blockCopy(^() {
+    char **relationshipNames = appMemoryManager->malloc(
+        sizeof(char *) * (resource->belongsToCount + resource->hasManyCount));
+    for (int i = 0; i < resource->belongsToCount; i++) {
+      relationshipNames[i] = resource->belongsToRelationships[i]->resourceName;
+    }
+    for (int i = 0; i < resource->hasManyCount; i++) {
+      relationshipNames[i + resource->belongsToCount] =
+          resource->hasManyRelationships[i]->resourceName;
+    }
+    return relationshipNames;
+  });
 
   resource->filter = appMemoryManager->blockCopy(
       ^(char *attribute, char *operator, filterCallback callback) {
@@ -773,12 +845,10 @@ resource_t *CreateResource(char *type, model_t *model) {
   });
 
   resource->resolveAll(^(query_t *scope) {
-    debug("resolveAll");
     return (model_instance_collection_t *)scope->all();
   });
 
   resource->resolveFind(^(query_t *scope, char *id) {
-    debug("resolveFind");
     return (model_instance_t *)scope->find(id);
   });
 
@@ -813,26 +883,6 @@ resource_t *CreateResource(char *type, model_t *model) {
 
         resource_instance_t *instance =
             createResourceInstance(resource, modelInstance, params);
-
-        instance->toJSONAPI =
-            model->instanceMemoryManager->blockCopy(^json_t *() {
-              json_t *data = instance->dataJSONAPI();
-
-              __block json_t *response = json_pack("{s:o}", "data", data);
-
-              json_t *included = instance->includedToJSONAPI();
-
-              if (included) {
-                json_object_set_new(response, "included", included);
-              }
-
-              model->instanceMemoryManager->cleanup(
-                  model->instanceMemoryManager->blockCopy(^{
-                    json_decref(response);
-                  }));
-
-              return response;
-            });
 
         return instance;
       });

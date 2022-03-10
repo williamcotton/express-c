@@ -65,6 +65,7 @@ typedef struct resource_instance_t {
   void *context;
   instance_errors_t errors;
   model_instance_t *modelInstance;
+  resource_instance_collection_t *relatedResourceInstances[100];
   instance_errors_t (^save)();              // TODO: implement save
   instance_errors_t (^destroy)();           // TODO: implement destroy
   instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
@@ -129,6 +130,7 @@ typedef struct resource_t {
   int hasManyCount;
   has_one_resource_t *hasOneRelationships[100];
   int hasOneCount;
+  int relationshipsCount;
   beforeCallback beforeSaveCallbacks[100];
   int beforeSaveCallbacksCount;
   instanceCallback afterSaveCallbacks[100];
@@ -159,6 +161,7 @@ typedef struct resource_t {
   void (^belongsTo)(char *, void *);
   void (^hasMany)(char *, void *);
   void (^hasOne)(char *, void *);
+  char ** (^relationshipNames)();
   void (^manyToMany)(char *, void *);
   void (^beforeSave)(beforeCallback);
   void (^afterSave)(instanceCallback);
@@ -179,6 +182,7 @@ typedef struct resource_t {
   resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
   struct resource_t * (^lookup)(const char *);
+  struct resource_t * (^lookupByModel)(const char *);
 } __attribute__((packed)) resource_t;
 
 typedef model_t *(*ModelFunction)(memory_manager_t *);

@@ -30,41 +30,74 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->strEqual(
           "no filters", t->fetch("/api/v1/teams", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad request",
           t->fetch("/api/v1/teams?sdfsdfsd=sdfsd", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "sort name asc",
           t->fetch("/api/v1/teams?sort=name", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}, {\"type\": \"teams\", "
-          "\"id\": \"2\", \"attributes\": {\"name\": \"product\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"2\", \"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "bad sort request",
           t->fetch("/api/v1/teams?sort=sdfsd", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "sort id desc",
           t->fetch("/api/v1/teams?sort=-id", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"3\", \"attributes\": "
-          "{\"name\": \"engineering\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"1\", \"attributes\": {\"name\": \"design\"}}]}");
+          "{\"name\": \"engineering\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"1\", \"attributes\": {\"name\": \"design\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
       res = t->fetch("/api/v1/notes?sort=-title,date", "GET", headers, NULL);
       // TODO: this works as expected but don't hard code the response!
@@ -76,211 +109,358 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "bad sort request",
           t->fetch("/api/v1/teams?sort=id,-sdfsd", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad sort request",
           t->fetch("/api/v1/teams?sort=[]sd[f]sdf]", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad sort request",
           t->fetch("/api/v1/teams?sort[gorp]=ssdf", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad sort request",
           t->fetch("/api/v1/teams?sort=[fubar][gorp]=", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
-      t->strEqual("page size 1 and page number 2",
-                  t->fetch("/api/v1/teams?page[size]=1&page[number]=2", "GET",
-                           headers, NULL),
-                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
-                  "\"attributes\": {\"name\": \"product\"}}]}");
+      t->strEqual(
+          "page size 1 and page number 2",
+          t->fetch("/api/v1/teams?page[size]=1&page[number]=2", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "bad page request",
           t->fetch("/api/v1/teams?page[size]=1", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad page request",
           t->fetch("/api/v1/teams?page[number]=1", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad page request",
           t->fetch("/api/v1/teams?page[sdfsdf]", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad page request",
           t->fetch("/api/v1/teams?page=1", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
-      t->strEqual("filter name eq",
-                  t->fetch("/api/v1/teams?filter[name][eq]=Product", "GET",
-                           headers, NULL),
-                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
-                  "\"attributes\": {\"name\": \"product\"}}]}");
+      t->strEqual(
+          "filter name eq",
+          t->fetch("/api/v1/teams?filter[name][eq]=Product", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[name]=Product", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[name][sdfsd]=Product", "GET", headers,
                    NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd]=Product", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd][sdfsdf]=Product", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd]=[Product]", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[sdfsdf][sdfsd]=[sdf][sdfsd],Product",
                    "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "bad filter request",
           t->fetch("/api/v1/teams?filter[sdfsdf]sdfsd]=Product", "GET", headers,
                    NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"2\", "
-          "\"attributes\": {\"name\": \"product\"}}, {\"type\": \"teams\", "
-          "\"id\": \"3\", \"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+          "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"teams\", \"id\": "
+          "\"3\", \"attributes\": {\"name\": \"engineering\"}, "
+          "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
+          "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
+          "\"meta\": {}}");
 
       t->strEqual(
           "filter name not eq",
           t->fetch("/api/v1/teams?filter[name][not_eq]=Product", "GET", headers,
                    NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
-      t->strEqual("filter name eql",
-                  t->fetch("/api/v1/teams?filter[name][eql]=product", "GET",
-                           headers, NULL),
-                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
-                  "\"attributes\": {\"name\": \"product\"}}]}");
+      t->strEqual(
+          "filter name eql",
+          t->fetch("/api/v1/teams?filter[name][eql]=product", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "filter name not eql",
           t->fetch("/api/v1/teams?filter[name][not_eql]=product", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "filter name eql two things",
           t->fetch("/api/v1/teams?filter[name][eql]=design,engineering", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
-      t->strEqual("filter name match",
-                  t->fetch("/api/v1/teams?filter[name][match]=rod", "GET",
-                           headers, NULL),
-                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
-                  "\"attributes\": {\"name\": \"product\"}}]}");
+      t->strEqual(
+          "filter name match",
+          t->fetch("/api/v1/teams?filter[name][match]=rod", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "filter name not match",
           t->fetch("/api/v1/teams?filter[name][not_match]=rod", "GET", headers,
                    NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
-      t->strEqual("filter name prefix",
-                  t->fetch("/api/v1/teams?filter[name][prefix]=prod", "GET",
-                           headers, NULL),
-                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
-                  "\"attributes\": {\"name\": \"product\"}}]}");
+      t->strEqual(
+          "filter name prefix",
+          t->fetch("/api/v1/teams?filter[name][prefix]=prod", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "filter name not prefix",
           t->fetch("/api/v1/teams?filter[name][not_prefix]=prod", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
-      t->strEqual("filter name suffix",
-                  t->fetch("/api/v1/teams?filter[name][suffix]=duct", "GET",
-                           headers, NULL),
-                  "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", "
-                  "\"attributes\": {\"name\": \"product\"}}]}");
+      t->strEqual(
+          "filter name suffix",
+          t->fetch("/api/v1/teams?filter[name][suffix]=duct", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
           "filter name not suffix",
           t->fetch("/api/v1/teams?filter[name][not_suffix]=duct", "GET",
                    headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
-          "{\"name\": \"design\"}}, {\"type\": \"teams\", \"id\": \"3\", "
-          "\"attributes\": {\"name\": \"engineering\"}}]}");
+          "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"3\", "
+          "\"attributes\": {\"name\": \"engineering\"}, \"relationships\": "
+          "{\"employees\": {\"meta\": {\"included\": false}}, \"meetings\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
       res = t->fetch("/api/v1/meetings?filter[max_size][eq]=5", "GET", headers,
                      NULL);
@@ -295,12 +475,12 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->strEqual("bad filter request",
                   t->fetch("/api/v1/meetings?filter[max_size][not_eq]=sdfsdf",
                            "GET", headers, NULL),
-                  "{\"data\": []}");
+                  "{\"data\": [], \"meta\": {}}");
 
       t->strEqual("bad filter request",
                   t->fetch("/api/v1/meetings?filter[max_size][eq]=sdfsdf",
                            "GET", headers, NULL),
-                  "{\"data\": []}");
+                  "{\"data\": [], \"meta\": {}}");
 
       res = t->fetch("/api/v1/meetings?filter[date][eq]=2018-06-18", "GET",
                      headers, NULL);
@@ -315,17 +495,17 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       t->strEqual("bad filter request",
                   t->fetch("/api/v1/meetings?filter[date][eq]=sdfsdf", "GET",
                            headers, NULL),
-                  "{\"data\": []}");
+                  "{\"data\": [], \"meta\": {}}");
 
       t->strEqual("bad filter request",
                   t->fetch("/api/v1/meetings?filter[date][not_eq]=sdfsdf",
                            "GET", headers, NULL),
-                  "{\"data\": []}");
+                  "{\"data\": [], \"meta\": {}}");
 
       t->strEqual("bad filter request",
                   t->fetch("/api/v1/meetings?filter[date][not_eq]=", "GET",
                            headers, NULL),
-                  "{\"data\": []}");
+                  "{\"data\": [], \"meta\": {}}");
 
       res = t->fetch(
           "/api/v1/meetings?filter[timestamp][eq]=2018-06-18T05:00:00-06:00",
@@ -394,18 +574,21 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
             t->fetch("/api/v1/meetings?filter=sdfsdf", "GET", headers, NULL)
                     ->size > 0);
 
-      t->strEqual("fields",
-                  t->fetch("/api/v1/meetings?fields[meetings]=max_size,open",
-                           "GET", headers, NULL),
-                  "{\"data\": [{\"type\": \"meetings\", \"id\": \"10\", "
-                  "\"attributes\": {\"max_size\": 10, \"open\": true}}, "
-                  "{\"type\": \"meetings\", \"id\": \"5\", \"attributes\": "
-                  "{\"max_size\": 5, \"open\": false}}]}");
+      t->strEqual(
+          "fields",
+          t->fetch("/api/v1/meetings?fields[meetings]=max_size,open", "GET",
+                   headers, NULL),
+          "{\"data\": [{\"type\": \"meetings\", \"id\": \"10\", "
+          "\"attributes\": {\"max_size\": 10, \"open\": true}, "
+          "\"relationships\": {\"teams\": {\"meta\": {\"included\": false}}}}, "
+          "{\"type\": \"meetings\", \"id\": \"5\", \"attributes\": "
+          "{\"max_size\": 5, \"open\": false}, \"relationships\": {\"teams\": "
+          "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual("bad fields request",
                   t->fetch("/api/v1/meetings?fields[meetings]=sdfsdf", "GET",
                            headers, NULL),
-                  "{\"data\": []}");
+                  "{\"data\": [], \"meta\": {}}");
 
       t->strEqual(
           "bad fields request",
@@ -414,11 +597,14 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "{\"data\": [{\"type\": \"meetings\", \"id\": \"1\", \"attributes\": "
           "{\"max_size\": 10, \"date\": \"2018-06-18\", \"timestamp\": "
           "\"2018-06-18 06:00:00-05\", \"max_temp\": 72.295615999999995, "
-          "\"budget\": 85000.25, \"open\": true, \"team_id\": 3}}, {\"type\": "
-          "\"meetings\", \"id\": \"2\", \"attributes\": {\"max_size\": 5, "
-          "\"date\": \"2021-03-08\", \"timestamp\": \"2021-03-08 "
-          "10:00:00-06\", \"max_temp\": 71.323586000000006, \"budget\": "
-          "45000.199999999997, \"open\": false, \"team_id\": 2}}]}");
+          "\"budget\": 85000.25, \"open\": true, \"team_id\": 3}, "
+          "\"relationships\": {\"teams\": {\"meta\": {\"included\": false}}}}, "
+          "{\"type\": \"meetings\", \"id\": \"2\", \"attributes\": "
+          "{\"max_size\": 5, \"date\": \"2021-03-08\", \"timestamp\": "
+          "\"2021-03-08 10:00:00-06\", \"max_temp\": 71.323586000000006, "
+          "\"budget\": 45000.199999999997, \"open\": false, \"team_id\": 2}, "
+          "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
+          "false}}}}], \"meta\": {}}");
 
       t->ok("bad fields request",
             t->fetch("/api/v1/meetings?fields=sdfsdf", "GET", headers, NULL)
@@ -430,9 +616,12 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                     ->size > 0);
 
       t->test("find", ^(tape_t *t) {
-        t->strEqual("id 1", t->fetch("/api/v1/teams/1", "GET", headers, NULL),
-                    "{\"data\": {\"type\": \"teams\", \"id\": \"1\", "
-                    "\"attributes\": {\"name\": \"design\"}}}");
+        t->strEqual(
+            "id 1", t->fetch("/api/v1/teams/1", "GET", headers, NULL),
+            "{\"data\": {\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
+            "{\"name\": \"design\"}, \"relationships\": {\"employees\": "
+            "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+            "{\"included\": false}}}}, \"meta\": {}}");
 
         t->ok("bad find request",
               t->fetch("/api/v1/teams/23423", "GET", headers, NULL)->size > 0);
@@ -447,32 +636,45 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
             "single related resources",
             t->fetch("/api/v1/teams/2?include=employees", "GET", headers, NULL),
             "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
-            "{\"name\": \"product\"}}, \"included\": [{\"type\": "
-            "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
-            "\"Alice\", \"email\": \"alice@email.com\"}}, {\"type\": "
-            "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": \"Bob\", "
-            "\"email\": \"bob@email.com\"}}]}");
+            "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+            "{\"data\": {\"id\": \"2\", \"type\": \"employees\"}}, "
+            "\"meetings\": {\"meta\": {\"included\": false}}}}, \"meta\": {}, "
+            "\"included\": [{\"type\": \"employees\", \"id\": \"1\", "
+            "\"attributes\": {\"name\": \"Alice\", \"email\": "
+            "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+            "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
+            "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+            "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+            "{\"included\": false}}}}]}");
 
         t->strEqual(
-            "single related resources",
+            "multiple related resources",
             t->fetch("/api/v1/teams/2?include=employees,meetings", "GET",
                      headers, NULL),
             "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
-            "{\"name\": \"product\"}}, \"included\": [{\"type\": "
+            "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+            "{\"data\": {\"id\": \"2\", \"type\": \"employees\"}}, "
+            "\"meetings\": {\"data\": {\"id\": \"2\", \"type\": "
+            "\"meetings\"}}}}, \"meta\": {}, \"included\": [{\"type\": "
             "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
-            "\"Alice\", \"email\": \"alice@email.com\"}}, {\"type\": "
+            "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
+            "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
             "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": \"Bob\", "
-            "\"email\": \"bob@email.com\"}}, {\"type\": \"meetings\", \"id\": "
-            "\"2\", \"attributes\": {\"max_size\": 5, \"date\": "
+            "\"email\": \"bob@email.com\"}, \"relationships\": {\"teams\": "
+            "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
+            "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"date\": "
             "\"2021-03-08\", \"timestamp\": \"2021-03-08 10:00:00-06\", "
             "\"max_temp\": 71.323586000000006, \"budget\": 45000.199999999997, "
-            "\"open\": false, \"team_id\": 2}}]}");
+            "\"open\": false, \"team_id\": 2}, \"relationships\": {\"teams\": "
+            "{\"meta\": {\"included\": false}}}}]}");
 
         t->strEqual(
             "bad include request",
             t->fetch("/api/v1/teams/2?include=sdfdsfd", "GET", headers, NULL),
             "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
-            "{\"name\": \"product\"}}}");
+            "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+            "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+            "{\"included\": false}}}}, \"meta\": {}}");
       });
     });
   });

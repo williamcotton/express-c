@@ -448,14 +448,12 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         model_t *relatedModel = model->lookup(includesResources[i]);
         if (relatedModel) {
           modelQuery->includesArray[modelQuery->includesCount++] = relatedModel;
-          debug("Adding related model %s", relatedModel->tableName);
         }
       }
       return modelQuery;
     });
 
     modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
-      debug("Running all query");
       PGresult *result = originalAll();
       model_instance_collection_t *collection =
           createModelInstanceCollection(model);
@@ -469,7 +467,6 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         strncpy(id, idValue, strlen(idValue) + 1);
         collection->arr[i] = createModelInstance(model);
         collection->arr[i]->id = id;
-
         int fieldsCount = PQnfields(result);
         for (int j = 0; j < fieldsCount; j++) {
           char *name = PQfname(result, j);
@@ -522,7 +519,6 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
       }
       for (int i = 0; i < modelQuery->includesCount; i++) {
         model_t *relatedModel = modelQuery->includesArray[i];
-        debug("Adding related model %s", relatedModel->tableName);
         instance->includesArray[i] = modelQuery->includesArray[i];
         instance->includedModelInstanceCollections[i] =
             instance->r(relatedModel->tableName);
