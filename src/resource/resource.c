@@ -58,7 +58,7 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
                                            relatedModelInstances, params);
 
       relatedResourceInstances->each(^(resource_instance_t *relatedInstance) {
-        json_t *relatedJSONAPI = relatedInstance->toJSONAPI();
+        json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
         json_array_append_new(includedJSONAPI, relatedJSONAPI);
       });
     }
@@ -71,7 +71,7 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
     return includedJSONAPI;
   });
 
-  instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+  instance->dataJSONAPI = memoryManager->blockCopy(^json_t *() {
     UNUSED json_t *fields = json_object_get(params->query, "fields");
     json_t *attributes = json_object();
 
@@ -108,10 +108,11 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
     // TODO: add relationships
     // TODO: add links
 
-    json_t *data = json_pack("{s:s, s:s:, s:o}", "type", instance->type, "id",
-                             instance->id, "attributes", attributes);
+    json_t *dataJSONAPI =
+        json_pack("{s:s, s:s:, s:o}", "type", instance->type, "id",
+                  instance->id, "attributes", attributes);
 
-    return data;
+    return dataJSONAPI;
   });
 
   return instance;
@@ -208,7 +209,7 @@ createResourceInstanceCollection(resource_t *resource,
     json_t *data = json_array();
     collection->each(^(resource_instance_t *instance) {
       instance->includedToJSONAPI();
-      json_array_append_new(data, instance->toJSONAPI());
+      json_array_append_new(data, instance->dataJSONAPI());
     });
 
     // TODO: add meta
@@ -805,10 +806,10 @@ resource_t *CreateResource(char *type, model_t *model) {
 
         resource_instance_t *instance = collection->at(0);
 
-        json_t *data = instance->toJSONAPI();
-
         instance->toJSONAPI =
             model->instanceMemoryManager->blockCopy(^json_t *() {
+              json_t *data = instance->dataJSONAPI();
+
               __block json_t *response = json_pack("{s:o}", "data", data);
 
               json_t *included = instance->includedToJSONAPI();

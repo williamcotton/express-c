@@ -69,6 +69,7 @@ typedef struct resource_instance_t {
   instance_errors_t (^destroy)();           // TODO: implement destroy
   instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
   json_t * (^toJSONAPI)();
+  json_t * (^dataJSONAPI)();
   json_t * (^includedToJSONAPI)();
 } resource_instance_t;
 
