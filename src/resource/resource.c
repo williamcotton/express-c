@@ -42,7 +42,7 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
       continue;
     model_instance_collection_t *relatedModelInstances =
         modelInstance->includedModelInstanceCollections[i];
-    instance->relatedResourceInstances[i] = createResourceInstanceCollection(
+    instance->includedResourceInstances[i] = createResourceInstanceCollection(
         includedResource, relatedModelInstances, params);
   }
 
@@ -50,7 +50,7 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
     json_t *includedJSONAPI = json_array();
 
     for (int i = 0; i < modelInstance->includesCount; i++) {
-      instance->relatedResourceInstances[i]->each(
+      instance->includedResourceInstances[i]->each(
           ^(resource_instance_t *relatedInstance) {
             json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
             json_array_append_new(includedJSONAPI, relatedJSONAPI);
@@ -66,7 +66,6 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
   });
 
   instance->dataJSONAPI = memoryManager->blockCopy(^json_t *() {
-    UNUSED json_t *fields = json_object_get(params->query, "fields");
     json_t *attributes = json_object();
 
     for (int i = 0; i < resource->attributesCount; i++) {
@@ -102,7 +101,7 @@ createResourceInstance(resource_t *resource, model_instance_t *modelInstance,
     json_t *relationships = json_object();
 
     for (int i = 0; i < modelInstance->includesCount; i++) {
-      instance->relatedResourceInstances[i]->each(^(
+      instance->includedResourceInstances[i]->each(^(
           resource_instance_t *relatedInstance) {
         json_t *relatedData = json_object();
         json_object_set(relatedData, "id", json_string(relatedInstance->id));
@@ -169,13 +168,22 @@ createResourceInstanceCollection(resource_t *resource,
       (resource_instance_collection_t *)memoryManager->malloc(
           sizeof(resource_instance_collection_t));
 
-  collection->arr = NULL;
-  collection->size = 0;
-
   collection->arr = memoryManager->malloc(sizeof(resource_instance_t *) *
                                           modelCollection->size);
   collection->size = modelCollection->size;
-  collection->data = modelCollection;
+  collection->modelCollection = modelCollection;
+
+  for (int i = 0; i < modelCollection->includesCount; i++) {
+    model_t *includedModel = modelCollection->includesArray[i];
+    resource_t *includedResource =
+        resource->lookupByModel(includedModel->tableName);
+    if (includedResource == NULL)
+      continue;
+    model_instance_collection_t *relatedModelInstances =
+        modelCollection->includedModelInstanceCollections[i];
+    collection->includedResourceInstances[i] = createResourceInstanceCollection(
+        includedResource, relatedModelInstances, params);
+  }
 
   for (size_t i = 0; i < collection->size; i++) {
     model_instance_t *modelInstance = modelCollection->arr[i];
@@ -246,6 +254,25 @@ createResourceInstanceCollection(resource_t *resource,
         return map;
       });
 
+  collection->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
+    json_t *includedJSONAPI = json_array();
+
+    for (int i = 0; i < modelCollection->includesCount; i++) {
+      collection->includedResourceInstances[i]->each(
+          ^(resource_instance_t *relatedInstance) {
+            json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
+            json_array_append_new(includedJSONAPI, relatedJSONAPI);
+          });
+    }
+
+    if (json_array_size(includedJSONAPI) == 0) {
+      json_decref(includedJSONAPI);
+      return (json_t *)NULL;
+    }
+
+    return includedJSONAPI;
+  });
+
   collection->toJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *data = json_array();
     collection->each(^(resource_instance_t *instance) {
@@ -262,6 +289,12 @@ createResourceInstanceCollection(resource_t *resource,
     __block json_t *response =
         json_pack("{s:o, s:o}", "data", data, "meta", meta);
 
+    json_t *included = collection->includedToJSONAPI();
+
+    if (included) {
+      json_object_set_new(response, "included", included);
+    }
+
     memoryManager->cleanup(memoryManager->blockCopy(^{
       json_decref(response);
     }));
@@ -272,8 +305,8 @@ createResourceInstanceCollection(resource_t *resource,
   return collection;
 };
 
-static query_t *applyFiltersToScope(UNUSED json_t *filters, query_t *baseScope,
-                                    UNUSED resource_t *resource) {
+static query_t *applyFiltersToScope(json_t *filters, query_t *baseScope,
+                                    resource_t *resource) {
   const char *attribute = NULL;
   json_t *operatorValues;
   json_object_foreach(filters, attribute, operatorValues) {
@@ -355,7 +388,7 @@ error:
 }
 
 static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
-                                   UNUSED resource_t *resource) {
+                                   resource_t *resource) {
   char *selectConditions = NULL;
   const char *resourceType = NULL;
   json_t *fieldValues;
@@ -399,7 +432,7 @@ error:
 }
 
 static query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
-                                    UNUSED resource_t *resource) {
+                                    resource_t *resource) {
 
   int count = (int)json_array_size(include);
   const char **includedResources =

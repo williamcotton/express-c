@@ -47,6 +47,7 @@ typedef void * (^mapResourceInstanceCallback)(
 typedef struct resource_instance_collection_t {
   struct resource_instance_t **arr;
   size_t size;
+  struct resource_instance_collection_t *includedResourceInstances[100];
   struct resource_instance_t * (^at)(size_t index);
   void (^each)(eachResourceInstanceCallback);
   struct resource_instance_collection_t * (^filter)(
@@ -55,8 +56,9 @@ typedef struct resource_instance_collection_t {
   void (^eachWithIndex)(eachResourceInstanceWithIndexCallback);
   void * (^reduce)(void *accumulator, reducerResourceInstanceCallback);
   void ** (^map)(mapResourceInstanceCallback);
-  model_instance_collection_t *data;
+  model_instance_collection_t *modelCollection;
   json_t * (^toJSONAPI)();
+  json_t * (^includedToJSONAPI)();
 } resource_instance_collection_t;
 
 typedef struct resource_instance_t {
@@ -65,7 +67,7 @@ typedef struct resource_instance_t {
   void *context;
   instance_errors_t errors;
   model_instance_t *modelInstance;
-  resource_instance_collection_t *relatedResourceInstances[100];
+  resource_instance_collection_t *includedResourceInstances[100];
   instance_errors_t (^save)();              // TODO: implement save
   instance_errors_t (^destroy)();           // TODO: implement destroy
   instance_errors_t (^update_attributes)(); // TODO: implement update_attributes

@@ -77,6 +77,19 @@ createModelInstanceCollection(model_t *model) {
     return (model_instance_t *)NULL;
   });
 
+  collection->r = memoryManager->blockCopy(^(const char *relationName) {
+    model_t *relatedModel = model->lookup(relationName);
+    const char **relatedModelIds =
+        memoryManager->malloc(sizeof(const char *) * collection->size);
+    collection->eachWithIndex(^(model_instance_t *instance, int i) {
+      relatedModelIds[i] = instance->id;
+    });
+    const char *foreignKey = model->getForeignKey(relationName);
+    return relatedModel->query()
+        ->whereIn(foreignKey, true, relatedModelIds, collection->size)
+        ->all();
+  });
+
   return collection;
 }
 
@@ -168,8 +181,6 @@ static model_instance_t *createModelInstance(model_t *model) {
                                               strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
       collection = relatedModel->query()->where(whereForeignKey)->all();
-      // instance->includedModelInstanceCollections
-      //     [instance->includedModelInstanceCollectionsCount++] = collection;
       return collection;
     }
 
@@ -187,8 +198,6 @@ static model_instance_t *createModelInstance(model_t *model) {
       sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
       collection =
           relatedModel->query()->where(whereForeignKey)->limit(1)->all();
-      // instance->includedModelInstanceCollections
-      //     [instance->includedModelInstanceCollectionsCount++] = collection;
       return collection;
     }
 
@@ -205,8 +214,6 @@ static model_instance_t *createModelInstance(model_t *model) {
       whereForeignKey = memoryManager->malloc(strlen(foreignKey) + 6);
       sprintf(whereForeignKey, "id = %s", foreignKey);
       collection = relatedModel->query()->where(whereForeignKey)->all();
-      // instance->includedModelInstanceCollections
-      //     [instance->includedModelInstanceCollectionsCount++] = collection;
       return collection;
     }
 
@@ -478,17 +485,14 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
             collection->arr[i]->initAttr(name, value, 0);
           }
         }
-        for (int j = 0; j < modelQuery->includesCount; j++) {
-          model_t *relatedModel = modelQuery->includesArray[j];
-          debug("Adding related model %s", relatedModel->tableName);
-          collection->includesArray[j] = modelQuery->includesArray[j];
-          // if (recordCount == 1) {
-          //   collection->includedModelInstanceCollections[j] =
-          //       collection->arr[i]->r(relatedModel->tableName);
-          // }
-        }
-        collection->includesCount = modelQuery->includesCount;
       }
+      for (int i = 0; i < modelQuery->includesCount; i++) {
+        model_t *relatedModel = modelQuery->includesArray[i];
+        collection->includesArray[i] = modelQuery->includesArray[i];
+        collection->includedModelInstanceCollections[i] =
+            collection->r(relatedModel->tableName);
+      }
+      collection->includesCount = modelQuery->includesCount;
       PQclear(result);
       return collection;
     });
@@ -568,7 +572,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         model->validationsCount++;
       });
 
-  model->new = appMemoryManager->blockCopy(^(UNUSED char *id) {
+  model->new = appMemoryManager->blockCopy(^() {
     model_instance_t *instance = createModelInstance(model);
     return instance;
   });
@@ -599,6 +603,34 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         newHasOne->foreignKey = foreignKey;
         model->hasOneRelationships[model->hasOneCount] = newHasOne;
         model->hasOneCount++;
+      });
+
+  model->getForeignKey =
+      appMemoryManager->blockCopy(^(const char *relationName) {
+        model_t *relatedModel = model->lookup(relationName);
+        if (relatedModel == NULL) {
+          log_err("Could not find model '%s'", relationName);
+          return (char *)NULL;
+        }
+        for (int i = 0; i < model->hasManyCount; i++) {
+          if (strcmp(model->hasManyRelationships[i]->tableName,
+                     relatedModel->tableName) == 0) {
+            return model->hasManyRelationships[i]->foreignKey;
+          }
+        }
+        for (int i = 0; i < model->hasOneCount; i++) {
+          if (strcmp(model->hasOneRelationships[i]->tableName,
+                     relatedModel->tableName) == 0) {
+            return model->hasOneRelationships[i]->foreignKey;
+          }
+        }
+        for (int i = 0; i < model->belongsToCount; i++) {
+          if (strcmp(model->belongsToRelationships[i]->tableName,
+                     relatedModel->tableName) == 0) {
+            return model->belongsToRelationships[i]->foreignKey;
+          }
+        }
+        return (char *)NULL;
       });
 
   model->validates = appMemoryManager->blockCopy(^(instanceCallback callback) {

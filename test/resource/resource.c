@@ -632,49 +632,129 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
       });
 
       t->test("include", ^(tape_t *t) {
-        t->strEqual(
-            "single related resources",
-            t->fetch("/api/v1/teams/2?include=employees", "GET", headers, NULL),
-            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
-            "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
-            "{\"data\": {\"id\": \"2\", \"type\": \"employees\"}}, "
-            "\"meetings\": {\"meta\": {\"included\": false}}}}, \"meta\": {}, "
-            "\"included\": [{\"type\": \"employees\", \"id\": \"1\", "
-            "\"attributes\": {\"name\": \"Alice\", \"email\": "
-            "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-            "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
-            "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
-            "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-            "{\"included\": false}}}}]}");
+        t->test("find", ^(tape_t *t) {
+          t->strEqual(
+              "single related resources",
+              t->fetch("/api/v1/teams/2?include=employees", "GET", headers,
+                       NULL),
+              "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+              "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+              "{\"data\": {\"id\": \"2\", \"type\": \"employees\"}}, "
+              "\"meetings\": {\"meta\": {\"included\": false}}}}, \"meta\": "
+              "{}, "
+              "\"included\": [{\"type\": \"employees\", \"id\": \"1\", "
+              "\"attributes\": {\"name\": \"Alice\", \"email\": "
+              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
+              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}]}");
 
-        t->strEqual(
-            "multiple related resources",
-            t->fetch("/api/v1/teams/2?include=employees,meetings", "GET",
-                     headers, NULL),
-            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
-            "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
-            "{\"data\": {\"id\": \"2\", \"type\": \"employees\"}}, "
-            "\"meetings\": {\"data\": {\"id\": \"2\", \"type\": "
-            "\"meetings\"}}}}, \"meta\": {}, \"included\": [{\"type\": "
-            "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
-            "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
-            "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-            "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": \"Bob\", "
-            "\"email\": \"bob@email.com\"}, \"relationships\": {\"teams\": "
-            "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
-            "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"date\": "
-            "\"2021-03-08\", \"timestamp\": \"2021-03-08 10:00:00-06\", "
-            "\"max_temp\": 71.323586000000006, \"budget\": 45000.199999999997, "
-            "\"open\": false, \"team_id\": 2}, \"relationships\": {\"teams\": "
-            "{\"meta\": {\"included\": false}}}}]}");
+          t->strEqual(
+              "multiple related resources",
+              t->fetch("/api/v1/teams/2?include=employees,meetings", "GET",
+                       headers, NULL),
+              "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+              "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+              "{\"data\": {\"id\": \"2\", \"type\": \"employees\"}}, "
+              "\"meetings\": {\"data\": {\"id\": \"2\", \"type\": "
+              "\"meetings\"}}}}, \"meta\": {}, \"included\": [{\"type\": "
+              "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
+              "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
+              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+              "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": "
+              "\"Bob\", "
+              "\"email\": \"bob@email.com\"}, \"relationships\": {\"teams\": "
+              "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
+              "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"date\": "
+              "\"2021-03-08\", \"timestamp\": \"2021-03-08 10:00:00-06\", "
+              "\"max_temp\": 71.323586000000006, \"budget\": "
+              "45000.199999999997, "
+              "\"open\": false, \"team_id\": 2}, \"relationships\": "
+              "{\"teams\": "
+              "{\"meta\": {\"included\": false}}}}]}");
 
-        t->strEqual(
-            "bad include request",
-            t->fetch("/api/v1/teams/2?include=sdfdsfd", "GET", headers, NULL),
-            "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
-            "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
-            "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
-            "{\"included\": false}}}}, \"meta\": {}}");
+          t->strEqual(
+              "bad include request",
+              t->fetch("/api/v1/teams/2?include=sdfdsfd", "GET", headers, NULL),
+              "{\"data\": {\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+              "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+              "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+              "{\"included\": false}}}}, \"meta\": {}}");
+        });
+
+        t->test("all", ^(tape_t *t) {
+          t->strEqual(
+              "single related resources",
+              t->fetch("/api/v1/teams?include=employees", "GET", headers, NULL),
+              "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", "
+              "\"attributes\": {\"name\": \"design\"}, \"relationships\": "
+              "{\"employees\": {\"meta\": {\"included\": false}}, "
+              "\"meetings\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+              "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
+              "\"product\"}, \"relationships\": {\"employees\": {\"meta\": "
+              "{\"included\": false}}, \"meetings\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"teams\", \"id\": \"3\", \"attributes\": "
+              "{\"name\": \"engineering\"}, \"relationships\": {\"employees\": "
+              "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+              "{\"included\": false}}}}], \"meta\": {}, \"included\": "
+              "[{\"type\": \"employees\", \"id\": \"1\", \"attributes\": "
+              "{\"name\": \"Alice\", \"email\": \"alice@email.com\"}, "
+              "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"employees\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}]}");
+
+          t->strEqual(
+              "multiple related resources",
+              t->fetch("/api/v1/teams?include=employees,meetings", "GET",
+                       headers, NULL),
+              "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", "
+              "\"attributes\": {\"name\": \"design\"}, \"relationships\": "
+              "{\"employees\": {\"meta\": {\"included\": false}}, "
+              "\"meetings\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+              "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
+              "\"product\"}, \"relationships\": {\"employees\": {\"meta\": "
+              "{\"included\": false}}, \"meetings\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"teams\", \"id\": \"3\", \"attributes\": "
+              "{\"name\": \"engineering\"}, \"relationships\": {\"employees\": "
+              "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+              "{\"included\": false}}}}], \"meta\": {}, \"included\": "
+              "[{\"type\": \"employees\", \"id\": \"1\", \"attributes\": "
+              "{\"name\": \"Alice\", \"email\": \"alice@email.com\"}, "
+              "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"employees\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"meetings\", \"id\": "
+              "\"1\", \"attributes\": {\"max_size\": 10, \"date\": "
+              "\"2018-06-18\", \"timestamp\": \"2018-06-18 06:00:00-05\", "
+              "\"max_temp\": 72.295615999999995, \"budget\": 85000.25, "
+              "\"open\": true, \"team_id\": 3}, \"relationships\": {\"teams\": "
+              "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
+              "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"date\": "
+              "\"2021-03-08\", \"timestamp\": \"2021-03-08 10:00:00-06\", "
+              "\"max_temp\": 71.323586000000006, \"budget\": "
+              "45000.199999999997, \"open\": false, \"team_id\": 2}, "
+              "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
+              "false}}}}]}");
+
+          t->strEqual(
+              "bad include request",
+              t->fetch("/api/v1/teams?include=sdfdsfd", "GET", headers, NULL),
+              "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", "
+              "\"attributes\": {\"name\": \"design\"}, \"relationships\": "
+              "{\"employees\": {\"meta\": {\"included\": false}}, "
+              "\"meetings\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+              "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
+              "\"product\"}, \"relationships\": {\"employees\": {\"meta\": "
+              "{\"included\": false}}, \"meetings\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"teams\", \"id\": \"3\", \"attributes\": "
+              "{\"name\": \"engineering\"}, \"relationships\": {\"employees\": "
+              "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+              "{\"included\": false}}}}], \"meta\": {}}");
+        });
       });
     });
   });

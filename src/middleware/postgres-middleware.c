@@ -330,8 +330,6 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
       query->sql = sql;
 
-      debug("SQL: %s", sql);
-
       return sql;
     });
 
@@ -461,8 +459,8 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
 
   /* Create middleware, getting a postgress connection at the beginning of every
    * request and releasing it after the request has finished */
-  return Block_copy(^(UNUSED request_t *req, UNUSED response_t *res,
-                      void (^next)(), void (^cleanup)(cleanupHandler)) {
+  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),
+                      void (^cleanup)(cleanupHandler)) {
     /* Wait for a connection */
     dispatch_semaphore_wait(postgres->semaphore, DISPATCH_TIME_FOREVER);
 

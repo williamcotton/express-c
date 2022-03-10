@@ -61,6 +61,7 @@ typedef struct model_instance_collection_t {
   struct model_instance_collection_t *includedModelInstanceCollections[100];
   struct model_t *includesArray[100];
   int includesCount;
+  struct model_instance_collection_t * (^r)(const char *relationName);
   struct model_instance_t * (^at)(size_t index);
   void (^each)(eachInstanceCallback);
   struct model_instance_collection_t * (^filter)(filterInstanceCallback);
@@ -131,6 +132,7 @@ typedef struct model_t {
   void (^belongsTo)(char *tableName, char *foreignKey, void *);
   void (^hasMany)(char *tableName, char *foreignKey, void *);
   void (^hasOne)(char *tableName, char *foreignKey, void *);
+  const char * (^getForeignKey)(const char *relationName);
   void (^validates)(instanceCallback);
   void (^beforeSave)(beforeCallback);
   void (^afterSave)(instanceCallback);
