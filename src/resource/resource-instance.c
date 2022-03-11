@@ -1,9 +1,11 @@
 #include "resource.h"
 
-static int isMemberOfJsonArray(json_t *array, json_t *value) {
+static int isMemberOfJsonArray(json_t *array, char *value) {
+  json_t *element;
+
   for (size_t i = 0; i < json_array_size(array); i++) {
-    json_t *arrayValue = json_array_get(array, i);
-    if (json_equal(arrayValue, value)) {
+    element = json_array_get(array, i);
+    if (strcmp(json_string_value(element), value) == 0) {
       return 1;
     }
   }
@@ -56,8 +58,6 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->dataJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *attributes = json_object();
 
-    // debug("params->query %s", json_dumps(params->query, JSON_COMPACT));
-
     json_t *fields = json_object_get(params->query, "fields");
     json_t *resourceFields = NULL;
     if (fields) {
@@ -89,11 +89,11 @@ resource_instance_t *createResourceInstance(resource_t *resource,
       }
 
       if (resourceFields) {
-        if (isMemberOfJsonArray(resourceFields, json_string(attribute->name))) {
-          json_object_set_new(attributes, attribute->name, value);
+        if (isMemberOfJsonArray(resourceFields, attribute->name)) {
+          json_object_set(attributes, attribute->name, value);
         }
       } else {
-        json_object_set_new(attributes, attribute->name, value);
+        json_object_set(attributes, attribute->name, value);
       }
 
       memoryManager->cleanup(memoryManager->blockCopy(^{
