@@ -24,19 +24,15 @@ createResourceInstanceCollection(resource_t *resource,
       (resource_instance_collection_t *)memoryManager->malloc(
           sizeof(resource_instance_collection_t));
 
+  collection->type = resource->type;
   collection->arr = memoryManager->malloc(sizeof(resource_instance_t *) *
                                           modelCollection->size);
   collection->size = modelCollection->size;
   collection->modelCollection = modelCollection;
   collection->includedResourceInstancesCount = modelCollection->includesCount;
 
-  debug("resource: %s", resource->type);
-  // debug("modelCollection->includesCount: %d",
-  // modelCollection->includesCount);
-
-  for (int i = 0; i < modelCollection->includesCount; i++) {
+  for (int i = 0; i < collection->includedResourceInstancesCount; i++) {
     char *includedModelTableName = modelCollection->includesArray[i];
-    debug("%s -> %s", resource->type, includedModelTableName);
     resource_t *includedResource =
         resource->lookupByModel(includedModelTableName);
     if (includedResource == NULL)
@@ -51,6 +47,20 @@ createResourceInstanceCollection(resource_t *resource,
     model_instance_t *modelInstance = modelCollection->arr[i];
     resource_instance_t *resourceInstance =
         createResourceInstance(resource, modelInstance, params);
+    resourceInstance->includedResourceInstancesCount =
+        collection->includedResourceInstancesCount;
+    for (int j = 0; j < collection->includedResourceInstancesCount; j++) {
+
+      resourceInstance->includedResourceInstances[j] =
+          collection->includedResourceInstances[j]->filter(
+              memoryManager->blockCopy(^(resource_instance_t *relatedInstance) {
+                char *foreignKey =
+                    (char *)resourceInstance->modelInstance->model
+                        ->getForeignKey(relatedInstance->type);
+                return strcmp(relatedInstance->modelInstance->get(foreignKey),
+                              resourceInstance->modelInstance->id) == 0;
+              }));
+    }
     collection->arr[i] = resourceInstance;
   }
 
@@ -72,6 +82,7 @@ createResourceInstanceCollection(resource_t *resource,
       memoryManager->blockCopy(^(filterResourceInstanceCallback callback) {
         resource_instance_collection_t *filteredCollection =
             createResourceInstanceCollection(resource, modelCollection, params);
+        filteredCollection->size = 0;
         for (size_t i = 0; i < collection->size; i++) {
           if (callback(collection->arr[i])) {
             filteredCollection->arr[filteredCollection->size++] =
@@ -132,7 +143,7 @@ createResourceInstanceCollection(resource_t *resource,
   collection->toJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *data = json_array();
     collection->each(^(resource_instance_t *instance) {
-      instance->includedToJSONAPI();
+      // instance->includedToJSONAPI();
       json_array_append_new(data, instance->dataJSONAPI());
     });
 
@@ -154,8 +165,6 @@ createResourceInstanceCollection(resource_t *resource,
     memoryManager->cleanup(memoryManager->blockCopy(^{
       json_decref(response);
     }));
-
-    // debug("%s", json_dumps(response, JSON_INDENT(2)));
 
     return response;
   });

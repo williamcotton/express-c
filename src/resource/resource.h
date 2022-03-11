@@ -47,6 +47,7 @@ typedef void * (^mapResourceInstanceCallback)(
 typedef struct resource_instance_collection_t {
   struct resource_instance_t **arr;
   size_t size;
+  char *type;
   struct resource_instance_collection_t *includedResourceInstances[100];
   int includedResourceInstancesCount;
   struct resource_instance_t * (^at)(size_t index);

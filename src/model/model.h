@@ -73,6 +73,7 @@ typedef struct model_instance_collection_t {
 
 typedef struct model_instance_t {
   char *id;
+  struct model_t *model;
   instance_errors_t *errors;
   instance_attribute_t *attributes[100];
   int attributesCount;

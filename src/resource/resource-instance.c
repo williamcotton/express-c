@@ -105,24 +105,40 @@ resource_instance_t *createResourceInstance(resource_t *resource,
 
     json_t *relationships = json_object();
 
-    for (int i = 0; i < modelInstance->includesCount; i++) {
+    for (int i = 0; i < instance->includedResourceInstancesCount; i++) {
+      // debug("includedResourceInstances[%d]", i);
+      json_t *relatedDataArray = json_array();
       instance->includedResourceInstances[i]->each(
           ^(resource_instance_t *relatedInstance) {
+            // debug("relatedInstance->type %s %s", relatedInstance->type,
+            //       relatedInstance->id);
             json_t *relatedData = json_object();
             json_object_set_new(relatedData, "id",
                                 json_string(relatedInstance->id));
             json_object_set_new(relatedData, "type",
                                 json_string(relatedInstance->type));
-            json_t *related = json_object();
-            json_object_set_new(related, "data", relatedData);
-            json_object_set_new(relationships, relatedInstance->type, related);
+
+            json_array_append_new(relatedDataArray, relatedData);
           });
+      json_t *related = json_object();
+      json_object_set_new(related, "data", relatedDataArray);
+      json_object_set_new(
+          relationships, instance->includedResourceInstances[i]->type, related);
     }
 
     for (int i = 0; i < resource->relationshipsCount; i++) {
       char *relatedType = resource->relationshipNames()[i];
       json_t *relatedRelationship = json_object_get(relationships, relatedType);
+      int addRelationships = 0;
       if (relatedRelationship == NULL) {
+        addRelationships = 1;
+      } else {
+        json_t *relatedDataArray = json_object_get(relatedRelationship, "data");
+        if (json_array_size(relatedDataArray) == 0) {
+          addRelationships = 1;
+        }
+      }
+      if (addRelationships) {
         json_t *relatedMeta = json_object();
         json_object_set_new(relatedMeta, "included", json_false());
         json_t *related = json_object();

@@ -6,6 +6,7 @@ model_t *NoteModel(memory_manager_t *memoryManager) {
   Note->attribute("title", "text", NULL);
   Note->attribute("body", "text", NULL);
   Note->attribute("date", "date", NULL);
+  Note->attribute("employee_id", "integer", NULL);
 
   Note->belongsTo("employees", "employee_id", NULL);
 

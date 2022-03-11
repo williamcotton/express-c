@@ -8,6 +8,7 @@ model_instance_t *createModelInstance(model_t *model) {
   instance->errors->count = 0;
   instance->id = NULL;
   instance->includesCount = 0;
+  instance->model = model;
 
   instance->addError =
       memoryManager->blockCopy(^(char *attribute, char *message) {

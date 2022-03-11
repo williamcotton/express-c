@@ -29,8 +29,6 @@ static void addIncludesToCollection(char **includesArray, int includesCount,
     finalIncludesCount++;
   }
 
-  debug("finalIncludesCount: %d", finalIncludesCount);
-
   collection->includesCount = finalIncludesCount;
 }
 
@@ -238,6 +236,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
 
   model->belongsTo =
       appMemoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+        // model->attribute(relatedTableName, "string", NULL);
         belongs_to_t *newBelongsTo =
             appMemoryManager->malloc(sizeof(belongs_to_t));
         newBelongsTo->tableName = relatedTableName;
