@@ -55,7 +55,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
     query->paramValueCount = 0;
     query->whereConditionsCount = 0;
-    query->selectCondition = "*";
+    query->selectConditionsCount = 0;
     query->limitCondition = "";
     query->offsetCondition = "";
     query->orderConditionsCount = 0;
@@ -70,7 +70,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     });
 
     query->select = memoryManager->blockCopy(^(const char *select) {
-      query->selectCondition = select;
+      query->selectConditions[query->selectConditionsCount++] = select;
       return query;
     });
 
@@ -204,14 +204,31 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     query->toSql = memoryManager->blockCopy(^() {
       // SELECT
       char *select = NULL;
+      char *selectConditions = NULL;
+      for (int i = 0; i < query->selectConditionsCount; i++) {
+        if (i == 0) {
+          selectConditions =
+              memoryManager->malloc(strlen(query->selectConditions[i]) + 1);
+          strcpy(selectConditions, query->selectConditions[i]);
+        } else {
+          selectConditions = memoryManager->realloc(
+              selectConditions, strlen(selectConditions) +
+                                    strlen(query->selectConditions[i]) + 2);
+          strcat(selectConditions, ", ");
+          strcat(selectConditions, query->selectConditions[i]);
+        }
+      }
+      if (selectConditions == NULL) {
+        selectConditions = "*";
+      }
       if (query->distinctCondition) {
-        select = memoryManager->malloc(strlen(query->selectCondition) +
+        select = memoryManager->malloc(strlen(selectConditions) +
                                        strlen("SELECT DISTINCT") + 2);
-        sprintf(select, "SELECT DISTINCT %s", query->selectCondition);
+        sprintf(select, "SELECT DISTINCT %s", selectConditions);
       } else {
-        select = memoryManager->malloc(strlen(query->selectCondition) +
+        select = memoryManager->malloc(strlen(selectConditions) +
                                        strlen("SELECT ") + 1);
-        sprintf(select, "SELECT %s", query->selectCondition);
+        sprintf(select, "SELECT %s", selectConditions);
       }
 
       // FROM
@@ -345,7 +362,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     });
 
     query->count = memoryManager->blockCopy(^() {
-      query->selectCondition = "count(*)";
+      query->selectConditions[0] = "count(*)";
+      query->selectConditionsCount = 1;
       PGresult *pgres = query->all();
       if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
         log_err("%s", PQresultErrorMessage(pgres));

@@ -30,7 +30,8 @@ typedef struct query_t {
   char *sql;
   const char *paramValues[100];
   int paramValueCount;
-  const char *selectCondition;
+  const char *selectConditions[100];
+  int selectConditionsCount;
   char *whereConditions[100];
   int whereConditionsCount;
   char *orderConditions[100];
