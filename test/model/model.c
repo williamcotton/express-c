@@ -9,6 +9,7 @@
 #pragma clang diagnostic ignored "-Wunused-variable"
 
 void setupTest(pg_t *pg) {
+  PQclear(pg->exec("SET TIMEZONE='America/Chicago';"));
   PQclear(pg->exec("DROP TABLE IF EXISTS teams"));
   PQclear(pg->exec("CREATE TABLE teams (id SERIAL PRIMARY KEY, name TEXT)"));
   PQclear(pg->exec("INSERT INTO teams (name) VALUES ('design')"));
