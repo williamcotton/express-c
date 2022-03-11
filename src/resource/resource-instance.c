@@ -23,11 +23,12 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->modelInstance = modelInstance;
   instance->id = modelInstance->id;
   instance->type = resource->type;
+  instance->includedResourceInstancesCount = modelInstance->includesCount;
 
   for (int i = 0; i < modelInstance->includesCount; i++) {
-    model_t *includedModel = modelInstance->includesArray[i];
+    char *includedModelTableName = modelInstance->includesArray[i];
     resource_t *includedResource =
-        resource->lookupByModel(includedModel->tableName);
+        resource->lookupByModel(includedModelTableName);
     if (includedResource == NULL)
       continue;
     model_instance_collection_t *relatedModelInstances =
@@ -39,7 +40,8 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *includedJSONAPI = json_array();
 
-    for (int i = 0; i < modelInstance->includesCount; i++) {
+    for (int i = 0; i < instance->includedResourceInstancesCount; i++) {
+      nestedIncludes(includedJSONAPI, instance->includedResourceInstances[i]);
       instance->includedResourceInstances[i]->each(
           ^(resource_instance_t *relatedInstance) {
             json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();

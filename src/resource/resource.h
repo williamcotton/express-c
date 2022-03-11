@@ -48,6 +48,7 @@ typedef struct resource_instance_collection_t {
   struct resource_instance_t **arr;
   size_t size;
   struct resource_instance_collection_t *includedResourceInstances[100];
+  int includedResourceInstancesCount;
   struct resource_instance_t * (^at)(size_t index);
   void (^each)(eachResourceInstanceCallback);
   struct resource_instance_collection_t * (^filter)(
@@ -68,6 +69,7 @@ typedef struct resource_instance_t {
   instance_errors_t errors;
   model_instance_t *modelInstance;
   resource_instance_collection_t *includedResourceInstances[100];
+  int includedResourceInstancesCount;
   instance_errors_t (^save)();              // TODO: implement save
   instance_errors_t (^destroy)();           // TODO: implement destroy
   instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
@@ -222,6 +224,9 @@ query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
                             resource_t *resource);
 
 query_t *applyAllFieldsToScope(query_t *baseScope, resource_t *resource);
+
+void nestedIncludes(json_t *includedJSONAPI,
+                    resource_instance_collection_t *collection);
 
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,

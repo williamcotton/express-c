@@ -416,6 +416,7 @@ resource_t *CreateResource(char *type, model_t *model) {
     model_instance_collection_t *modelCollection =
         resource->allResolver->callback(queriedScope);
 
+    // debug("%s: %zu", resource->model->tableName, modelCollection->size);
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
 

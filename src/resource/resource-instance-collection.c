@@ -1,5 +1,19 @@
 #include "resource.h"
 
+void nestedIncludes(json_t *includedJSONAPI,
+                    resource_instance_collection_t *collection) {
+  for (int i = 0; i < collection->includedResourceInstancesCount; i++) {
+    collection->includedResourceInstances[i]->each(
+        ^(resource_instance_t *relatedInstance) {
+          json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
+          json_array_append_new(includedJSONAPI, relatedJSONAPI);
+        });
+    resource_instance_collection_t *nestedCollection =
+        collection->includedResourceInstances[i];
+    nestedIncludes(includedJSONAPI, nestedCollection);
+  }
+};
+
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,
@@ -14,11 +28,17 @@ createResourceInstanceCollection(resource_t *resource,
                                           modelCollection->size);
   collection->size = modelCollection->size;
   collection->modelCollection = modelCollection;
+  collection->includedResourceInstancesCount = modelCollection->includesCount;
+
+  debug("resource: %s", resource->type);
+  // debug("modelCollection->includesCount: %d",
+  // modelCollection->includesCount);
 
   for (int i = 0; i < modelCollection->includesCount; i++) {
-    model_t *includedModel = modelCollection->includesArray[i];
+    char *includedModelTableName = modelCollection->includesArray[i];
+    debug("%s -> %s", resource->type, includedModelTableName);
     resource_t *includedResource =
-        resource->lookupByModel(includedModel->tableName);
+        resource->lookupByModel(includedModelTableName);
     if (includedResource == NULL)
       continue;
     model_instance_collection_t *relatedModelInstances =
@@ -99,13 +119,7 @@ createResourceInstanceCollection(resource_t *resource,
   collection->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *includedJSONAPI = json_array();
 
-    for (int i = 0; i < modelCollection->includesCount; i++) {
-      collection->includedResourceInstances[i]->each(
-          ^(resource_instance_t *relatedInstance) {
-            json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
-            json_array_append_new(includedJSONAPI, relatedJSONAPI);
-          });
-    }
+    nestedIncludes(includedJSONAPI, collection);
 
     if (json_array_size(includedJSONAPI) == 0) {
       json_decref(includedJSONAPI);
@@ -140,6 +154,8 @@ createResourceInstanceCollection(resource_t *resource,
     memoryManager->cleanup(memoryManager->blockCopy(^{
       json_decref(response);
     }));
+
+    // debug("%s", json_dumps(response, JSON_INDENT(2)));
 
     return response;
   });

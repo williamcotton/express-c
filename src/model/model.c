@@ -1,5 +1,71 @@
 #include "model.h"
 
+static void addIncludesToCollection(char **includesArray, int includesCount,
+                                    model_instance_collection_t *collection) {
+  int finalIncludesCount = 0;
+
+  for (int i = 0; i < includesCount; i++) {
+    char *relatedModelTableName = includesArray[i];
+
+    char *nestedModelTableName = NULL;
+    char *t = strstr(relatedModelTableName, ".");
+    if (t != NULL) {
+      nestedModelTableName = t + 1;
+      relatedModelTableName[t - relatedModelTableName] = '\0';
+    }
+
+    query_t *relatedQuery = collection->r(relatedModelTableName);
+    if (relatedQuery == NULL)
+      continue;
+
+    collection->includesArray[i] = includesArray[i];
+    collection->includedModelInstanceCollections[i] = relatedQuery->all();
+
+    if (nestedModelTableName != NULL) {
+      addIncludesToCollection(&nestedModelTableName, 1,
+                              collection->includedModelInstanceCollections[i]);
+    }
+
+    finalIncludesCount++;
+  }
+
+  debug("finalIncludesCount: %d", finalIncludesCount);
+
+  collection->includesCount = finalIncludesCount;
+}
+
+static void addIncludesToInstance(char **includesArray, int includesCount,
+                                  model_instance_t *instance) {
+  int finalIncludesCount = 0;
+
+  for (int i = 0; i < includesCount; i++) {
+    char *relatedModelTableName = includesArray[i];
+
+    char *nestedModelTableName = NULL;
+    char *t = strstr(relatedModelTableName, ".");
+    if (t != NULL) {
+      nestedModelTableName = t + 1;
+      relatedModelTableName[t - relatedModelTableName] = '\0';
+    }
+
+    query_t *relatedQuery = instance->r(relatedModelTableName);
+    if (relatedQuery == NULL)
+      continue;
+
+    instance->includesArray[i] = includesArray[i];
+    instance->includedModelInstanceCollections[i] = relatedQuery->all();
+
+    if (nestedModelTableName != NULL) {
+      addIncludesToCollection(&nestedModelTableName, 1,
+                              instance->includedModelInstanceCollections[i]);
+    }
+
+    finalIncludesCount++;
+  }
+
+  instance->includesCount = finalIncludesCount;
+}
+
 model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
   model_t *model = appMemoryManager->malloc(sizeof(model_t));
 
@@ -53,16 +119,14 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
     void * (^originalAll)(void) = modelQuery->all;
     void * (^originalFind)(char *) = modelQuery->find;
 
-    modelQuery->includes = model->instanceMemoryManager->blockCopy(^(
-        char **includesResources, int count) {
-      for (int i = 0; i < count; i++) {
-        model_t *relatedModel = model->lookup(includesResources[i]);
-        if (relatedModel) {
-          modelQuery->includesArray[modelQuery->includesCount++] = relatedModel;
-        }
-      }
-      return modelQuery;
-    });
+    modelQuery->includes = model->instanceMemoryManager->blockCopy(
+        ^(char **includesResources, int count) {
+          for (int i = 0; i < count; i++) {
+            modelQuery->includesArray[modelQuery->includesCount++] =
+                includesResources[i];
+          }
+          return modelQuery;
+        });
 
     modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
       PGresult *result = originalAll();
@@ -90,13 +154,9 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           }
         }
       }
-      for (int i = 0; i < modelQuery->includesCount; i++) {
-        model_t *relatedModel = modelQuery->includesArray[i];
-        collection->includesArray[i] = modelQuery->includesArray[i];
-        collection->includedModelInstanceCollections[i] =
-            collection->r(relatedModel->tableName)->all();
-      }
-      collection->includesCount = modelQuery->includesCount;
+      addIncludesToCollection((char **)modelQuery->includesArray,
+                              modelQuery->includesCount, collection);
+      // debug("Model: %s", model->tableName);
       PQclear(result);
       return collection;
     });
@@ -125,13 +185,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           instance->initAttr(name, value, 0);
         }
       }
-      for (int i = 0; i < modelQuery->includesCount; i++) {
-        model_t *relatedModel = modelQuery->includesArray[i];
-        instance->includesArray[i] = modelQuery->includesArray[i];
-        instance->includedModelInstanceCollections[i] =
-            instance->r(relatedModel->tableName)->all();
-      }
-      instance->includesCount = modelQuery->includesCount;
+      addIncludesToInstance((char **)modelQuery->includesArray,
+                            modelQuery->includesCount, instance);
       PQclear(result);
       return instance;
     });

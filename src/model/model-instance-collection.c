@@ -77,15 +77,27 @@ model_instance_collection_t *createModelInstanceCollection(model_t *model) {
   });
 
   collection->r = memoryManager->blockCopy(^(const char *relationName) {
+    // debug("'%s' collection r: '%s'", model->tableName, relationName);
     model_t *relatedModel = model->lookup(relationName);
+    if (relatedModel == NULL) {
+      log_err("'%s' related model '%s' not found", model->tableName,
+              relationName);
+      return (query_t *)NULL;
+    }
     const char **relatedModelIds =
         memoryManager->malloc(sizeof(const char *) * collection->size);
     collection->eachWithIndex(^(model_instance_t *instance, int i) {
+      // debug("instance->id: %s", instance->id);
       relatedModelIds[i] = instance->id;
     });
     const char *foreignKey = model->getForeignKey(relationName);
+    check(foreignKey != NULL, "foreign key not found");
+    // debug("foreignKey: %s", foreignKey);
+    // debug("relatedModel->tableName: %s", relatedModel->tableName);
     return relatedModel->query()->whereIn(foreignKey, true, relatedModelIds,
                                           collection->size);
+  error:
+    return (query_t *)NULL;
   });
 
   return collection;

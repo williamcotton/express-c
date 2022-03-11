@@ -8,6 +8,7 @@ model_t *EmployeeModel(memory_manager_t *memoryManager) {
   Employee->attribute("team_id", "integer", NULL);
 
   Employee->belongsTo("teams", "team_id", NULL);
+  Employee->hasMany("notes", "employee_id", NULL);
 
   Employee->validatesAttribute("team_id", "presence", NULL);
 
