@@ -29,6 +29,10 @@ ENV LD_LIBRARY_PATH /usr/local/lib
 RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
 RUN chmod +x /usr/local/bin/dbmate
 
+# Set timezone to US Central
+RUN rm -rf /etc/localtime
+RUN ln -s /usr/share/zoneinfo/America/Chicago /etc/localtime
+
 # Copy scripts
 COPY scripts /usr/local/bin
 
