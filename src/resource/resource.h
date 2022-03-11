@@ -203,6 +203,28 @@ typedef struct resource_library_t {
   void (^add)(const char *name, ModelFunction, ResourceFunction);
 } resource_library_t;
 
+query_t *applyFiltersToScope(json_t *filters, query_t *baseScope,
+                             resource_t *resource);
+
+query_t *applySortersToScope(json_t *sorters, query_t *baseScope,
+                             resource_t *resource);
+
+query_t *applyPaginatorToScope(json_t *paginator, query_t *baseScope,
+                               resource_t *resource);
+
+query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
+                             resource_t *resource);
+
+query_t *applyQueryToScope(json_t *query, query_t *baseScope,
+                           resource_t *resource);
+
+resource_instance_collection_t *
+createResourceInstanceCollection(resource_t *resource,
+                                 model_instance_collection_t *modelCollection,
+                                 jsonapi_params_t *params);
+resource_instance_t *createResourceInstance(resource_t *resource,
+                                            model_instance_t *modelInstance,
+                                            jsonapi_params_t *params);
 resource_t *CreateResource(char *type, model_t *model);
 resource_library_t *initResourceLibrary();
 

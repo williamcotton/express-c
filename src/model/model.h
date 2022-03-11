@@ -152,6 +152,8 @@ typedef struct model_t {
   memory_manager_t *appMemoryManager;
 } __attribute__((packed)) model_t;
 
+model_instance_collection_t *createModelInstanceCollection(model_t *model);
+model_instance_t *createModelInstance(model_t *model);
 model_t *CreateModel(char *tableName, memory_manager_t *memoryManager);
 
 #endif // MODEL_H
