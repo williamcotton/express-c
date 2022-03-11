@@ -61,7 +61,7 @@ typedef struct model_instance_collection_t {
   struct model_instance_collection_t *includedModelInstanceCollections[100];
   struct model_t *includesArray[100];
   int includesCount;
-  struct model_instance_collection_t * (^r)(const char *relationName);
+  query_t * (^r)(const char *relationName);
   struct model_instance_t * (^at)(size_t index);
   void (^each)(eachInstanceCallback);
   struct model_instance_collection_t * (^filter)(filterInstanceCallback);
@@ -84,7 +84,7 @@ typedef struct model_instance_t {
   char * (^get)(char *attribute);
   void (^set)(char *attribute, char *value);
   void (^initAttr)(char *attribute, char *value, int isDirty);
-  model_instance_collection_t * (^r)(const char *relationName);
+  query_t * (^r)(const char *relationName);
   int (^save)();
   int (^validate)();
   int (^destroy)();

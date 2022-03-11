@@ -129,7 +129,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
 
     t->test("hasMany", ^(tape_t *t) {
       team_t *team = Team->find("2");
-      employee_collection_t *employees = team->r("employees");
+      employee_collection_t *employees = team->r("employees")->all();
 
       t->ok("employees count", employees->size == 2);
 
@@ -164,7 +164,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
 
     t->test("belongsTo", ^(tape_t *t) {
       employee_t *employee = Employee->find("1");
-      team_collection_t *teams = employee->r("teams");
+      team_collection_t *teams = employee->r("teams")->all();
 
       team_t *team = teams->at(0);
 

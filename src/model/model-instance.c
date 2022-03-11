@@ -66,13 +66,12 @@ model_instance_t *createModelInstance(model_t *model) {
     model_t *relatedModel = model->lookup(relationName);
     if (relatedModel == NULL) {
       log_err("Could not find model '%s'", relationName);
-      return (model_instance_collection_t *)NULL;
+      return (query_t *)NULL;
     }
 
     relatedModel->setPg(model->pg);
     relatedModel->setInstanceMemoryManager(memoryManager);
 
-    model_instance_collection_t *collection = NULL;
     char *whereForeignKey = NULL;
 
     char *hasManyForeignKey = NULL;
@@ -87,8 +86,7 @@ model_instance_t *createModelInstance(model_t *model) {
       whereForeignKey = memoryManager->malloc(strlen(hasManyForeignKey) +
                                               strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
-      collection = relatedModel->query()->where(whereForeignKey)->all();
-      return collection;
+      return relatedModel->query()->where(whereForeignKey);
     }
 
     char *hasOneForeignKey = NULL;
@@ -103,9 +101,7 @@ model_instance_t *createModelInstance(model_t *model) {
       whereForeignKey = memoryManager->malloc(strlen(hasOneForeignKey) +
                                               strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
-      collection =
-          relatedModel->query()->where(whereForeignKey)->limit(1)->all();
-      return collection;
+      return relatedModel->query()->where(whereForeignKey)->limit(1);
     }
 
     char *belongsToForeignKey = NULL;
@@ -120,13 +116,12 @@ model_instance_t *createModelInstance(model_t *model) {
       char *foreignKey = instance->get(belongsToForeignKey);
       whereForeignKey = memoryManager->malloc(strlen(foreignKey) + 6);
       sprintf(whereForeignKey, "id = %s", foreignKey);
-      collection = relatedModel->query()->where(whereForeignKey)->all();
-      return collection;
+      return relatedModel->query()->where(whereForeignKey);
     }
 
     log_err("Could not find relation '%s' on '%s'", relationName,
             model->tableName);
-    return (model_instance_collection_t *)NULL;
+    return (query_t *)NULL;
   });
 
   instance->validate = memoryManager->blockCopy(^() {

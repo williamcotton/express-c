@@ -94,7 +94,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         model_t *relatedModel = modelQuery->includesArray[i];
         collection->includesArray[i] = modelQuery->includesArray[i];
         collection->includedModelInstanceCollections[i] =
-            collection->r(relatedModel->tableName);
+            collection->r(relatedModel->tableName)->all();
       }
       collection->includesCount = modelQuery->includesCount;
       PQclear(result);
@@ -129,7 +129,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         model_t *relatedModel = modelQuery->includesArray[i];
         instance->includesArray[i] = modelQuery->includesArray[i];
         instance->includedModelInstanceCollections[i] =
-            instance->r(relatedModel->tableName);
+            instance->r(relatedModel->tableName)->all();
       }
       instance->includesCount = modelQuery->includesCount;
       PQclear(result);

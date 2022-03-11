@@ -218,6 +218,11 @@ query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
 query_t *applyQueryToScope(json_t *query, query_t *baseScope,
                            resource_t *resource);
 
+query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
+                            resource_t *resource);
+
+query_t *applyAllFieldsToScope(query_t *baseScope, resource_t *resource);
+
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,

@@ -82,47 +82,46 @@ error:
   return baseScope;
 }
 
-static query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
-                                   resource_t *resource) {
-  char *selectConditions = NULL;
+query_t *applyResourceAttributeToScope(query_t *baseScope, resource_t *resource,
+                                       char *attributeName) {
+  char *selectCondition = resource->model->instanceMemoryManager->malloc(
+      strlen(resource->type) + strlen(".") + strlen(attributeName) + 1);
+  sprintf(selectCondition, "%s.%s", resource->type, attributeName);
+  baseScope = baseScope->select(selectCondition);
+  return baseScope;
+}
+
+query_t *applyAllFieldsToScope(query_t *baseScope, resource_t *resource) {
+  applyResourceAttributeToScope(baseScope, resource, "id");
+  for (int i = 0; i < resource->attributesCount; i++) {
+    class_attribute_t *attribute = resource->attributes[i];
+    applyResourceAttributeToScope(baseScope, resource, attribute->name);
+  }
+  return baseScope;
+}
+
+query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
+                            resource_t *resource) {
   const char *resourceType = NULL;
   json_t *fieldValues;
   check(json_is_object(fields), "Invalid fields: fields must be an object");
   json_object_foreach(fields, resourceType, fieldValues) {
     check(resourceType != NULL, "Invalid fields: resource type is required");
-    // check if resource type is valid
-    check(resource->lookup(resourceType) != NULL,
-          "Invalid fields: resource type is invalid");
+    resource_t *fieldsResource = resource->lookup(resourceType);
+    check(fieldsResource != NULL, "Invalid fields: resource type is invalid");
+    if (fieldsResource != resource) {
+      goto error;
+    }
     size_t index;
     json_t *jsonValue;
     json_array_foreach(fieldValues, index, jsonValue) {
       const char *value = json_string_value(jsonValue);
       check(value != NULL,
             "Invalid fields: fields must be an array of strings");
-      // TODO: check if value is a valid field on resource
-      char *selectCondition =
-          malloc(strlen(resourceType) + strlen(".") + strlen(value) + 1);
-      sprintf(selectCondition, "%s.%s", resourceType, value);
-      if (selectConditions == NULL) {
-        selectConditions = malloc(strlen(selectCondition) + 1);
-        size_t len = strlen(selectCondition);
-        memcpy(selectConditions, selectCondition, len);
-        selectConditions[len] = '\0';
-      } else {
-        size_t newLen = strlen(selectConditions) + strlen(selectCondition) + 2;
-        selectConditions = realloc(selectConditions, newLen);
-        strncat(selectConditions, ",", 1);
-        strncat(selectConditions, selectCondition, newLen);
-      }
-      free(selectCondition);
+      applyResourceAttributeToScope(baseScope, fieldsResource, (char *)value);
     }
   }
-  baseScope = baseScope->select(selectConditions);
 error:
-  resource->model->instanceMemoryManager->cleanup(
-      resource->model->instanceMemoryManager->blockCopy(^{
-        free(selectConditions);
-      }));
   return baseScope;
 }
 
@@ -159,9 +158,11 @@ query_t *applyQueryToScope(json_t *query, query_t *baseScope,
     baseScope = applyPaginatorToScope(paginator, baseScope, resource);
   }
 
-  // TODO: only select fields that are in the resource
   json_t *fields = json_object_get(query, "fields");
   if (fields) {
+    if (json_object_get(fields, resource->type) == NULL) {
+      baseScope = applyAllFieldsToScope(baseScope, resource);
+    }
     baseScope = applyFieldsToScope(fields, baseScope, resource);
   }
 

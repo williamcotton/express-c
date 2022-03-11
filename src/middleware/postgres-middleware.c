@@ -213,7 +213,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
         } else {
           selectConditions = memoryManager->realloc(
               selectConditions, strlen(selectConditions) +
-                                    strlen(query->selectConditions[i]) + 2);
+                                    strlen(query->selectConditions[i]) + 3);
           strcat(selectConditions, ", ");
           strcat(selectConditions, query->selectConditions[i]);
         }
@@ -346,6 +346,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       }
 
       query->sql = sql;
+
+      // debug("SQL: %s", sql);
 
       return sql;
     });

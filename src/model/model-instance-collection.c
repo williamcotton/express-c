@@ -84,9 +84,8 @@ model_instance_collection_t *createModelInstanceCollection(model_t *model) {
       relatedModelIds[i] = instance->id;
     });
     const char *foreignKey = model->getForeignKey(relationName);
-    return relatedModel->query()
-        ->whereIn(foreignKey, true, relatedModelIds, collection->size)
-        ->all();
+    return relatedModel->query()->whereIn(foreignKey, true, relatedModelIds,
+                                          collection->size);
   });
 
   return collection;
