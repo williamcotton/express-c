@@ -35,6 +35,17 @@ memory_manager_t *createMemoryManager() {
     return ptr;
   });
 
+  memoryManager->realloc = Block_copy(^(void *ptr, size_t size) {
+    void *newPtr = realloc(ptr, size);
+    for (int i = 0; i < memoryManager->mallocCount; i++) {
+      if (memoryManager->mallocs[i].ptr == ptr) {
+        memoryManager->mallocs[i].ptr = newPtr;
+        break;
+      }
+    }
+    return newPtr;
+  });
+
   memoryManager->blockCopy = Block_copy(^(void *block) {
     void *ptr = Block_copy(block);
     memoryManager->blockCopies[memoryManager->blockCopyCount++] =
@@ -61,6 +72,7 @@ memory_manager_t *createMemoryManager() {
     }
 
     Block_release(memoryManager->malloc);
+    Block_release(memoryManager->realloc);
     Block_release(memoryManager->blockCopy);
     Block_release(memoryManager->cleanup);
 

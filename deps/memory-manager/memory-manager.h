@@ -41,6 +41,7 @@ typedef struct memory_manager_t {
   int mallocCount;
   memory_manager_malloc_t mallocs[1024];
   void * (^malloc)(size_t size);
+  void * (^realloc)(void *ptr, size_t size);
   int blockCopyCount;
   memory_manager_block_copy_t blockCopies[1024];
   void * (^blockCopy)(void *);
