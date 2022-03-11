@@ -206,16 +206,17 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       char *select = NULL;
       char *selectConditions = NULL;
       for (int i = 0; i < query->selectConditionsCount; i++) {
+        size_t selectLen = strlen(query->selectConditions[i]) + 1;
         if (i == 0) {
-          selectConditions =
-              memoryManager->malloc(strlen(query->selectConditions[i]) + 1);
-          strcpy(selectConditions, query->selectConditions[i]);
+          selectConditions = memoryManager->malloc(selectLen);
+          strlcpy(selectConditions, query->selectConditions[i], selectLen);
         } else {
-          selectConditions = memoryManager->realloc(
-              selectConditions, strlen(selectConditions) +
-                                    strlen(query->selectConditions[i]) + 3);
-          strcat(selectConditions, ", ");
-          strcat(selectConditions, query->selectConditions[i]);
+          size_t selectsLen = strlen(selectConditions);
+          selectConditions = memoryManager->realloc(selectConditions,
+                                                    selectsLen + selectLen + 2);
+          strlcat(selectConditions, ", ", selectsLen + 2);
+          strlcat(selectConditions, query->selectConditions[i],
+                  selectsLen + selectLen + 2);
         }
       }
       if (selectConditions == NULL) {

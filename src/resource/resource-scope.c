@@ -137,8 +137,8 @@ query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
   json_array_foreach(include, index, includedResource) {
     includedResources[index] = json_string_value(includedResource);
   }
-
-  return baseScope = baseScope->includes(includedResources, count);
+  baseScope = baseScope->includes(includedResources, count);
+  return baseScope;
 };
 
 query_t *applyQueryToScope(json_t *query, query_t *baseScope,
