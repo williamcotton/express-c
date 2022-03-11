@@ -79,16 +79,17 @@ resource_instance_t *createResourceInstance(resource_t *resource,
     json_t *relationships = json_object();
 
     for (int i = 0; i < modelInstance->includesCount; i++) {
-      instance->includedResourceInstances[i]->each(^(
-          resource_instance_t *relatedInstance) {
-        json_t *relatedData = json_object();
-        json_object_set(relatedData, "id", json_string(relatedInstance->id));
-        json_object_set(relatedData, "type",
-                        json_string(relatedInstance->type));
-        json_t *related = json_object();
-        json_object_set(related, "data", relatedData);
-        json_object_set(relationships, relatedInstance->type, related);
-      });
+      instance->includedResourceInstances[i]->each(
+          ^(resource_instance_t *relatedInstance) {
+            json_t *relatedData = json_object();
+            json_object_set_new(relatedData, "id",
+                                json_string(relatedInstance->id));
+            json_object_set_new(relatedData, "type",
+                                json_string(relatedInstance->type));
+            json_t *related = json_object();
+            json_object_set_new(related, "data", relatedData);
+            json_object_set_new(relationships, relatedInstance->type, related);
+          });
     }
 
     for (int i = 0; i < resource->relationshipsCount; i++) {
@@ -96,10 +97,10 @@ resource_instance_t *createResourceInstance(resource_t *resource,
       json_t *relatedRelationship = json_object_get(relationships, relatedType);
       if (relatedRelationship == NULL) {
         json_t *relatedMeta = json_object();
-        json_object_set(relatedMeta, "included", json_false());
+        json_object_set_new(relatedMeta, "included", json_false());
         json_t *related = json_object();
-        json_object_set(related, "meta", relatedMeta);
-        json_object_set(relationships, relatedType, related);
+        json_object_set_new(related, "meta", relatedMeta);
+        json_object_set_new(relationships, relatedType, related);
       }
     }
 

@@ -130,6 +130,7 @@ router_t *postgresRouter(const char *pgUri, int poolSize) {
       return;
     }
     res->sendf("%s,%s", PQgetvalue(pgres, 0, 2), PQgetvalue(pgres, 1, 2));
+    free(paramValues);
     PQclear(pgres);
   });
 
