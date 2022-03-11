@@ -64,8 +64,10 @@ void *clientAcceptEventHandler(void *args) {
   int epollFd = clientThreadArgs->epollFd;
   server_t *server = clientThreadArgs->server;
   router_t *baseRouter = clientThreadArgs->baseRouter;
+  memory_manager_t *memoryManager = baseRouter->memoryManager;
 
-  struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
+  struct epoll_event *events =
+      memoryManager->malloc(sizeof(struct epoll_event) * MAX_EVENTS);
   struct epoll_event ev;
   int nfds;
 
@@ -95,7 +97,7 @@ void *clientAcceptEventHandler(void *args) {
 
           ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
 
-          http_status_t *status = malloc(sizeof(http_status_t));
+          http_status_t *status = memoryManager->malloc(sizeof(http_status_t));
           status->client = client;
           status->reqStatus = READING;
 
@@ -114,13 +116,11 @@ void *clientAcceptEventHandler(void *args) {
             dispatch_source_cancel(timerSource);
             dispatch_release(timerSource);
             closeClientConnection(client);
-            free(status);
           });
           dispatch_resume(timerSource);
 
           if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client.socket, &ev) < 0) {
             log_err("epoll_ctl() failed");
-            free(status);
             continue;
           }
         }
@@ -139,7 +139,6 @@ void *clientAcceptEventHandler(void *args) {
           buildRequest(req, client, baseRouter);
 
           if (req->method == NULL) {
-            free(status);
             free(req);
             closeClientConnection(client);
             continue;
@@ -163,14 +162,11 @@ void *clientAcceptEventHandler(void *args) {
           freeResponse(res);
           freeRequest(req);
           closeClientConnection(client);
-        } else if (status->reqStatus == ENDED) {
-          free(status);
         }
       }
     }
   }
 error:
-  free(events);
   return NULL;
 }
 
@@ -194,10 +190,15 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
         "epoll_ctl() failed");
 
   for (int i = 0; i < THREAD_NUM; ++i) {
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, 1);
     check(pthread_create(&threads[i], NULL, clientAcceptEventHandler,
                          &threadArgs) >= 0,
           "pthread_create() failed");
+    pthread_attr_destroy(&attr);
   }
+
   clientAcceptEventHandler(&threadArgs);
 
   return 0;
