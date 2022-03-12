@@ -11,6 +11,17 @@
    fun:_dispatch_root_queue_poke_slow
 }
 {
+   dispatch queue
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:_dispatch_root_queue_poke_slow
+}
+{
    epoll server
    Memcheck:Leak
    match-leak-kinds: possible
@@ -21,6 +32,31 @@
    fun:allocate_stack
    fun:pthread_create*
    fun:initClientAcceptEventHandler
+}
+{
+   epoll server
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create*
+   fun:initClientAcceptEventHandler
+}
+{
+   epoll server
+   Memcheck:Param
+   epoll_ctl(event)
+   fun:epoll_ctl
+   fun:initClientAcceptEventHandler
+}
+{
+   TODO: fix flaky test-leaks on linux
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:clientAcceptEventHandler
 }
 {
    TODO: fix flaky test with mock epoll_ctl fail
