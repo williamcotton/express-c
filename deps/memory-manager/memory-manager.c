@@ -21,15 +21,37 @@
 */
 
 #include "memory-manager.h"
+#include <stdio.h>
 
 memory_manager_t *createMemoryManager() {
   memory_manager_t *memoryManager = malloc(sizeof(memory_manager_t));
   memoryManager->mallocCount = 0;
+  memoryManager->maxMallocCount = 1024;
   memoryManager->blockCopyCount = 0;
+  memoryManager->maxBlockCopyCount = 1024;
   memoryManager->cleanupHandlersCount = 0;
+  memoryManager->maxCleanupHandlersCount = 1024;
+
+  memoryManager->mallocs =
+      malloc(sizeof(memory_manager_malloc_t) * memoryManager->maxMallocCount);
+  memoryManager->blockCopies = malloc(sizeof(memory_manager_block_copy_t) *
+                                      memoryManager->maxBlockCopyCount);
+  memoryManager->cleanupHandlers =
+      malloc(sizeof(memoryManagerCleanupHandler) *
+             memoryManager->maxCleanupHandlersCount);
 
   memoryManager->malloc = Block_copy(^(size_t size) {
+    if (memoryManager->mallocCount >= memoryManager->maxMallocCount) {
+      memoryManager->maxMallocCount *= 2;
+      memoryManager->mallocs =
+          realloc(memoryManager->mallocs, sizeof(memory_manager_malloc_t) *
+                                              memoryManager->maxMallocCount);
+    }
     void *ptr = malloc(size);
+    if (ptr == NULL) {
+      printf("Memory manager: malloc returned NULL\n");
+      return NULL;
+    }
     memoryManager->mallocs[memoryManager->mallocCount++] =
         (memory_manager_malloc_t){.ptr = ptr};
     return ptr;
@@ -47,13 +69,31 @@ memory_manager_t *createMemoryManager() {
   });
 
   memoryManager->blockCopy = Block_copy(^(void *block) {
+    if (memoryManager->blockCopyCount >= memoryManager->maxBlockCopyCount) {
+      memoryManager->maxBlockCopyCount *= 2;
+      memoryManager->blockCopies = realloc(
+          memoryManager->blockCopies, sizeof(memory_manager_block_copy_t) *
+                                          memoryManager->maxBlockCopyCount);
+    }
     void *ptr = Block_copy(block);
+    if (ptr == NULL) {
+      printf("Memory manager: Block_copy returned NULL\n");
+      return NULL;
+    }
     memoryManager->blockCopies[memoryManager->blockCopyCount++] =
         (memory_manager_block_copy_t){.ptr = ptr};
     return ptr;
   });
 
   memoryManager->cleanup = Block_copy(^(memoryManagerCleanupHandler handler) {
+    if (memoryManager->cleanupHandlersCount >=
+        memoryManager->maxCleanupHandlersCount) {
+      memoryManager->maxCleanupHandlersCount *= 2;
+      memoryManager->cleanupHandlers =
+          realloc(memoryManager->cleanupHandlers,
+                  sizeof(memoryManagerCleanupHandler) *
+                      memoryManager->maxCleanupHandlersCount);
+    }
     memoryManager->cleanupHandlers[memoryManager->cleanupHandlersCount++] =
         handler;
   });
@@ -70,6 +110,10 @@ memory_manager_t *createMemoryManager() {
     for (int i = 0; i < memoryManager->blockCopyCount; i++) {
       Block_release(memoryManager->blockCopies[i].ptr);
     }
+
+    free(memoryManager->mallocs);
+    free(memoryManager->blockCopies);
+    free(memoryManager->cleanupHandlers);
 
     Block_release(memoryManager->malloc);
     Block_release(memoryManager->realloc);

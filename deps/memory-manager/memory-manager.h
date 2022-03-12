@@ -39,14 +39,17 @@ typedef void (^memoryManagerCleanupHandler)();
 
 typedef struct memory_manager_t {
   int mallocCount;
-  memory_manager_malloc_t mallocs[1024];
+  int maxMallocCount;
+  memory_manager_malloc_t *mallocs;
   void * (^malloc)(size_t size);
   void * (^realloc)(void *ptr, size_t size);
   int blockCopyCount;
-  memory_manager_block_copy_t blockCopies[1024];
+  int maxBlockCopyCount;
+  memory_manager_block_copy_t *blockCopies;
   void * (^blockCopy)(void *);
   int cleanupHandlersCount;
-  memoryManagerCleanupHandler cleanupHandlers[1024];
+  int maxCleanupHandlersCount;
+  memoryManagerCleanupHandler *cleanupHandlers;
   void (^cleanup)(memoryManagerCleanupHandler);
   void (^free)();
 } memory_manager_t;
