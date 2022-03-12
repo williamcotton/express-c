@@ -7,6 +7,7 @@ resource_t *EmployeeResource(model_t *model) {
   Employee->attribute("email", "string", NULL);
 
   Employee->belongsTo("teams", NULL);
+  Employee->hasMany("notes", NULL);
 
   return Employee;
 }

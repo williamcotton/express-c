@@ -645,10 +645,11 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "[{\"type\": \"employees\", \"id\": \"1\", \"attributes\": "
               "{\"name\": \"Alice\", \"email\": \"alice@email.com\"}, "
               "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
-              "false}}}}, {\"type\": \"employees\", \"id\": \"2\", "
-              "\"attributes\": {\"name\": \"Bob\", \"email\": "
-              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}}}]}");
+              "false}}, \"notes\": {\"meta\": {\"included\": false}}}}, "
+              "{\"type\": \"employees\", \"id\": \"2\", \"attributes\": "
+              "{\"name\": \"Bob\", \"email\": \"bob@email.com\"}, "
+              "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
+              "false}}, \"notes\": {\"meta\": {\"included\": false}}}}]}");
 
           t->strEqual(
               "multiple related resources",
@@ -664,11 +665,13 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"included\": [{\"type\": \"employees\", \"id\": \"1\", "
               "\"attributes\": {\"name\": \"Alice\", \"email\": "
               "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
-              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"employees\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"Bob\", \"email\": "
               "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"meetings\", \"id\": "
-              "\"2\", \"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
+              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
               "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
 
@@ -738,10 +741,12 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
             "{\"included\": false}}}}, \"meta\": {}, \"included\": [{\"type\": "
             "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
             "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
-            "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-            "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": \"Bob\", "
-            "\"email\": \"bob@email.com\"}, \"relationships\": {\"teams\": "
-            "{\"meta\": {\"included\": false}}}}]}");
+            "{\"teams\": {\"meta\": {\"included\": false}}, \"notes\": "
+            "{\"meta\": {\"included\": false}}}}, {\"type\": \"employees\", "
+            "\"id\": \"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+            "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+            "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+            "false}}}}]}");
 
         t->test("all", ^(tape_t *t) {
           t->strEqual(
@@ -762,10 +767,12 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "{}, \"included\": [{\"type\": \"employees\", \"id\": \"1\", "
               "\"attributes\": {\"name\": \"Alice\", \"email\": "
               "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
-              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"employees\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"Bob\", \"email\": "
               "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}}}]}");
+              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+              "false}}}}]}");
 
           t->strEqual(
               "multiple related resources",
@@ -788,16 +795,18 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"meetings\"}]}}}], \"meta\": {}, \"included\": [{\"type\": "
               "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
               "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": "
-              "\"Bob\", \"email\": \"bob@email.com\"}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"meetings\", \"id\": \"1\", \"attributes\": {\"max_size\": 10, "
-              "\"max_temp\": 72.295615999999995}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"meetings\", \"id\": \"2\", \"attributes\": {\"max_size\": 5, "
-              "\"max_temp\": 71.323586000000006}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}]}");
+              "{\"teams\": {\"meta\": {\"included\": false}}, \"notes\": "
+              "{\"meta\": {\"included\": false}}}}, {\"type\": \"employees\", "
+              "\"id\": \"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"1\", "
+              "\"attributes\": {\"max_size\": 10, \"max_temp\": "
+              "72.295615999999995}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"meetings\", \"id\": "
+              "\"2\", \"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}]}");
 
           t->strEqual(
               "bad include request",
@@ -892,16 +901,18 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"meetings\"}]}}}], \"meta\": {}, \"included\": [{\"type\": "
               "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
               "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": "
-              "\"Bob\", \"email\": \"bob@email.com\"}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"meetings\", \"id\": \"1\", \"attributes\": {\"max_size\": 10, "
-              "\"max_temp\": 72.295615999999995}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"meetings\", \"id\": \"2\", \"attributes\": {\"max_size\": 5, "
-              "\"max_temp\": 71.323586000000006}, \"relationships\": "
-              "{\"teams\": {\"meta\": {\"included\": false}}}}]}");
+              "{\"teams\": {\"meta\": {\"included\": false}}, \"notes\": "
+              "{\"meta\": {\"included\": false}}}}, {\"type\": \"employees\", "
+              "\"id\": \"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"1\", "
+              "\"attributes\": {\"max_size\": 10, \"max_temp\": "
+              "72.295615999999995}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"meetings\", \"id\": "
+              "\"2\", \"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}]}");
         });
       });
     });
