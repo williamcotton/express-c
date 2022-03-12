@@ -10,7 +10,7 @@ resource_t *MeetingResource(model_t *model) {
   Meeting->attribute("budget", "big_decimal", NULL);
   Meeting->attribute("open", "boolean", NULL);
 
-  Meeting->belongsTo("teams", "team_id");
+  Meeting->belongsTo("teams", NULL);
 
   return Meeting;
 }

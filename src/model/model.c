@@ -2,25 +2,36 @@
 
 static void addIncludesToCollection(char **includesArray, int includesCount,
                                     model_instance_collection_t *collection) {
+  /* The final includes count depends on valid models */
   int finalIncludesCount = 0;
 
+  /* Iterate through the includes array */
   for (int i = 0; i < includesCount; i++) {
     char *relatedModelTableName = includesArray[i];
 
     char *nestedModelTableName = NULL;
+
+    /* Check if the related model is a nested model */
     char *t = strstr(relatedModelTableName, ".");
     if (t != NULL) {
+      /* Get the nested model table name */
       nestedModelTableName = t + 1;
+      /* Get the related model table name */
       relatedModelTableName[t - relatedModelTableName] = '\0';
     }
 
+    /* Get the related models query */
     query_t *relatedQuery = collection->r(relatedModelTableName);
     if (relatedQuery == NULL)
       continue;
 
+    /* Get the related model instance collection and add them to the collection
+     */
     collection->includesArray[i] = includesArray[i];
     collection->includedModelInstanceCollections[i] = relatedQuery->all();
 
+    /* If the related model is a nested model, add the nested model instance
+     * collection to the collection */
     if (nestedModelTableName != NULL) {
       addIncludesToCollection(&nestedModelTableName, 1,
                               collection->includedModelInstanceCollections[i]);
@@ -119,6 +130,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
 
     modelQuery->includes = model->instanceMemoryManager->blockCopy(
         ^(char **includesResources, int count) {
+          /* Add included resources to the current query */
           for (int i = 0; i < count; i++) {
             modelQuery->includesArray[modelQuery->includesCount++] =
                 includesResources[i];
@@ -152,6 +164,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           }
         }
       }
+      /* Add included resources to the collection of model instances */
       addIncludesToCollection((char **)modelQuery->includesArray,
                               modelQuery->includesCount, collection);
       // debug("Model: %s", model->tableName);
@@ -285,9 +298,27 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         for (int i = 0; i < model->belongsToCount; i++) {
           if (strcmp(model->belongsToRelationships[i]->tableName,
                      relatedModel->tableName) == 0) {
+            return "id";
+          }
+        }
+        log_err("Could not find foreign key for '%s'", relationName);
+        return (char *)NULL;
+      });
+
+  model->getBelongsToKey =
+      appMemoryManager->blockCopy(^(const char *relationName) {
+        model_t *relatedModel = model->lookup(relationName);
+        if (relatedModel == NULL) {
+          log_err("Could not find model '%s'", relationName);
+          return (char *)NULL;
+        }
+        for (int i = 0; i < model->belongsToCount; i++) {
+          if (strcmp(model->belongsToRelationships[i]->tableName,
+                     relatedModel->tableName) == 0) {
             return model->belongsToRelationships[i]->foreignKey;
           }
         }
+        log_err("Could not find belongs to key for '%s'", relationName);
         return (char *)NULL;
       });
 

@@ -18,6 +18,8 @@ resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,
                                  jsonapi_params_t *params) {
+  /* Create a collection of resource instances from a collection of model
+   * instances. */
   memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
 
   resource_instance_collection_t *collection =
@@ -31,6 +33,8 @@ createResourceInstanceCollection(resource_t *resource,
   collection->modelCollection = modelCollection;
   collection->includedResourceInstancesCount = modelCollection->includesCount;
 
+  /* Create a collection of resource instances each included resource in the
+   * collection. */
   for (int i = 0; i < collection->includedResourceInstancesCount; i++) {
     char *includedModelTableName = modelCollection->includesArray[i];
     resource_t *includedResource =
@@ -43,22 +47,39 @@ createResourceInstanceCollection(resource_t *resource,
         includedResource, relatedModelInstances, params);
   }
 
+  /* Create the collection's array of resource instances from the collection of
+   * model instances. */
   for (size_t i = 0; i < collection->size; i++) {
     model_instance_t *modelInstance = modelCollection->arr[i];
     resource_instance_t *resourceInstance =
         createResourceInstance(resource, modelInstance, params);
     resourceInstance->includedResourceInstancesCount =
         collection->includedResourceInstancesCount;
+    /* Copy the included colletions of resource instances from the collection to
+     * the resource instance. */
     for (int j = 0; j < collection->includedResourceInstancesCount; j++) {
-
       resourceInstance->includedResourceInstances[j] =
           collection->includedResourceInstances[j]->filter(
               memoryManager->blockCopy(^(resource_instance_t *relatedInstance) {
+                /* Only include the related resource instance if it is related
+                 * to the resource instance. */
                 char *foreignKey =
                     (char *)resourceInstance->modelInstance->model
                         ->getForeignKey(relatedInstance->type);
-                return strcmp(relatedInstance->modelInstance->get(foreignKey),
-                              resourceInstance->modelInstance->id) == 0;
+
+                char *relatedInstanceId =
+                    relatedInstance->modelInstance->get(foreignKey);
+                char *resourceInstanceId = resourceInstance->modelInstance->id;
+                if (strcmp(foreignKey, "id") == 0) {
+                  UNUSED char *belongsToKey =
+                      (char *)resourceInstance->modelInstance->model
+                          ->getBelongsToKey(relatedInstance->type);
+                  resourceInstanceId =
+                      resourceInstance->modelInstance->get(belongsToKey);
+                }
+                if (relatedInstanceId == NULL || resourceInstanceId == NULL)
+                  return 0;
+                return strcmp(relatedInstanceId, resourceInstanceId) == 0;
               }));
     }
     collection->arr[i] = resourceInstance;
@@ -165,6 +186,8 @@ createResourceInstanceCollection(resource_t *resource,
     memoryManager->cleanup(memoryManager->blockCopy(^{
       json_decref(response);
     }));
+
+    // debug("\n%s", json_dumps(response, JSON_INDENT(2)));
 
     return response;
   });

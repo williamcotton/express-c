@@ -408,15 +408,19 @@ resource_t *CreateResource(char *type, model_t *model) {
   });
 
   resource->all = appMemoryManager->blockCopy(^(jsonapi_params_t *params) {
+    /* Get the base scope, a query_t object */
     query_t *baseScope = resource->baseScoper->callback(resource->model);
 
+    /* Apply the query string params to the base scope */
     query_t *queriedScope =
         applyQueryToScope(params->query, baseScope, resource);
 
+    /* Query the database and return a collection of model instances */
     model_instance_collection_t *modelCollection =
         resource->allResolver->callback(queriedScope);
 
-    // debug("%s: %zu", resource->model->tableName, modelCollection->size);
+    /* Create a collection of resource instances from the model instances and
+     * the query parameters */
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
 
@@ -442,6 +446,11 @@ resource_t *CreateResource(char *type, model_t *model) {
 
         return instance;
       });
+
+  for (int i = 0; i < model->belongsToCount; i++) {
+    resource->belongsToModelRelationships[i] = model->belongsToRelationships[i];
+  }
+  resource->belongsToModelCount = model->belongsToCount;
 
   return resource;
 }

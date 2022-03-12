@@ -54,7 +54,11 @@ model_instance_t *createModelInstance(model_t *model) {
   });
 
   instance->get = memoryManager->blockCopy(^(char *attribute) {
+    if (strcmp(attribute, "id") == 0) {
+      return instance->id;
+    }
     for (int i = 0; i < instance->attributesCount; i++) {
+      // debug("%s", instance->attributes[i]->classAttribute->name);
       if (strcmp(instance->attributes[i]->classAttribute->name, attribute) ==
           0) {
         return instance->attributes[i]->value;
@@ -114,9 +118,12 @@ model_instance_t *createModelInstance(model_t *model) {
       }
     }
     if (belongsToForeignKey) {
+      debug("belongsToForeignKey: %s", belongsToForeignKey);
       char *foreignKey = instance->get(belongsToForeignKey);
+      debug("foreignKey: %s", foreignKey);
       whereForeignKey = memoryManager->malloc(strlen(foreignKey) + 6);
       sprintf(whereForeignKey, "id = %s", foreignKey);
+      debug("whereForeignKey: %s", whereForeignKey);
       return relatedModel->query()->where(whereForeignKey);
     }
 

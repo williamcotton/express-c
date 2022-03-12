@@ -1,6 +1,6 @@
 #include "resource.h"
 
-query_t *applyFiltersToScope(json_t *filters, query_t *baseScope,
+query_t *applyFiltersToScope(json_t *filters, query_t *scope,
                              resource_t *resource) {
   const char *attribute = NULL;
   json_t *operatorValues;
@@ -23,16 +23,16 @@ query_t *applyFiltersToScope(json_t *filters, query_t *baseScope,
         resource_filter_t *filter = resource->filters[i];
         if (strcmp(filter->attribute, attribute) == 0 &&
             strcmp(filter->operator, oper) == 0) {
-          baseScope = filter->callback(baseScope, values, count);
+          scope = filter->callback(scope, values, count);
         }
       }
     }
   }
 error:
-  return baseScope;
+  return scope;
 }
 
-query_t *applySortersToScope(json_t *sorters, query_t *baseScope,
+query_t *applySortersToScope(json_t *sorters, query_t *scope,
                              resource_t *resource) {
   size_t index;
   json_t *jsonValue;
@@ -51,15 +51,15 @@ query_t *applySortersToScope(json_t *sorters, query_t *baseScope,
     for (int i = 0; i < resource->sortersCount; i++) {
       resource_sort_t *sorter = resource->sorters[i];
       if (strcmp(sorter->attribute, attribute) == 0) {
-        baseScope = sorter->callback(baseScope, direction);
+        scope = sorter->callback(scope, direction);
       }
     }
   }
 error:
-  return baseScope;
+  return scope;
 }
 
-query_t *applyPaginatorToScope(json_t *paginator, query_t *baseScope,
+query_t *applyPaginatorToScope(json_t *paginator, query_t *scope,
                                resource_t *resource) {
   json_t *numberObject = json_object_get(paginator, "number");
   check(numberObject != NULL, "Invalid paginator: number is required");
@@ -76,31 +76,34 @@ query_t *applyPaginatorToScope(json_t *paginator, query_t *baseScope,
   const char *perPage = json_string_value(sizeArray);
   check(perPage != NULL, "Invalid paginator: size must be a string");
 
-  baseScope =
-      resource->paginator->callback(baseScope, atoi(page), atoi(perPage));
+  scope = resource->paginator->callback(scope, atoi(page), atoi(perPage));
 error:
-  return baseScope;
+  return scope;
 }
 
-query_t *applyResourceAttributeToScope(query_t *baseScope, resource_t *resource,
+query_t *applyResourceAttributeToScope(query_t *scope, resource_t *resource,
                                        char *attributeName) {
   char *selectCondition = resource->model->instanceMemoryManager->malloc(
       strlen(resource->type) + strlen(".") + strlen(attributeName) + 1);
   sprintf(selectCondition, "%s.%s", resource->type, attributeName);
-  baseScope = baseScope->select(selectCondition);
-  return baseScope;
+  scope = scope->select(selectCondition);
+  return scope;
 }
 
-query_t *applyAllFieldsToScope(query_t *baseScope, resource_t *resource) {
-  applyResourceAttributeToScope(baseScope, resource, "id");
+query_t *applyAllFieldsToScope(query_t *scope, resource_t *resource) {
+  applyResourceAttributeToScope(scope, resource, "id");
   for (int i = 0; i < resource->attributesCount; i++) {
     class_attribute_t *attribute = resource->attributes[i];
-    applyResourceAttributeToScope(baseScope, resource, attribute->name);
+    applyResourceAttributeToScope(scope, resource, attribute->name);
   }
-  return baseScope;
+  for (int i = 0; i < resource->belongsToModelCount; i++) {
+    belongs_to_t *belongsToModel = resource->belongsToModelRelationships[i];
+    applyResourceAttributeToScope(scope, resource, belongsToModel->foreignKey);
+  }
+  return scope;
 }
 
-query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
+query_t *applyFieldsToScope(json_t *fields, query_t *scope,
                             resource_t *resource) {
   const char *resourceType = NULL;
   json_t *fieldValues;
@@ -118,58 +121,61 @@ query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
       const char *value = json_string_value(jsonValue);
       check(value != NULL,
             "Invalid fields: fields must be an array of strings");
-      applyResourceAttributeToScope(baseScope, fieldsResource, (char *)value);
+      applyResourceAttributeToScope(scope, fieldsResource, (char *)value);
     }
   }
 error:
-  return baseScope;
+  return scope;
 }
 
-query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
+query_t *applyIncludeToScope(json_t *include, query_t *scope,
                              resource_t *resource) {
 
+  /* Loop through the array of included resources and build up an array of
+   * resource types */
   int count = (int)json_array_size(include);
   const char **includedResources =
       resource->model->instanceMemoryManager->malloc(sizeof(char *) * count);
-
   size_t index;
   json_t *includedResource;
   json_array_foreach(include, index, includedResource) {
     includedResources[index] = json_string_value(includedResource);
   }
-  baseScope = baseScope->includes(includedResources, count);
-  return baseScope;
+
+  /* Apply the included resources to the scope */
+  scope = scope->includes(includedResources, count);
+  return scope;
 };
 
-query_t *applyQueryToScope(json_t *query, query_t *baseScope,
+query_t *applyQueryToScope(json_t *query, query_t *scope,
                            resource_t *resource) {
   json_t *filters = json_object_get(query, "filter");
   if (filters) {
-    baseScope = applyFiltersToScope(filters, baseScope, resource);
+    scope = applyFiltersToScope(filters, scope, resource);
   }
 
   json_t *sorters = json_object_get(query, "sort");
   if (sorters) {
-    baseScope = applySortersToScope(sorters, baseScope, resource);
+    scope = applySortersToScope(sorters, scope, resource);
   }
 
   json_t *paginator = json_object_get(query, "page");
   if (paginator) {
-    baseScope = applyPaginatorToScope(paginator, baseScope, resource);
+    scope = applyPaginatorToScope(paginator, scope, resource);
   }
 
   json_t *fields = json_object_get(query, "fields");
   if (fields) {
     if (json_object_get(fields, resource->type) == NULL) {
-      baseScope = applyAllFieldsToScope(baseScope, resource);
+      scope = applyAllFieldsToScope(scope, resource);
     }
-    baseScope = applyFieldsToScope(fields, baseScope, resource);
+    scope = applyFieldsToScope(fields, scope, resource);
   }
 
   json_t *include = json_object_get(query, "include");
   if (include) {
-    baseScope = applyIncludeToScope(include, baseScope, resource);
+    scope = applyIncludeToScope(include, scope, resource);
   }
 
-  return baseScope;
+  return scope;
 }

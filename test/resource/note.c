@@ -6,7 +6,7 @@ resource_t *NoteResource(model_t *model) {
   Note->attribute("title", "string", NULL);
   Note->attribute("date", "date", NULL);
 
-  Note->belongsTo("employees", "employee_id");
+  Note->belongsTo("employees", NULL);
 
   return Note;
 }

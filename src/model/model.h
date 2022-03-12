@@ -134,6 +134,7 @@ typedef struct model_t {
   void (^hasMany)(char *tableName, char *foreignKey, void *);
   void (^hasOne)(char *tableName, char *foreignKey, void *);
   const char * (^getForeignKey)(const char *relationName);
+  const char * (^getBelongsToKey)(const char *relationName);
   void (^validates)(instanceCallback);
   void (^beforeSave)(beforeCallback);
   void (^afterSave)(instanceCallback);

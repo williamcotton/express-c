@@ -129,6 +129,8 @@ typedef struct resource_t {
   default_sort_t defaultSort;
   class_attribute_t *attributes[100];
   int attributesCount;
+  belongs_to_t *belongsToModelRelationships[100];
+  int belongsToModelCount;
   belongs_to_resource_t *belongsToRelationships[100];
   int belongsToCount;
   has_many_resource_t *hasManyRelationships[100];
