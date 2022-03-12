@@ -236,7 +236,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
 
   model->belongsTo =
       appMemoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
-        // model->attribute(relatedTableName, "string", NULL);
+        model->attribute(foreignKey, "integer", NULL);
         belongs_to_t *newBelongsTo =
             appMemoryManager->malloc(sizeof(belongs_to_t));
         newBelongsTo->tableName = relatedTableName;

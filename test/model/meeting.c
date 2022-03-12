@@ -9,7 +9,6 @@ model_t *MeetingModel(memory_manager_t *memoryManager) {
   Meeting->attribute("max_temp", "real", NULL);
   Meeting->attribute("budget", "decimal", NULL);
   Meeting->attribute("open", "boolean", NULL);
-  Meeting->attribute("team_id", "integer", NULL);
 
   Meeting->belongsTo("teams", "team_id", NULL);
 
