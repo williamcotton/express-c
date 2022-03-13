@@ -25,6 +25,8 @@ static void addIncludesToCollection(char **includesArray, int includesCount,
     if (relatedQuery == NULL)
       continue;
 
+    // how to apply filters to nested query?
+
     /* Get the related model instance collection and add them to the collection
      */
     collection->includesArray[i] = includesArray[i];
@@ -127,6 +129,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
     __block query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
     void * (^originalFind)(char *) = modelQuery->find;
+    // query_t * (^originalWhere)(const char *, ...) = modelQuery->where;
+    // query_t * (^originalSort)(const char *, ...) = modelQuery->sort;
 
     modelQuery->includes = model->instanceMemoryManager->blockCopy(
         ^(char **includesResources, int count) {
@@ -137,6 +141,20 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           }
           return modelQuery;
         });
+
+    // modelQuery->where =
+    //     model->instanceMemoryManager->blockCopy(^(char *columnName, ...) {
+    //       // where do we store the included where?
+    //       int nParams = pgParamCount(columnName);
+    //       debug("nParams: %d", nParams);
+    //       va_list args;
+    //       va_start(args, columnName);
+    //       char *value = va_arg(args, char *);
+    //       va_end(args);
+    //       debug("[where] %s = %s", columnName, value);
+    //       modelQuery = originalWhere(columnName, value);
+    //       return modelQuery;
+    //     });
 
     modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
       PGresult *result = originalAll();

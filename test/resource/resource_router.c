@@ -31,7 +31,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
   resourceLibrary->add("Note", NoteModel, NoteResource);
   router->use(resourceMiddleware(resourceLibrary));
 
-  router->get("/teams", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/teams", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
 
     resource_t *Team = req->m("Team");
@@ -40,7 +40,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     res->s("jsonapi", teams->toJSONAPI());
   });
 
-  router->get("/teams/:id", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/teams/:id", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
 
     resource_t *Team = req->m("Team");
@@ -57,7 +57,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
   // TODO: router->patch("/team", ^(request_t *req, UNUSED response_t *res) {
   // TODO: router->delete("/team", ^(request_t *req, UNUSED response_t *res) {
 
-  router->get("/meetings", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/meetings", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
 
     resource_t *Meeting = req->m("Meeting");
@@ -66,7 +66,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     res->s("jsonapi", meetings->toJSONAPI());
   });
 
-  router->get("/notes", ^(request_t *req, UNUSED response_t *res) {
+  router->get("/notes", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
 
     resource_t *Note = req->m("Note");

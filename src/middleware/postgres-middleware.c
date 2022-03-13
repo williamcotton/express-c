@@ -35,7 +35,7 @@ static void toUpper(char *givenStr) {
   }
 }
 
-int paramCount(const char *query) {
+int pgParamCount(const char *query) {
   int count = 0;
   for (size_t i = 0; i < strlen(query); i++) {
     if (query[i] == '$') {
@@ -75,7 +75,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     });
 
     query->where = memoryManager->blockCopy(^(const char *conditions, ...) {
-      int nParams = paramCount(conditions);
+      int nParams = pgParamCount(conditions);
 
       char varNum[10];
       sprintf(varNum, "$%d", query->paramValueCount + 1);
@@ -169,7 +169,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     });
 
     query->having = memoryManager->blockCopy(^(const char *conditions, ...) {
-      int nParams = paramCount(conditions);
+      int nParams = pgParamCount(conditions);
 
       char varNum[10];
       sprintf(varNum, "$%d", query->paramValueCount + 1);
@@ -348,7 +348,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
       query->sql = sql;
 
-      // debug("SQL: %s", sql);
+      debug("SQL: %s", sql);
 
       return sql;
     });
@@ -387,7 +387,7 @@ pg_t *initPg(const char *pgUri) {
   pg->used = 0;
 
   pg->exec = Block_copy(^(const char *sql, ...) {
-    int nParams = paramCount(sql);
+    int nParams = pgParamCount(sql);
     va_list args;
     va_start(args, sql);
 

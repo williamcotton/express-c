@@ -1,31 +1,52 @@
 #include "resource.h"
 
+static query_t *applyAttributeFilterOperatorToScope(const char *attribute,
+                                                    const char *oper,
+                                                    json_t *valueArray,
+                                                    query_t *scope,
+                                                    resource_t *resource) {
+  int count = (int)json_array_size(valueArray);
+  const char **values =
+      (const char **)resource->model->instanceMemoryManager->malloc(
+          sizeof(char *) * count);
+  size_t index;
+  json_t *jsonValue;
+  json_array_foreach(valueArray, index, jsonValue) {
+    values[index] = json_string_value(jsonValue);
+  }
+  for (int i = 0; i < resource->filtersCount; i++) {
+    resource_filter_t *filter = resource->filters[i];
+    if (strcmp(filter->attribute, attribute) == 0 &&
+        strcmp(filter->operator, oper) == 0) {
+      scope = filter->callback(scope, values, count);
+    }
+  }
+  return scope;
+}
+
 query_t *applyFiltersToScope(json_t *filters, query_t *scope,
                              resource_t *resource) {
   const char *attribute = NULL;
   json_t *operatorValues;
+  debug("filters %s", json_dumps(filters, JSON_COMPACT));
   json_object_foreach(filters, attribute, operatorValues) {
     check(operatorValues != NULL, "operatorValues is NULL");
     const char *oper = NULL;
     json_t *valueArray;
+    debug("filters %s", json_dumps(operatorValues, JSON_COMPACT));
+    /* check if it is an array */
+    size_t shorthandCount = json_array_size(operatorValues);
+    debug("shorthandCount %zu", shorthandCount);
+    if (shorthandCount > 0) {
+      oper = "eql";
+      applyAttributeFilterOperatorToScope(attribute, oper, operatorValues,
+                                          scope, resource);
+      return scope;
+    }
     json_object_foreach(operatorValues, oper, valueArray) {
       check(valueArray != NULL, "valueArray is NULL");
-      int count = (int)json_array_size(valueArray);
-      const char **values =
-          (const char **)resource->model->instanceMemoryManager->malloc(
-              sizeof(char *) * count);
-      size_t index;
-      json_t *jsonValue;
-      json_array_foreach(valueArray, index, jsonValue) {
-        values[index] = json_string_value(jsonValue);
-      }
-      for (int i = 0; i < resource->filtersCount; i++) {
-        resource_filter_t *filter = resource->filters[i];
-        if (strcmp(filter->attribute, attribute) == 0 &&
-            strcmp(filter->operator, oper) == 0) {
-          scope = filter->callback(scope, values, count);
-        }
-      }
+      applyAttributeFilterOperatorToScope(attribute, oper, valueArray, scope,
+                                          resource);
     }
   }
 error:

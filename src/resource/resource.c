@@ -424,6 +424,13 @@ resource_t *CreateResource(char *type, model_t *model) {
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
 
+    /* iterate over the collection and resolve the included resources?
+
+      like, look at the params, check for includes, and then do a nested
+      resource->all with the "heads chopped off" the params?
+
+    */
+
     return collection;
   });
 

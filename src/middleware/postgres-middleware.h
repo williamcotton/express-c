@@ -85,6 +85,7 @@ typedef struct postgres_connection_t {
   void (^free)();
 } postgres_connection_t;
 
+int pgParamCount(const char *query);
 postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
 getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
