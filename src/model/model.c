@@ -132,13 +132,11 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
     // query_t * (^originalWhere)(const char *, ...) = modelQuery->where;
     // query_t * (^originalSort)(const char *, ...) = modelQuery->sort;
 
-    modelQuery->includes = model->instanceMemoryManager->blockCopy(
-        ^(char **includesResources, int count) {
+    modelQuery->includes =
+        model->instanceMemoryManager->blockCopy(^(char *includesResource) {
           /* Add included resources to the current query */
-          for (int i = 0; i < count; i++) {
-            modelQuery->includesArray[modelQuery->includesCount++] =
-                includesResources[i];
-          }
+          modelQuery->includesArray[modelQuery->includesCount++] =
+              includesResource;
           return modelQuery;
         });
 

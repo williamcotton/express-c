@@ -150,21 +150,16 @@ error:
 }
 
 query_t *applyIncludeToScope(json_t *include, query_t *scope,
-                             resource_t *resource) {
+                             UNUSED resource_t *resource) {
 
   /* Loop through the array of included resources and build up an array of
    * resource types */
-  int count = (int)json_array_size(include);
-  const char **includedResources =
-      resource->model->instanceMemoryManager->malloc(sizeof(char *) * count);
   size_t index;
   json_t *includedResource;
   json_array_foreach(include, index, includedResource) {
-    includedResources[index] = json_string_value(includedResource);
+    scope = scope->includes(json_string_value(includedResource));
   }
 
-  /* Apply the included resources to the scope */
-  scope = scope->includes(includedResources, count);
   return scope;
 };
 

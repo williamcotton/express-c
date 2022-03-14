@@ -55,7 +55,7 @@ typedef struct query_t {
   struct query_t * (^having)(const char *, ...);
   struct query_t * (^joins)(const char *);
   struct query_t * (^distinct)();
-  struct query_t * (^includes)(const char **, int);
+  struct query_t * (^includes)(const char *);
   char * (^toSql)();
   int (^count)();
   void * (^find)(char *);
