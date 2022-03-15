@@ -1,7 +1,8 @@
 #include "model.h"
 
-static void addIncludesToCollection(char **includesArray, int includesCount,
-                                    model_instance_collection_t *collection) {
+UNUSED static void
+addIncludesToCollection(char **includesArray, int includesCount,
+                        model_instance_collection_t *collection) {
   /* The final includes count depends on valid models */
   int finalIncludesCount = 0;
 
@@ -45,8 +46,9 @@ static void addIncludesToCollection(char **includesArray, int includesCount,
   collection->includesCount = finalIncludesCount;
 }
 
-static void addIncludesToInstance(char **includesArray, int includesCount,
-                                  model_instance_t *instance) {
+UNUSED static void addIncludesToInstance(char **includesArray,
+                                         int includesCount,
+                                         model_instance_t *instance) {
   int finalIncludesCount = 0;
 
   for (int i = 0; i < includesCount; i++) {
@@ -134,7 +136,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
 
     modelQuery->includes =
         model->instanceMemoryManager->blockCopy(^(char *includesResource) {
-          /* Add included resources to the current query */
+          /* Add included resource to the current query */
           modelQuery->includesArray[modelQuery->includesCount++] =
               includesResource;
           return modelQuery;
@@ -181,8 +183,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
         }
       }
       /* Add included resources to the collection of model instances */
-      addIncludesToCollection((char **)modelQuery->includesArray,
-                              modelQuery->includesCount, collection);
+      // addIncludesToCollection((char **)modelQuery->includesArray,
+      //                         modelQuery->includesCount, collection);
       // debug("Model: %s", model->tableName);
       PQclear(result);
       return collection;
@@ -212,8 +214,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           instance->initAttr(name, value, 0);
         }
       }
-      addIncludesToInstance((char **)modelQuery->includesArray,
-                            modelQuery->includesCount, instance);
+      // addIncludesToInstance((char **)modelQuery->includesArray,
+      //                       modelQuery->includesCount, instance);
       PQclear(result);
       return instance;
     });

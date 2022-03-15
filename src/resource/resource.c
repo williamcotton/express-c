@@ -1,5 +1,196 @@
 #include "resource.h"
 
+static void
+addRelatedToResource(resource_instance_t *resourceInstance, char *foreignKey,
+                     resource_instance_collection_t *includedCollection) {
+  resourceInstance->includedResourceInstances
+      [resourceInstance->includedResourceInstancesCount++] =
+      includedCollection->filter(^(resource_instance_t *relatedInstance) {
+        char *relatedInstanceId =
+            relatedInstance->modelInstance->get(foreignKey);
+        char *resourceInstanceId = resourceInstance->id;
+        if (relatedInstanceId == NULL) {
+          relatedInstanceId = relatedInstance->id;
+          char *belongsToKey =
+              (char *)resourceInstance->modelInstance->model->getBelongsToKey(
+                  relatedInstance->type);
+          resourceInstanceId =
+              resourceInstance->modelInstance->get(belongsToKey);
+        }
+        if (relatedInstanceId == NULL || resourceInstanceId == NULL)
+          return 0;
+
+        return strcmp(relatedInstanceId, resourceInstanceId) == 0;
+      });
+}
+
+struct nested_and_included_names_t {
+  char *nestedName;
+  char *includedName;
+};
+
+/* Check for nested resources to include */
+
+struct nested_and_included_names_t
+getNestedAndIncludedNames(char *originalIncludedResourceName) {
+  struct nested_and_included_names_t result;
+  char *nestedResourceName = NULL;
+  char *includedResourceName = originalIncludedResourceName;
+
+  char *splitPoint = strstr(originalIncludedResourceName, ".");
+  if (splitPoint != NULL) {
+    nestedResourceName = strdup(splitPoint + 1);
+    *splitPoint = '\0';
+    includedResourceName[splitPoint - includedResourceName] = '\0';
+  }
+  result = (struct nested_and_included_names_t){
+      .nestedName = nestedResourceName,
+      .includedName = includedResourceName,
+  };
+  return result;
+}
+
+static void addIncludedResourcesToCollection(
+    char *originalIncludedResourceName, resource_t *resource,
+    resource_instance_collection_t *collection, jsonapi_params_t *params,
+    UNUSED json_t *include, UNUSED size_t index) {
+
+  UNUSED memory_manager_t *memoryManager =
+      resource->model->instanceMemoryManager;
+
+  /* Check for nested resources to include */
+  struct nested_and_included_names_t nestedAndIncludedNames =
+      getNestedAndIncludedNames(originalIncludedResourceName);
+  char *nestedResourceName = nestedAndIncludedNames.nestedName;
+  char *includedResourceName = nestedAndIncludedNames.includedName;
+
+  resource_t *includedResource = resource->lookup(includedResourceName);
+  if (includedResource == NULL)
+    return;
+
+  jsonapi_params_t *includedParams =
+      memoryManager->malloc(sizeof(jsonapi_params_t));
+  includedParams->query = json_deep_copy(params->query);
+
+  char *foreignKey = (char *)resource->model->getForeignKey(
+      includedResource->model->tableName);
+
+  char *originalForeignKey = foreignKey;
+
+  json_t *ids = json_array();
+  if (strcmp(foreignKey, "id") == 0) {
+    foreignKey = (char *)resource->model->getBelongsToKey(
+        includedResource->model->tableName);
+    collection->each(^(resource_instance_t *resourceInstance) {
+      json_array_append(
+          ids, json_string(resourceInstance->modelInstance->get(foreignKey)));
+    });
+  } else {
+    collection->each(^(resource_instance_t *resourceInstance) {
+      json_array_append(ids, json_string(resourceInstance->id));
+    });
+  }
+
+  json_t *filters = json_object_get(includedParams->query, "filter");
+
+  if (filters == NULL)
+    filters = json_object();
+
+  const char *key;
+  json_t *value;
+  json_object_foreach(filters, key, value) {
+    resource_t *includedResourceFilter = resource->lookup(key);
+    if (includedResourceFilter == NULL)
+      json_object_del(filters, key);
+  }
+
+  json_object_set_new(filters, originalForeignKey, ids);
+  json_object_set(includedParams->query, "filter", filters);
+
+  if (nestedResourceName != NULL) {
+    json_t *newIncludes = json_array();
+    json_array_append_new(newIncludes, json_string(nestedResourceName));
+    json_object_set(includedParams->query, "include", newIncludes);
+  } else {
+    json_object_del(includedParams->query, "include");
+  }
+
+  resource_instance_collection_t *includedCollection =
+      includedResource->all(includedParams);
+
+  collection->includedResourceInstances
+      [collection->includedResourceInstancesCount++] = includedCollection;
+
+  for (size_t i = 0; i < collection->size; i++) {
+    resource_instance_t *resourceInstance = collection->arr[i];
+    addRelatedToResource(resourceInstance, foreignKey, includedCollection);
+  }
+}
+
+static void addIncludedResourcesToInstance(
+    char *originalIncludedResourceName, resource_t *resource,
+    resource_instance_t *resourceInstance, jsonapi_params_t *params,
+    UNUSED json_t *include, UNUSED size_t index) {
+
+  UNUSED memory_manager_t *memoryManager =
+      resource->model->instanceMemoryManager;
+
+  /* Check for nested resources to include */
+  struct nested_and_included_names_t nestedAndIncludedNames =
+      getNestedAndIncludedNames(originalIncludedResourceName);
+  char *nestedResourceName = nestedAndIncludedNames.nestedName;
+  char *includedResourceName = nestedAndIncludedNames.includedName;
+
+  resource_t *includedResource = resource->lookup(includedResourceName);
+  if (includedResource == NULL)
+    return;
+
+  jsonapi_params_t *includedParams =
+      memoryManager->malloc(sizeof(jsonapi_params_t));
+  includedParams->query = json_deep_copy(params->query);
+
+  char *foreignKey = (char *)resource->model->getForeignKey(
+      includedResource->model->tableName);
+
+  json_t *ids = json_array();
+  // debug("resourceInstance->type %s id:%s %s:%s", resourceInstance->type,
+  //       resourceInstance->id, foreignKey,
+  //       resourceInstance->modelInstance->get(foreignKey));
+  // json_array_append(
+  //     ids, json_string(resourceInstance->modelInstance->get(foreignKey)));
+  json_array_append(ids, json_string(resourceInstance->id));
+
+  if (nestedResourceName != NULL) {
+    json_t *newIncludes = json_array();
+    json_array_append_new(newIncludes, json_string(nestedResourceName));
+    json_object_set(includedParams->query, "include", newIncludes);
+
+    json_t *filters = json_object_get(includedParams->query, "filter");
+
+    if (filters == NULL)
+      filters = json_object();
+
+    const char *key;
+    json_t *value;
+    json_object_foreach(filters, key, value) {
+      resource_t *includedResourceFilter = resource->lookup(key);
+      if (includedResourceFilter == NULL)
+        json_object_del(filters, key);
+    }
+
+    json_object_set_new(filters, foreignKey, ids);
+
+    json_object_set(includedParams->query, "filter", filters);
+  } else {
+    json_object_del(includedParams->query, "include");
+  }
+
+  resource_instance_collection_t *includedCollection =
+      includedResource->all(includedParams);
+
+  addRelatedToResource(resourceInstance, foreignKey, includedCollection);
+}
+
 resource_t *CreateResource(char *type, model_t *model) {
   memory_manager_t *appMemoryManager = model->appMemoryManager;
   resource_t *resource = appMemoryManager->malloc(sizeof(resource_t));
@@ -136,256 +327,24 @@ resource_t *CreateResource(char *type, model_t *model) {
         resource->baseScoper = newBaseScope;
       });
 
-  resource->attribute = appMemoryManager->blockCopy(^(char *attributeName,
-                                                      char *attributeType) {
-    class_attribute_t *newAttribute =
-        appMemoryManager->malloc(sizeof(class_attribute_t));
-    newAttribute->name = attributeName;
-    newAttribute->type = attributeType;
-    resource->attributes[resource->attributesCount] = newAttribute;
-    resource->attributesCount++;
+  resource->attribute =
+      appMemoryManager->blockCopy(^(char *attributeName, char *attributeType) {
+        class_attribute_t *newAttribute =
+            appMemoryManager->malloc(sizeof(class_attribute_t));
+        newAttribute->name = attributeName;
+        newAttribute->type = attributeType;
+        resource->attributes[resource->attributesCount] = newAttribute;
+        resource->attributesCount++;
 
-    if (strcmp(attributeType, "integer") == 0 ||
-        strcmp(attributeType, "integer_id") == 0 ||
-        strcmp(attributeType, "big_decimal") == 0 ||
-        strcmp(attributeType, "float") == 0 ||
-        strcmp(attributeType, "date") == 0 ||
-        strcmp(attributeType, "datetime") == 0) {
+        addDefaultFiltersToAttribute(resource, model, appMemoryManager,
+                                     attributeName, attributeType);
 
-      resource->filter(
-          attributeName, "gt",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" > $") + 1);
-                sprintf(whereCondition, "%s > $", attributeName);
-                return scope->where(whereCondition, value);
-              }));
-
-      resource->filter(
-          attributeName, "gte",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" >= $") + 1);
-                sprintf(whereCondition, "%s >= $", attributeName);
-                return scope->where(whereCondition, value);
-              }));
-
-      resource->filter(
-          attributeName, "lt",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" < $") + 1);
-                sprintf(whereCondition, "%s < $", attributeName);
-                return scope->where(whereCondition, value);
-              }));
-
-      resource->filter(
-          attributeName, "lte",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" <= $") + 1);
-                sprintf(whereCondition, "%s <= $", attributeName);
-                return scope->where(whereCondition, value);
-              }));
-    }
-
-    if (strcmp(attributeType, "enum") == 0 ||
-        strcmp(attributeType, "uuid") == 0 ||
-        strcmp(attributeType, "integer") == 0 ||
-        strcmp(attributeType, "integer_id") == 0 ||
-        strcmp(attributeType, "big_decimal") == 0 ||
-        strcmp(attributeType, "float") == 0 ||
-        strcmp(attributeType, "date") == 0 ||
-        strcmp(attributeType, "boolean") == 0 ||
-        strcmp(attributeType, "datetime") == 0) {
-
-      resource->filter(
-          attributeName, "eq",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, int count) {
-                if (count == 1) {
-                  char *whereCondition = model->instanceMemoryManager->malloc(
-                      strlen(attributeName) + strlen(" = $") + 1);
-                  sprintf(whereCondition, "%s = $", attributeName);
-                  return scope->where(whereCondition, values[0]);
-                }
-                return scope->whereIn(attributeName, true, values, count);
-              }));
-
-      resource->filter(
-          attributeName, "not_eq",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, int count) {
-                if (count == 1) {
-                  char *whereCondition = model->instanceMemoryManager->malloc(
-                      strlen(attributeName) + strlen(" NOT = $") + 1);
-                  sprintf(whereCondition, "NOT %s = $", attributeName);
-                  return scope->where(whereCondition, values[0]);
-                }
-                return scope->whereIn(attributeName, false, values, count);
-              }));
-    }
-
-    if (strcmp(attributeType, "string") == 0) {
-      resource->filter(
-          attributeName, "eq",
-          appMemoryManager->blockCopy(^(query_t *scope, const char **values,
-                                        int count) {
-            if (count == 1) {
-              char *whereCondition = model->instanceMemoryManager->malloc(
-                  strlen(attributeName) + strlen("LOWER() = LOWER($)") + 1);
-              sprintf(whereCondition, "LOWER(%s) = LOWER($)", attributeName);
-              return scope->where(whereCondition, values[0]);
-            }
-            // TODO: support LOWER
-            return scope->whereIn(attributeName, true, values, count);
-          }));
-
-      resource->filter(
-          attributeName, "not_eq",
-          appMemoryManager->blockCopy(^(query_t *scope, const char **values,
-                                        int count) {
-            if (count == 1) {
-              char *whereCondition = model->instanceMemoryManager->malloc(
-                  strlen(attributeName) + strlen("NOT LOWER() = LOWER($)") + 1);
-              sprintf(whereCondition, "NOT LOWER(%s) = LOWER($)",
-                      attributeName);
-              return scope->where(whereCondition, values[0]);
-            }
-            // TODO: support LOWER
-            return scope->whereIn(attributeName, false, values, count);
-          }));
-
-      resource->filter(
-          attributeName, "eql",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, int count) {
-                if (count == 1) {
-                  char *whereCondition = model->instanceMemoryManager->malloc(
-                      strlen(attributeName) + strlen(" = $") + 1);
-                  sprintf(whereCondition, "%s = $", attributeName);
-                  return scope->where(whereCondition, values[0]);
-                }
-                return scope->whereIn(attributeName, true, values, count);
-              }));
-
-      resource->filter(
-          attributeName, "not_eql",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, int count) {
-                if (count == 1) {
-                  char *whereCondition = model->instanceMemoryManager->malloc(
-                      strlen(attributeName) + strlen(" NOT = $") + 1);
-                  sprintf(whereCondition, "NOT %s = $", attributeName);
-                  return scope->where(whereCondition, values[0]);
-                }
-                return scope->whereIn(attributeName, false, values, count);
-              }));
-
-      resource->filter(
-          attributeName, "match",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" LIKE $") + 1);
-                sprintf(whereCondition, "%s LIKE $", attributeName);
-                size_t matchValueLen = strlen(value) + strlen("%%") + 1;
-                char *matchValue =
-                    model->instanceMemoryManager->malloc(matchValueLen);
-                snprintf(matchValue, matchValueLen, "%%%s%%", value);
-                return scope->where(whereCondition, matchValue);
-              }));
-
-      resource->filter(
-          attributeName, "not_match",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" NOT LIKE $") + 1);
-                sprintf(whereCondition, "%s NOT LIKE $", attributeName);
-                size_t matchValueLen = strlen(value) + strlen("%%") + 1;
-                char *matchValue =
-                    model->instanceMemoryManager->malloc(matchValueLen);
-                snprintf(matchValue, matchValueLen, "%%%s%%", value);
-                return scope->where(whereCondition, matchValue);
-              }));
-
-      resource->filter(
-          attributeName, "prefix",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" LIKE $") + 1);
-                sprintf(whereCondition, "%s LIKE $", attributeName);
-                size_t matchValueLen = strlen(value) + strlen("%") + 1;
-                char *matchValue =
-                    model->instanceMemoryManager->malloc(matchValueLen);
-                snprintf(matchValue, matchValueLen, "%s%%", value);
-                return scope->where(whereCondition, matchValue);
-              }));
-
-      resource->filter(
-          attributeName, "not_prefix",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" NOT LIKE $") + 1);
-                sprintf(whereCondition, "%s NOT LIKE $", attributeName);
-                size_t matchValueLen = strlen(value) + strlen("%") + 1;
-                char *matchValue =
-                    model->instanceMemoryManager->malloc(matchValueLen);
-                snprintf(matchValue, matchValueLen, "%s%%", value);
-                return scope->where(whereCondition, matchValue);
-              }));
-
-      resource->filter(
-          attributeName, "suffix",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" LIKE $") + 1);
-                sprintf(whereCondition, "%s LIKE $", attributeName);
-                size_t matchValueLen = strlen(value) + strlen("%") + 1;
-                char *matchValue =
-                    model->instanceMemoryManager->malloc(matchValueLen);
-                snprintf(matchValue, matchValueLen, "%%%s", value);
-                return scope->where(whereCondition, matchValue);
-              }));
-
-      resource->filter(
-          attributeName, "not_suffix",
-          appMemoryManager->blockCopy(
-              ^(query_t *scope, const char **values, UNUSED int count) {
-                const char *value = values[0];
-                char *whereCondition = model->instanceMemoryManager->malloc(
-                    strlen(attributeName) + strlen(" NOT LIKE $") + 1);
-                sprintf(whereCondition, "%s NOT LIKE $", attributeName);
-                size_t matchValueLen = strlen(value) + strlen("%") + 1;
-                char *matchValue =
-                    model->instanceMemoryManager->malloc(matchValueLen);
-                snprintf(matchValue, matchValueLen, "%%%s", value);
-                return scope->where(whereCondition, matchValue);
-              }));
-    }
-
-    resource->sort(attributeName, appMemoryManager->blockCopy(^(
-                                      query_t *scope, const char *direction) {
-      return scope->order(attributeName, (char *)direction);
-    }));
-  });
+        resource->sort(attributeName,
+                       appMemoryManager->blockCopy(^(query_t *scope,
+                                                     const char *direction) {
+                         return scope->order(attributeName, (char *)direction);
+                       }));
+      });
 
   resource->sort("id", ^(query_t *scope, const char *direction) {
     return scope->order("id", (char *)direction);
@@ -408,6 +367,8 @@ resource_t *CreateResource(char *type, model_t *model) {
   });
 
   resource->all = appMemoryManager->blockCopy(^(jsonapi_params_t *params) {
+    // debug("%s->all() %s", resource->model->tableName,
+    //       json_dumps(params->query, JSON_INDENT(2)));
     /* Get the base scope, a query_t object */
     query_t *baseScope = resource->baseScoper->callback(resource->model);
 
@@ -424,23 +385,31 @@ resource_t *CreateResource(char *type, model_t *model) {
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
 
-    /* iterate over the collection and resolve the included resources?
-
-      like, look at the params, check for includes, and then do a nested
-      resource->all with the "heads chopped off" the params?
-
-    */
+    json_t *include = json_object_get(params->query, "include");
+    if (include) {
+      size_t index;
+      json_t *includedResource;
+      json_array_foreach(include, index, includedResource) {
+        char *includedResourceName =
+            (char *)json_string_value(includedResource);
+        addIncludedResourcesToCollection(includedResourceName, resource,
+                                         collection, params, include, index);
+      }
+    }
 
     return collection;
   });
 
   resource->find =
       appMemoryManager->blockCopy(^(jsonapi_params_t *params, char *id) {
+        /* Get the base scope, a query_t object */
         query_t *baseScope = resource->baseScoper->callback(resource->model);
 
+        /* Apply the query string params to the base scope */
         query_t *queriedScope =
             applyQueryToScope(params->query, baseScope, resource);
 
+        /* Query the database and return a model instance */
         model_instance_t *modelInstance =
             resource->findResolver->callback(queriedScope, id);
 
@@ -448,14 +417,36 @@ resource_t *CreateResource(char *type, model_t *model) {
           return (resource_instance_t *)NULL;
         }
 
+        /* Create a resource instance from the model instance and the query
+         * parameters */
         resource_instance_t *instance =
             createResourceInstance(resource, modelInstance, params);
+
+        /* Add the included collections of resource instances to the resource
+         * instance */
+        json_t *include = json_object_get(params->query, "include");
+        if (include) {
+          size_t index;
+          json_t *includedResource;
+          json_array_foreach(include, index, includedResource) {
+            char *includedResourceName =
+                (char *)json_string_value(includedResource);
+            addIncludedResourcesToInstance(includedResourceName, resource,
+                                           instance, params, include, index);
+          }
+        }
 
         return instance;
       });
 
+  addDefaultFiltersToAttribute(resource, model, appMemoryManager, "id",
+                               "integer_id");
+
   for (int i = 0; i < model->belongsToCount; i++) {
     resource->belongsToModelRelationships[i] = model->belongsToRelationships[i];
+    addDefaultFiltersToAttribute(
+        resource, model, appMemoryManager,
+        resource->belongsToModelRelationships[i]->foreignKey, "integer_id");
   }
   resource->belongsToModelCount = model->belongsToCount;
 

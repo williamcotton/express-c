@@ -72,6 +72,8 @@ static size_t mem_write(void *contents, size_t size, size_t nmemb,
 
 static string_t *fetch(char *url, char *method, string_collection_t *headers,
                        char *json) {
+
+  // debug("\n\n\n\nfetching %s", url);
   struct memory_struct mem;
   CURL *curl;
   CURLcode res;

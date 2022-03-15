@@ -2,7 +2,11 @@
 
 void nestedIncludes(json_t *includedJSONAPI,
                     resource_instance_collection_t *collection) {
+  // debug("collection->type: %p %s %d", collection, collection->type,
+  //       collection->includedResourceInstancesCount);
   for (int i = 0; i < collection->includedResourceInstancesCount; i++) {
+    // debug("nested include collection %s found in collection %s",
+    //       collection->includedResourceInstances[i]->type, collection->type);
     collection->includedResourceInstances[i]->each(
         ^(resource_instance_t *relatedInstance) {
           json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
@@ -18,6 +22,7 @@ resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,
                                  jsonapi_params_t *params) {
+  // debug("createResourceInstanceCollection %s", resource->type);
   /* Create a collection of resource instances from a collection of model
    * instances. */
   memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
@@ -31,57 +36,15 @@ createResourceInstanceCollection(resource_t *resource,
                                           modelCollection->size);
   collection->size = modelCollection->size;
   collection->modelCollection = modelCollection;
-  collection->includedResourceInstancesCount = modelCollection->includesCount;
+  collection->includedResourceInstancesCount = 0;
 
-  /* Create a collection of resource instances each included resource in the
-   * collection. */
-  for (int i = 0; i < collection->includedResourceInstancesCount; i++) {
-    char *includedModelTableName = modelCollection->includesArray[i];
-    resource_t *includedResource =
-        resource->lookupByModel(includedModelTableName);
-    if (includedResource == NULL)
-      continue;
-    model_instance_collection_t *relatedModelInstances =
-        modelCollection->includedModelInstanceCollections[i];
-    collection->includedResourceInstances[i] = createResourceInstanceCollection(
-        includedResource, relatedModelInstances, params);
-  }
-
-  /* Create the collection's array of resource instances from the collection of
+  /* Create the collection's array of resource instances from the collection
+  of
    * model instances. */
   for (size_t i = 0; i < collection->size; i++) {
     model_instance_t *modelInstance = modelCollection->arr[i];
     resource_instance_t *resourceInstance =
         createResourceInstance(resource, modelInstance, params);
-    resourceInstance->includedResourceInstancesCount =
-        collection->includedResourceInstancesCount;
-    /* Copy the included colletions of resource instances from the collection to
-     * the resource instance. */
-    for (int j = 0; j < collection->includedResourceInstancesCount; j++) {
-      resourceInstance->includedResourceInstances[j] =
-          collection->includedResourceInstances[j]->filter(
-              memoryManager->blockCopy(^(resource_instance_t *relatedInstance) {
-                /* Only include the related resource instance if it is related
-                 * to the resource instance. */
-                char *foreignKey =
-                    (char *)resourceInstance->modelInstance->model
-                        ->getForeignKey(relatedInstance->type);
-
-                char *relatedInstanceId =
-                    relatedInstance->modelInstance->get(foreignKey);
-                char *resourceInstanceId = resourceInstance->modelInstance->id;
-                if (strcmp(foreignKey, "id") == 0) {
-                  UNUSED char *belongsToKey =
-                      (char *)resourceInstance->modelInstance->model
-                          ->getBelongsToKey(relatedInstance->type);
-                  resourceInstanceId =
-                      resourceInstance->modelInstance->get(belongsToKey);
-                }
-                if (relatedInstanceId == NULL || resourceInstanceId == NULL)
-                  return 0;
-                return strcmp(relatedInstanceId, resourceInstanceId) == 0;
-              }));
-    }
     collection->arr[i] = resourceInstance;
   }
 
@@ -103,7 +66,17 @@ createResourceInstanceCollection(resource_t *resource,
       memoryManager->blockCopy(^(filterResourceInstanceCallback callback) {
         resource_instance_collection_t *filteredCollection =
             createResourceInstanceCollection(resource, modelCollection, params);
+        // debug("filteredCollection->type: %p %s %d", filteredCollection,
+        //       filteredCollection->type,
+        //       filteredCollection->includedResourceInstancesCount);
         filteredCollection->size = 0;
+        filteredCollection->includedResourceInstancesCount =
+            collection->includedResourceInstancesCount;
+        for (int i = 0; i < filteredCollection->includedResourceInstancesCount;
+             i++) {
+          filteredCollection->includedResourceInstances[i] =
+              collection->includedResourceInstances[i];
+        }
         for (size_t i = 0; i < collection->size; i++) {
           if (callback(collection->arr[i])) {
             filteredCollection->arr[filteredCollection->size++] =
@@ -187,7 +160,7 @@ createResourceInstanceCollection(resource_t *resource,
       json_decref(response);
     }));
 
-    debug("\n%s", json_dumps(response, JSON_INDENT(2)));
+    // debug("\n%s", json_dumps(response, JSON_INDENT(2)));
 
     return response;
   });

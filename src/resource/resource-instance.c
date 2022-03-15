@@ -23,7 +23,7 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->modelInstance = modelInstance;
   instance->id = modelInstance->id;
   instance->type = resource->type;
-  instance->includedResourceInstancesCount = modelInstance->includesCount;
+  instance->includedResourceInstancesCount = 0;
 
   for (int i = 0; i < modelInstance->includesCount; i++) {
     char *includedModelTableName = modelInstance->includesArray[i];
@@ -106,12 +106,9 @@ resource_instance_t *createResourceInstance(resource_t *resource,
     json_t *relationships = json_object();
 
     for (int i = 0; i < instance->includedResourceInstancesCount; i++) {
-      // debug("includedResourceInstances[%d]", i);
       json_t *relatedDataArray = json_array();
       instance->includedResourceInstances[i]->each(
           ^(resource_instance_t *relatedInstance) {
-            // debug("relatedInstance->type %s %s", relatedInstance->type,
-            //       relatedInstance->id);
             json_t *relatedData = json_object();
             json_object_set_new(relatedData, "id",
                                 json_string(relatedInstance->id));

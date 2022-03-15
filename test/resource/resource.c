@@ -571,10 +571,10 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "fields",
           t->fetch("/api/v1/meetings?fields[meetings]=max_size,open", "GET",
                    headers, NULL),
-          "{\"data\": [{\"type\": \"meetings\", \"id\": \"10\", "
+          "{\"data\": [{\"type\": \"meetings\", \"id\": \"1\", "
           "\"attributes\": {\"max_size\": 10, \"open\": true}, "
           "\"relationships\": {\"teams\": {\"meta\": {\"included\": false}}}}, "
-          "{\"type\": \"meetings\", \"id\": \"5\", \"attributes\": "
+          "{\"type\": \"meetings\", \"id\": \"2\", \"attributes\": "
           "{\"max_size\": 5, \"open\": false}, \"relationships\": {\"teams\": "
           "{\"meta\": {\"included\": false}}}}], \"meta\": {}}");
 
@@ -942,15 +942,12 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
               "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
               "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"1\", "
-              "\"attributes\": {\"name\": \"design\"}, \"relationships\": "
-              "{\"meetings\": {\"meta\": {\"included\": false}}, "
-              "\"employees\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
-              "\"product\"}, \"relationships\": {\"meetings\": {\"data\": "
-              "[{\"id\": \"2\", \"type\": \"meetings\"}]}, \"employees\": "
-              "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
-              "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+              "{\"meetings\": {\"data\": [{\"id\": \"2\", \"type\": "
+              "\"meetings\"}]}, \"employees\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
+              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
               "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
 
@@ -979,81 +976,54 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
               "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
               "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"1\", "
-              "\"attributes\": {\"name\": \"design\"}, \"relationships\": "
-              "{\"meetings\": {\"meta\": {\"included\": false}}, "
-              "\"employees\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-              "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
-              "\"product\"}, \"relationships\": {\"meetings\": {\"data\": "
-              "[{\"id\": \"2\", \"type\": \"meetings\"}]}, \"employees\": "
-              "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
-              "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+              "{\"meetings\": {\"data\": [{\"id\": \"2\", \"type\": "
+              "\"meetings\"}]}, \"employees\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
+              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
               "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
 
-          // t->strEqual(
-          //     "multiple deep nested related resources with a nested filter",
-          //     t->fetch("/api/v1/"
-          //              "notes?include=employees.teams.meetings&"
-          //              "fields[meetings]=max_"
-          //              "size,max_temp&filter[meetings][max_size][gt]=6",
-          //              "GET", headers, NULL),
-          //     "{\"data\": [{\"type\": \"notes\", \"id\": \"1\", "
-          //     "\"attributes\": {\"title\": \"a\", \"date\": \"2022-03-08\"},
-          //     "
-          //     "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"1\",
-          //     "
-          //     "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
-          //     "\"2\", \"attributes\": {\"title\": \"b\", \"date\": "
-          //     "\"2022-03-08\"}, \"relationships\": {\"employees\": {\"data\":
-          //     "
-          //     "[{\"id\": \"2\", \"type\": \"employees\"}]}}}, {\"type\": "
-          //     "\"notes\", \"id\": \"3\", \"attributes\": {\"title\": \"c\", "
-          //     "\"date\": \"2022-03-08\"}, \"relationships\": {\"employees\":
-          //     "
-          //     "{\"data\": [{\"id\": \"1\", \"type\": \"employees\"}]}}}], "
-          //     "\"meta\": {}, \"included\": [{\"type\": \"employees\", \"id\":
-          //     "
-          //     "\"1\", \"attributes\": {\"name\": \"Alice\", \"email\": "
-          //     "\"alice@email.com\"}, \"relationships\": {\"teams\":
-          //     {\"data\": "
-          //     "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\":
-          //     "
-          //     "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
-          //     "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
-          //     "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\":
-          //     "
-          //     "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\":
-          //     "
-          //     "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"1\",
-          //     "
-          //     "\"attributes\": {\"name\": \"design\"}, \"relationships\": "
-          //     "{\"meetings\": {\"meta\": {\"included\": false}}, "
-          //     "\"employees\": {\"meta\": {\"included\": false}}}}, {\"type\":
-          //     "
-          //     "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
-          //     "\"product\"}, \"relationships\": {\"meetings\": {\"data\": "
-          //     "[{\"id\": \"2\", \"type\": \"meetings\"}]}, \"employees\": "
-          //     "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\",
-          //     "
-          //     "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"max_temp\":
-          //     " "71.323586000000006}, \"relationships\": {\"teams\":
-          //     {\"meta\": "
-          //     "{\"included\": false}}}}]}");
-
-          // Parameters: {"include"=>"reviews.product",
-          // "fields"=>{"reviews"=>"title", "products"=>"title,description",
-          // "users"=>"name"}, "filter"=>{"products"=>{"title"=>"Goofy
-          // Gadget"}}, "sort"=>"-reviews.title"} User Load (0.3ms)  SELECT
-          // "users".* FROM "users" LIMIT $1 OFFSET $2  [["LIMIT", 20],
-          // ["OFFSET", 0]] ↳ app/controllers/users_controller.rb:4:in `index'
-          // Review Load (0.6ms)  SELECT "reviews".* FROM "reviews" WHERE
-          // "reviews"."user_id" IN ($1, $2) ORDER BY "reviews"."title" DESC
-          // [["user_id", 1], ["user_id", 2]] ↳
-          // app/controllers/users_controller.rb:4:in `index' Product Load
-          // (2.8ms)  SELECT "products".* FROM "products" WHERE
-          // (LOWER("products"."title") = 'goofy gadget') AND "products"."id" IN
-          // ($1, $2, $3)  [["id", 1], ["id", 2], ["id", 3]]
+          t->strEqual(
+              "multiple deep nested related resources with a nested filter",
+              t->fetch("/api/v1/"
+                       "notes?include=employees.teams.meetings&"
+                       "fields[meetings]=max_"
+                       "size,max_temp&filter[meetings][max_size][gt]=6",
+                       "GET", headers, NULL),
+              "{\"data\": [{\"type\": \"notes\", \"id\": \"1\", "
+              "\"attributes\": {\"title\": \"a\", \"date\": \"2022-03-08\"}, "
+              "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"1\", "
+              "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
+              "\"2\", \"attributes\": {\"title\": \"b\", \"date\": "
+              "\"2022-03-08\"}, \"relationships\": {\"employees\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"employees\"}]}}}, {\"type\": "
+              "\"notes\", \"id\": \"3\", \"attributes\": {\"title\": \"c\", "
+              "\"date\": \"2022-03-08\"}, \"relationships\": {\"employees\": "
+              "{\"data\": [{\"id\": \"1\", \"type\": \"employees\"}]}}}, "
+              "{\"type\": \"notes\", \"id\": \"4\", \"attributes\": "
+              "{\"title\": \"a\", \"date\": \"2022-03-09\"}, "
+              "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"2\", "
+              "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
+              "\"5\", \"attributes\": {\"title\": \"b\", \"date\": "
+              "\"2022-03-09\"}, \"relationships\": {\"employees\": {\"data\": "
+              "[{\"id\": \"1\", \"type\": \"employees\"}]}}}, {\"type\": "
+              "\"notes\", \"id\": \"6\", \"attributes\": {\"title\": \"c\", "
+              "\"date\": \"2022-03-09\"}, \"relationships\": {\"employees\": "
+              "{\"data\": [{\"id\": \"2\", \"type\": \"employees\"}]}}}], "
+              "\"meta\": {}, \"included\": [{\"type\": \"employees\", \"id\": "
+              "\"1\", \"attributes\": {\"name\": \"Alice\", \"email\": "
+              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
+              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+              "{\"meetings\": {\"meta\": {\"included\": false}}, "
+              "\"employees\": {\"meta\": {\"included\": false}}}}]}");
         });
       });
     });

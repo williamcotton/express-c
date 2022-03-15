@@ -231,6 +231,10 @@ query_t *applyAllFieldsToScope(query_t *baseScope, resource_t *resource);
 void nestedIncludes(json_t *includedJSONAPI,
                     resource_instance_collection_t *collection);
 
+void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
+                                  memory_manager_t *appMemoryManager,
+                                  char *attributeName, char *attributeType);
+
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,

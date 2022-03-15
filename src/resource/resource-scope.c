@@ -19,6 +19,7 @@ static query_t *applyAttributeFilterOperatorToScope(const char *attribute,
     if (strcmp(filter->attribute, attribute) == 0 &&
         strcmp(filter->operator, oper) == 0) {
       scope = filter->callback(scope, values, count);
+      break;
     }
   }
   return scope;
@@ -26,27 +27,40 @@ static query_t *applyAttributeFilterOperatorToScope(const char *attribute,
 
 query_t *applyFiltersToScope(json_t *filters, query_t *scope,
                              resource_t *resource) {
+  const char *checkAttribute = NULL;
+  json_t *checkValues;
+  json_object_foreach(filters, checkAttribute, checkValues) {
+
+    if (strcmp(checkAttribute, resource->type) == 0) {
+      json_t *value;
+      const char *key = NULL;
+      json_object_foreach(checkValues, key, value) {
+        json_object_set(filters, key, value);
+      }
+      json_object_del(filters, checkAttribute);
+    }
+  }
+
   const char *attribute = NULL;
   json_t *operatorValues;
-  debug("filters %s", json_dumps(filters, JSON_COMPACT));
   json_object_foreach(filters, attribute, operatorValues) {
     check(operatorValues != NULL, "operatorValues is NULL");
+    if (strcmp(attribute, resource->type) == 0) {
+    }
     const char *oper = NULL;
     json_t *valueArray;
-    debug("filters %s", json_dumps(operatorValues, JSON_COMPACT));
     /* check if it is an array */
     size_t shorthandCount = json_array_size(operatorValues);
-    debug("shorthandCount %zu", shorthandCount);
     if (shorthandCount > 0) {
-      oper = "eql";
+      oper = "eq";
       applyAttributeFilterOperatorToScope(attribute, oper, operatorValues,
                                           scope, resource);
-      return scope;
-    }
-    json_object_foreach(operatorValues, oper, valueArray) {
-      check(valueArray != NULL, "valueArray is NULL");
-      applyAttributeFilterOperatorToScope(attribute, oper, valueArray, scope,
-                                          resource);
+    } else {
+      json_object_foreach(operatorValues, oper, valueArray) {
+        check(valueArray != NULL, "valueArray is NULL");
+        applyAttributeFilterOperatorToScope(attribute, oper, valueArray, scope,
+                                            resource);
+      }
     }
   }
 error:
@@ -111,15 +125,18 @@ query_t *applyResourceAttributeToScope(query_t *scope, resource_t *resource,
   return scope;
 }
 
-query_t *applyAllFieldsToScope(query_t *scope, resource_t *resource) {
-  applyResourceAttributeToScope(scope, resource, "id");
-  for (int i = 0; i < resource->attributesCount; i++) {
-    class_attribute_t *attribute = resource->attributes[i];
-    applyResourceAttributeToScope(scope, resource, attribute->name);
-  }
+query_t *applyBelongsToFieldsToScope(query_t *scope, resource_t *resource) {
   for (int i = 0; i < resource->belongsToModelCount; i++) {
     belongs_to_t *belongsToModel = resource->belongsToModelRelationships[i];
     applyResourceAttributeToScope(scope, resource, belongsToModel->foreignKey);
+  }
+  return scope;
+}
+
+query_t *applyAllFieldsToScope(query_t *scope, resource_t *resource) {
+  for (int i = 0; i < resource->attributesCount; i++) {
+    class_attribute_t *attribute = resource->attributes[i];
+    applyResourceAttributeToScope(scope, resource, attribute->name);
   }
   return scope;
 }
@@ -149,8 +166,8 @@ error:
   return scope;
 }
 
-query_t *applyIncludeToScope(json_t *include, query_t *scope,
-                             UNUSED resource_t *resource) {
+UNUSED query_t *applyIncludeToScope(json_t *include, query_t *scope,
+                                    UNUSED resource_t *resource) {
 
   /* Loop through the array of included resources and build up an array of
    * resource types */
@@ -165,6 +182,7 @@ query_t *applyIncludeToScope(json_t *include, query_t *scope,
 
 query_t *applyQueryToScope(json_t *query, query_t *scope,
                            resource_t *resource) {
+
   json_t *filters = json_object_get(query, "filter");
   if (filters) {
     scope = applyFiltersToScope(filters, scope, resource);
@@ -182,16 +200,18 @@ query_t *applyQueryToScope(json_t *query, query_t *scope,
 
   json_t *fields = json_object_get(query, "fields");
   if (fields) {
+    applyResourceAttributeToScope(scope, resource, "id");
     if (json_object_get(fields, resource->type) == NULL) {
       scope = applyAllFieldsToScope(scope, resource);
     }
     scope = applyFieldsToScope(fields, scope, resource);
+    scope = applyBelongsToFieldsToScope(scope, resource);
   }
 
-  json_t *include = json_object_get(query, "include");
-  if (include) {
-    scope = applyIncludeToScope(include, scope, resource);
-  }
+  // json_t *include = json_object_get(query, "include");
+  // if (include) {
+  //   scope = applyIncludeToScope(include, scope, resource);
+  // }
 
   return scope;
 }

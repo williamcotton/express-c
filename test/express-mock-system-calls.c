@@ -80,4 +80,4 @@ void expressMockSystemCalls(tape_t *t) {
 
 #pragma clang diagnostic pop
 
-#endif // __linux__
+#endif
