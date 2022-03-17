@@ -367,8 +367,8 @@ resource_t *CreateResource(char *type, model_t *model) {
   });
 
   resource->all = appMemoryManager->blockCopy(^(jsonapi_params_t *params) {
-    // debug("%s->all() %s", resource->model->tableName,
-    //       json_dumps(params->query, JSON_INDENT(2)));
+    debug("%s->all() %s", resource->model->tableName,
+          json_dumps(params->query, JSON_INDENT(2)));
     /* Get the base scope, a query_t object */
     query_t *baseScope = resource->baseScoper->callback(resource->model);
 
