@@ -26,6 +26,12 @@
 #include <express.h>
 #include <libpq-fe.h>
 
+typedef struct query_stat_result_t {
+  char *stat;
+  char *type;
+  char *value;
+} query_stat_result_t;
+
 typedef struct query_t {
   char *sql;
   const char *paramValues[100];
@@ -55,6 +61,7 @@ typedef struct query_t {
   struct query_t * (^distinct)();
   char * (^toSql)();
   int (^count)();
+  query_stat_result_t * (^stat)(char *, char *);
   void * (^find)(char *);
   void * (^all)();
 } query_t;

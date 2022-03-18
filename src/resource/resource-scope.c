@@ -189,12 +189,80 @@ error:
   return scope;
 }
 
-query_t *applyQueryToScope(json_t *query, query_t *scope,
-                           resource_t *resource) {
+query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
+                           UNUSED resource_t *resource,
+                           resource_stat_value_t **statsArray,
+                           int *statsArrayCount) {
+
+  debug("stats %s", json_dumps(stats, JSON_COMPACT));
+
+  resource_stat_value_t *statValue =
+      resource->model->instanceMemoryManager->malloc(
+          sizeof(resource_stat_value_t));
+
+  const char *key;
+  json_t *value;
+  json_object_foreach(stats, key, value) {
+    char *attribute = (char *)key;
+    debug("attribute %s", attribute);
+    json_t *statArray = value;
+    debug("statArray %s", json_dumps(statArray, JSON_COMPACT));
+    char *stat = (char *)json_string_value(json_array_get(statArray, 0));
+    if (stat == NULL) {
+      if (strcmp(attribute, resource->type) == 0) {
+        continue;
+      }
+      // const char *attrKey;
+      // json_t *attrStatArray;
+      // json_object_foreach(statArray, attrKey, attrStatArray) {
+      //   stat = (char *)json_string_value(json_array_get(attrStatArray, 0));
+      //   attribute = (char *)attrKey;
+      //   if (stat != NULL) {
+      //     break;
+      //   }
+      // }
+    }
+    debug("attribute %s stat %s", attribute, stat);
+    if (strcmp(attribute, "total") == 0 & strcmp(stat, "count") == 0) {
+      statValue->attribute = "total";
+      statValue->stat = "count";
+      int count = scope->count();
+      statValue->value =
+          resource->model->instanceMemoryManager->malloc(sizeof(int) * 2);
+      sprintf(statValue->value, "%d", count);
+    } else if (resource->hasAttribute(attribute)) {
+      statValue->attribute = attribute;
+      statValue->stat = stat;
+      query_stat_result_t *result = scope->stat(attribute, stat);
+      statValue->value = resource->model->instanceMemoryManager->malloc(
+          strlen(result->value) + 1);
+      sprintf(statValue->value, "%s", result->value);
+    }
+  }
+
+  debug("value %s", statValue->value);
+  debug("attribute %s stat %s", statValue->attribute, statValue->stat);
+
+  statsArray[*statsArrayCount] = statValue;
+
+  (*statsArrayCount)++;
+
+  return scope;
+}
+
+query_t *applyQueryToScope(json_t *query, query_t *scope, resource_t *resource,
+                           resource_stat_value_t **statsArray,
+                           int *statsArrayCount) {
 
   json_t *filters = json_object_get(query, "filter");
   if (filters) {
     scope = applyFiltersToScope(filters, scope, resource);
+  }
+
+  json_t *stats = json_object_get(query, "stats");
+  if (stats) {
+    scope =
+        applyStatsToScope(stats, scope, resource, statsArray, statsArrayCount);
   }
 
   json_t *sorters = json_object_get(query, "sort");

@@ -31,6 +31,12 @@ typedef struct default_sort_t {
   char *direction;
 } default_sort_t;
 
+typedef struct resource_stat_value_t {
+  char *attribute;
+  char *stat;
+  char *value;
+} resource_stat_value_t;
+
 typedef void (^eachResourceInstanceCallback)(
     struct resource_instance_t *instance);
 typedef int (^findResourceInstanceCallback)(
@@ -50,6 +56,8 @@ typedef struct resource_instance_collection_t {
   char *type;
   struct resource_instance_collection_t *includedResourceInstances[100];
   int includedResourceInstancesCount;
+  resource_stat_value_t *statsArray[100];
+  int statsArrayCount;
   struct resource_instance_t * (^at)(size_t index);
   void (^each)(eachResourceInstanceCallback);
   struct resource_instance_collection_t * (^filter)(
@@ -71,6 +79,8 @@ typedef struct resource_instance_t {
   model_instance_t *modelInstance;
   resource_instance_collection_t *includedResourceInstances[100];
   int includedResourceInstancesCount;
+  resource_stat_value_t *statsArray[100];
+  int statsArrayCount;
   instance_errors_t (^save)();              // TODO: implement save
   instance_errors_t (^destroy)();           // TODO: implement destroy
   instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
@@ -185,6 +195,7 @@ typedef struct resource_t {
   void (^paginate)(paginateCallback);
   void (^stat)(char *attribute, char *stat, statCallback);
   void (^baseScope)(baseScopeCallback);
+  int (^hasAttribute)(char *attribute);
   resource_instance_t * (^find)(jsonapi_params_t *params, char *id);
   resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
@@ -233,7 +244,9 @@ query_t *applyIncludeToScope(json_t *include, query_t *baseScope,
                              resource_t *resource);
 
 query_t *applyQueryToScope(json_t *query, query_t *baseScope,
-                           resource_t *resource);
+                           resource_t *resource,
+                           resource_stat_value_t **statsArray,
+                           int *statsArrayCount);
 
 query_t *applyFieldsToScope(json_t *fields, query_t *baseScope,
                             resource_t *resource);

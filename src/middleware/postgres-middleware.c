@@ -333,17 +333,19 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       sprintf(sql, "%s%s%s%s%s%s%s%s%s", select, from, joins, where, group,
               having, limit, offset, order);
 
-      for (int i = 0; i < query->whereConditionsCount; i++) {
-        free(query->whereConditions[i]);
-      }
+      memoryManager->cleanup(memoryManager->blockCopy(^{
+        for (int i = 0; i < query->whereConditionsCount; i++) {
+          free(query->whereConditions[i]);
+        }
 
-      for (int i = 0; i < query->havingConditionsCount; i++) {
-        free(query->havingConditions[i]);
-      }
+        for (int i = 0; i < query->havingConditionsCount; i++) {
+          free(query->havingConditions[i]);
+        }
+      }));
 
       query->sql = sql;
 
-      // debug("\n==SQL: %s", sql);
+      debug("\n==SQL: %s", sql);
 
       return sql;
     });
@@ -362,14 +364,64 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     query->count = memoryManager->blockCopy(^() {
       query->selectConditions[0] = "count(*)";
       query->selectConditionsCount = 1;
-      PGresult *pgres = query->all();
+      PGresult *pgres = pg->execParams(query->toSql(), query->paramValueCount,
+                                       NULL, query->paramValues, NULL, NULL, 0);
       if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
         log_err("%s", PQresultErrorMessage(pgres));
         return -1;
       }
       int count = atoi(PQgetvalue(pgres, 0, 0));
       PQclear(pgres);
+      query->selectConditionsCount = 0;
       return count;
+    });
+
+    query->stat = memoryManager->blockCopy(^(char *attribute, char *stat) {
+      query_stat_result_t *result =
+          memoryManager->malloc(sizeof(query_stat_result_t));
+      result->value = NULL;
+      result->stat = stat;
+      result->type = NULL;
+
+      debug("stat: %s", stat);
+      if (strcmp(stat, "min") == 0) {
+        query->selectConditions[0] = memoryManager->malloc(
+            strlen("min(") + strlen(attribute) + strlen(")") + 1);
+        sprintf((char *)query->selectConditions[0], "min(%s)", attribute);
+        query->selectConditionsCount = 1;
+      }
+      if (strcmp(stat, "max") == 0) {
+        query->selectConditions[0] = memoryManager->malloc(
+            strlen("max(") + strlen(attribute) + strlen(")") + 1);
+        sprintf((char *)query->selectConditions[0], "max(%s)", attribute);
+        query->selectConditionsCount = 1;
+      }
+      if (strcmp(stat, "average") == 0) {
+        query->selectConditions[0] = memoryManager->malloc(
+            strlen("avg(") + strlen(attribute) + strlen(")") + 1);
+        sprintf((char *)query->selectConditions[0], "avg(%s)", attribute);
+        query->selectConditionsCount = 1;
+      }
+      if (strcmp(stat, "sum") == 0) {
+        query->selectConditions[0] = memoryManager->malloc(
+            strlen("sum(") + strlen(attribute) + strlen(")") + 1);
+        sprintf((char *)query->selectConditions[0], "sum(%s)", attribute);
+        query->selectConditionsCount = 1;
+      }
+
+      PGresult *pgres = pg->execParams(query->toSql(), query->paramValueCount,
+                                       NULL, query->paramValues, NULL, NULL, 0);
+      if (PQresultStatus(pgres) != PGRES_TUPLES_OK) {
+        log_err("%s", PQresultErrorMessage(pgres));
+        return result;
+      }
+      char *value = PQgetvalue(pgres, 0, 0);
+
+      query->selectConditionsCount = 0;
+      result->value = strdup(value);
+
+      PQclear(pgres);
+      return result;
     });
 
     return query;
@@ -473,8 +525,8 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
         "Failed to connect to postgres: %s (%s)",
         PQerrorMessage(postgres->connection), postgres->uri);
 
-  /* Create middleware, getting a postgress connection at the beginning of every
-   * request and releasing it after the request has finished */
+  /* Create middleware, getting a postgress connection at the beginning of
+   * every request and releasing it after the request has finished */
   return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
     /* Wait for a connection */

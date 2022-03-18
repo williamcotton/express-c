@@ -147,6 +147,14 @@ createResourceInstanceCollection(resource_t *resource,
 
     json_t *meta = json_object();
 
+    /* Add stats to the meta object */
+    for (int i = 0; i < collection->statsArrayCount; i++) {
+      json_t *stat = json_object();
+      json_object_set_new(stat, collection->statsArray[i]->stat,
+                          json_string(collection->statsArray[i]->value));
+      json_object_set_new(meta, collection->statsArray[i]->attribute, stat);
+    }
+
     __block json_t *response =
         json_pack("{s:o, s:o}", "data", data, "meta", meta);
 

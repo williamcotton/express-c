@@ -155,6 +155,15 @@ resource_t *CreateResource(char *type, model_t *model) {
                        }));
       });
 
+  resource->hasAttribute = appMemoryManager->blockCopy(^(char *attributeName) {
+    for (int i = 0; i < resource->attributesCount; i++) {
+      if (strcmp(resource->attributes[i]->name, attributeName) == 0) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   resource->sort("id", ^(query_t *scope, const char *direction) {
     return scope->order("id", (char *)direction);
   });
@@ -181,9 +190,12 @@ resource_t *CreateResource(char *type, model_t *model) {
     /* Get the base scope, a query_t object */
     query_t *baseScope = resource->baseScoper->callback(resource->model);
 
+    resource_stat_value_t *statsArray[100];
+    int statsArrayCount = 0;
+
     /* Apply the query string params to the base scope */
-    query_t *queriedScope =
-        applyQueryToScope(params->query, baseScope, resource);
+    query_t *queriedScope = applyQueryToScope(
+        params->query, baseScope, resource, statsArray, &statsArrayCount);
 
     /* Query the database and return a collection of model instances */
     model_instance_collection_t *modelCollection =
@@ -193,6 +205,12 @@ resource_t *CreateResource(char *type, model_t *model) {
      * the query parameters */
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
+
+    // Add the stats to the collection
+    for (int i = 0; i < statsArrayCount; i++) {
+      collection->statsArray[i] = statsArray[i];
+    }
+    collection->statsArrayCount = statsArrayCount;
 
     /* If there are any included resources, add them to the base resource
      * collection */
@@ -216,9 +234,12 @@ resource_t *CreateResource(char *type, model_t *model) {
         /* Get the base scope, a query_t object */
         query_t *baseScope = resource->baseScoper->callback(resource->model);
 
+        resource_stat_value_t *statsArray[100];
+        int statsArrayCount = 0;
+
         /* Apply the query string params to the base scope */
-        query_t *queriedScope =
-            applyQueryToScope(params->query, baseScope, resource);
+        query_t *queriedScope = applyQueryToScope(
+            params->query, baseScope, resource, statsArray, &statsArrayCount);
 
         /* Query the database and return a model instance */
         model_instance_t *modelInstance =
@@ -232,6 +253,11 @@ resource_t *CreateResource(char *type, model_t *model) {
          * parameters */
         resource_instance_t *instance =
             createResourceInstance(resource, modelInstance, params);
+
+        for (int i = 0; i < statsArrayCount; i++) {
+          instance->statsArray[i] = statsArray[i];
+        }
+        instance->statsArrayCount = statsArrayCount;
 
         /* If there are any included resources, add them to the base resource
          * instance */

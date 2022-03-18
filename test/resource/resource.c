@@ -175,6 +175,17 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "{\"included\": false}}}}], \"meta\": {}}");
 
       t->strEqual(
+          "page size 1 and page number 2 with stats",
+          t->fetch(
+              "/api/v1/teams?page[size]=1&page[number]=2&stats[total]=count",
+              "GET", headers, NULL),
+          "{\"data\": [{\"type\": \"teams\", \"id\": \"2\", \"attributes\": "
+          "{\"name\": \"product\"}, \"relationships\": {\"employees\": "
+          "{\"meta\": {\"included\": false}}, \"meetings\": {\"meta\": "
+          "{\"included\": false}}}}], \"meta\": {\"total\": {\"count\": "
+          "\"3\"}}}");
+
+      t->strEqual(
           "bad page request",
           t->fetch("/api/v1/teams?page[size]=1", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
@@ -233,6 +244,22 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
           "\"relationships\": {\"employees\": {\"meta\": {\"included\": "
           "false}}, \"meetings\": {\"meta\": {\"included\": false}}}}], "
           "\"meta\": {}}");
+
+      t->strEqual(
+          "stats: average",
+          t->fetch("/api/v1/meetings?stats[max_temp]=average", "GET", headers,
+                   NULL),
+          "{\"data\": [{\"type\": \"meetings\", \"id\": \"1\", \"attributes\": "
+          "{\"max_size\": 10, \"date\": \"2018-06-18\", \"timestamp\": "
+          "\"2018-06-18 06:00:00-05\", \"max_temp\": 72.295615999999995, "
+          "\"budget\": 85000.25, \"open\": true}, \"relationships\": "
+          "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+          "\"meetings\", \"id\": \"2\", \"attributes\": {\"max_size\": 5, "
+          "\"date\": \"2021-03-08\", \"timestamp\": \"2021-03-08 "
+          "10:00:00-06\", \"max_temp\": 71.323586000000006, \"budget\": "
+          "45000.199999999997, \"open\": false}, \"relationships\": "
+          "{\"teams\": {\"meta\": {\"included\": false}}}}], \"meta\": "
+          "{\"max_temp\": {\"average\": \"71.80960083007812\"}}}");
 
       t->strEqual(
           "filter name eq",
@@ -1161,6 +1188,53 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
                        "notes?include=employees.teams.meetings&"
                        "fields[meetings]=max_"
                        "size,max_temp&sort=-id,-employees.name",
+                       "GET", headers, NULL),
+              "{\"data\": [{\"type\": \"notes\", \"id\": \"6\", "
+              "\"attributes\": {\"title\": \"c\", \"date\": \"2022-03-09\"}, "
+              "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"2\", "
+              "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
+              "\"5\", \"attributes\": {\"title\": \"b\", \"date\": "
+              "\"2022-03-09\"}, \"relationships\": {\"employees\": {\"data\": "
+              "[{\"id\": \"1\", \"type\": \"employees\"}]}}}, {\"type\": "
+              "\"notes\", \"id\": \"4\", \"attributes\": {\"title\": \"a\", "
+              "\"date\": \"2022-03-09\"}, \"relationships\": {\"employees\": "
+              "{\"data\": [{\"id\": \"2\", \"type\": \"employees\"}]}}}, "
+              "{\"type\": \"notes\", \"id\": \"3\", \"attributes\": "
+              "{\"title\": \"c\", \"date\": \"2022-03-08\"}, "
+              "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"1\", "
+              "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
+              "\"2\", \"attributes\": {\"title\": \"b\", \"date\": "
+              "\"2022-03-08\"}, \"relationships\": {\"employees\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"employees\"}]}}}, {\"type\": "
+              "\"notes\", \"id\": \"1\", \"attributes\": {\"title\": \"a\", "
+              "\"date\": \"2022-03-08\"}, \"relationships\": {\"employees\": "
+              "{\"data\": [{\"id\": \"1\", \"type\": \"employees\"}]}}}], "
+              "\"meta\": {}, \"included\": [{\"type\": \"employees\", \"id\": "
+              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
+              "\"1\", \"attributes\": {\"name\": \"Alice\", \"email\": "
+              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+              "{\"meetings\": {\"data\": [{\"id\": \"2\", \"type\": "
+              "\"meetings\"}]}, \"employees\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
+              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}]}");
+
+          return;
+
+          t->strEqual(
+              "multiple deep nested related resources with stats",
+              t->fetch("/api/v1/"
+                       "notes?include=employees.teams.meetings&"
+                       "fields[meetings]=max_"
+                       "size,max_temp&sort=-id,-employees.name&stats[meetings]["
+                       "max_temp]=average",
                        "GET", headers, NULL),
               "{\"data\": [{\"type\": \"notes\", \"id\": \"6\", "
               "\"attributes\": {\"title\": \"c\", \"date\": \"2022-03-09\"}, "
