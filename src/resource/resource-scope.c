@@ -79,8 +79,9 @@ query_t *applySortersToScope(json_t *sorters, query_t *scope,
   json_t *jsonValue;
   json_array_foreach(sorters, index, jsonValue) {
     check(jsonValue != NULL, "Invalid sorter");
-    const char *value = json_string_value(jsonValue);
-    const char *attribute = NULL;
+    char *value = (char *)json_string_value(jsonValue);
+    char *attribute = NULL;
+
     const char *direction = NULL;
     if (value[0] == '-') {
       attribute = value + 1;
@@ -89,6 +90,20 @@ query_t *applySortersToScope(json_t *sorters, query_t *scope,
       attribute = value;
       direction = "ASC";
     }
+
+    char *attributeName = NULL;
+    char *resourceName = strdup(attribute);
+
+    char *splitPoint = strstr(resourceName, ".");
+    if (splitPoint != NULL) {
+      attributeName = splitPoint + 1;
+      resourceName[splitPoint - resourceName] = '\0';
+    }
+
+    if (attributeName && strcmp(resourceName, resource->type) == 0) {
+      attribute = attributeName;
+    }
+
     for (int i = 0; i < resource->sortersCount; i++) {
       resource_sort_t *sorter = resource->sorters[i];
       if (strcmp(sorter->attribute, attribute) == 0) {

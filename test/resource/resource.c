@@ -1067,8 +1067,6 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "72.295615999999995}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
 
-          return;
-
           t->strEqual(
               "multiple deep nested related resources with sorting",
               t->fetch("/api/v1/"
@@ -1141,17 +1139,64 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"date\": \"2022-03-09\"}, \"relationships\": {\"employees\": "
               "{\"data\": [{\"id\": \"2\", \"type\": \"employees\"}]}}}], "
               "\"meta\": {}, \"included\": [{\"type\": \"employees\", \"id\": "
-              "\"2\", "
-              "\"attributes\": {\"name\": \"Bob\", \"email\": "
-              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
-              "false}}}}, {\"type\": \"employees\", \"id\": "
+              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
               "\"1\", \"attributes\": {\"name\": \"Alice\", \"email\": "
-              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"meta\": "
-              "{\"included\": false}}, \"notes\": {\"meta\": {\"included\": "
-              "false}}}}, {\"type\": \"meetings\", \"id\": \"1\", "
-              "\"attributes\": {\"max_size\": 10, \"max_temp\": "
-              "72.295615999999995}, \"relationships\": {\"teams\": {\"meta\": "
+              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+              "{\"meetings\": {\"data\": [{\"id\": \"2\", \"type\": "
+              "\"meetings\"}]}, \"employees\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
+              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
+              "{\"included\": false}}}}]}");
+
+          t->strEqual(
+              "multiple deep nested related resources with nested sorting",
+              t->fetch("/api/v1/"
+                       "notes?include=employees.teams.meetings&"
+                       "fields[meetings]=max_"
+                       "size,max_temp&sort=-id,-employees.name",
+                       "GET", headers, NULL),
+              "{\"data\": [{\"type\": \"notes\", \"id\": \"6\", "
+              "\"attributes\": {\"title\": \"c\", \"date\": \"2022-03-09\"}, "
+              "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"2\", "
+              "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
+              "\"5\", \"attributes\": {\"title\": \"b\", \"date\": "
+              "\"2022-03-09\"}, \"relationships\": {\"employees\": {\"data\": "
+              "[{\"id\": \"1\", \"type\": \"employees\"}]}}}, {\"type\": "
+              "\"notes\", \"id\": \"4\", \"attributes\": {\"title\": \"a\", "
+              "\"date\": \"2022-03-09\"}, \"relationships\": {\"employees\": "
+              "{\"data\": [{\"id\": \"2\", \"type\": \"employees\"}]}}}, "
+              "{\"type\": \"notes\", \"id\": \"3\", \"attributes\": "
+              "{\"title\": \"c\", \"date\": \"2022-03-08\"}, "
+              "\"relationships\": {\"employees\": {\"data\": [{\"id\": \"1\", "
+              "\"type\": \"employees\"}]}}}, {\"type\": \"notes\", \"id\": "
+              "\"2\", \"attributes\": {\"title\": \"b\", \"date\": "
+              "\"2022-03-08\"}, \"relationships\": {\"employees\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"employees\"}]}}}, {\"type\": "
+              "\"notes\", \"id\": \"1\", \"attributes\": {\"title\": \"a\", "
+              "\"date\": \"2022-03-08\"}, \"relationships\": {\"employees\": "
+              "{\"data\": [{\"id\": \"1\", \"type\": \"employees\"}]}}}], "
+              "\"meta\": {}, \"included\": [{\"type\": \"employees\", \"id\": "
+              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
+              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
+              "\"1\", \"attributes\": {\"name\": \"Alice\", \"email\": "
+              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
+              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
+              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
+              "{\"meetings\": {\"data\": [{\"id\": \"2\", \"type\": "
+              "\"meetings\"}]}, \"employees\": {\"meta\": {\"included\": "
+              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
+              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
         });
       });

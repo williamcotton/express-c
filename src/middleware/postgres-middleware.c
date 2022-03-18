@@ -343,7 +343,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
       query->sql = sql;
 
-      debug("\n==SQL: %s", sql);
+      // debug("\n==SQL: %s", sql);
 
       return sql;
     });

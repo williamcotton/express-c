@@ -251,7 +251,7 @@ void addRelatedToResource(resource_instance_t *resourceInstance,
                           char *foreignKey,
                           resource_instance_collection_t *includedCollection);
 
-included_params_builder_t
+included_params_builder_t *
 buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
                     jsonapi_params_t *params);
 

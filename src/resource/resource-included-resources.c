@@ -26,25 +26,25 @@ void addRelatedToResource(resource_instance_t *resourceInstance,
 
 /* Check for nested resources to include */
 
-included_params_builder_t
+included_params_builder_t *
 buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
                     jsonapi_params_t *params) {
-  included_params_builder_t result;
-
   memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
+  included_params_builder_t *result =
+      (included_params_builder_t *)memoryManager->malloc(
+          sizeof(included_params_builder_t));
   char *nestedName = NULL;
   char *includedName = originalIncludedResourceName;
 
   char *splitPoint = strstr(originalIncludedResourceName, ".");
   if (splitPoint != NULL) {
     nestedName = splitPoint + 1;
-    *splitPoint = '\0';
     includedName[splitPoint - includedName] = '\0';
   }
 
   resource_t *includedResource = resource->lookup(includedName);
   if (includedResource == NULL) {
-    result.includedResource = NULL;
+    result->includedResource = NULL;
     return result;
   }
 
@@ -79,11 +79,28 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
     }));
   }
 
+  /* Delete all sorts that are related to the base resource and not relared to
+   * the included resource */
+  json_t *sorts = json_object_get(includedParams->query, "sort");
+  if (sorts != NULL) {
+    json_t *newSorts = json_array();
+    size_t index;
+    json_array_foreach(sorts, index, value) {
+      const char *sortKey = json_string_value(value);
+      char *sortSplit = strstr(sortKey, ".");
+      if (sortSplit != NULL) {
+        json_array_append(newSorts, value);
+      }
+    }
+    json_object_set_new(includedParams->query, "sort", newSorts);
+  }
+
   char *foreignKey = (char *)resource->model->getForeignKey(
       includedResource->model->tableName);
 
   char *originalForeignKey = foreignKey;
 
+  /* Only add nested resources to the includes filter */
   if (nestedName != NULL) {
     json_t *newIncludes = json_array();
     json_array_append_new(newIncludes, json_string(nestedName));
@@ -94,59 +111,59 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
 
   json_t *ids = json_array();
 
-  result = (included_params_builder_t){
-      .nestedName = nestedName,
-      .includedName = includedName,
-      .includedParams = includedParams,
-      .filters = filters,
-      .includedResource = includedResource,
-      .foreignKey = foreignKey,
-      .originalForeignKey = originalForeignKey,
-      .ids = ids,
-      .getIncludedParams = memoryManager->blockCopy(^{
-        json_object_set_new(filters, originalForeignKey, ids);
-        json_object_set(includedParams->query, "filter", filters);
-        return includedParams;
-      }),
-  };
+  jsonapi_params_t * (^getIncludedParams)(void) = memoryManager->blockCopy(^{
+    json_object_set_new(filters, originalForeignKey, ids);
+    json_object_set(includedParams->query, "filter", filters);
+    return includedParams;
+  });
+
+  result->nestedName = nestedName;
+  result->includedName = includedName;
+  result->includedParams = includedParams;
+  result->filters = filters;
+  result->includedResource = includedResource;
+  result->foreignKey = foreignKey;
+  result->originalForeignKey = originalForeignKey;
+  result->ids = ids;
+  result->getIncludedParams = getIncludedParams;
   return result;
 }
 
 void addIncludedResourcesToCollection(
     char *originalIncludedResourceName, resource_t *resource,
     resource_instance_collection_t *collection, jsonapi_params_t *params) {
-  included_params_builder_t includedParamsBuild =
+  included_params_builder_t *includedParamsBuild =
       buildIncludedParams(originalIncludedResourceName, resource, params);
 
-  if (includedParamsBuild.includedResource == NULL)
+  if (includedParamsBuild->includedResource == NULL)
     return;
 
   /* Add ids to the included resource */
-  if (strcmp(includedParamsBuild.foreignKey, "id") == 0) {
-    includedParamsBuild.foreignKey = (char *)resource->model->getBelongsToKey(
-        includedParamsBuild.includedResource->model->tableName);
+  if (strcmp(includedParamsBuild->foreignKey, "id") == 0) {
+    includedParamsBuild->foreignKey = (char *)resource->model->getBelongsToKey(
+        includedParamsBuild->includedResource->model->tableName);
     collection->each(^(resource_instance_t *resourceInstance) {
-      json_array_append_new(includedParamsBuild.ids,
+      json_array_append_new(includedParamsBuild->ids,
                             json_string(resourceInstance->modelInstance->get(
-                                includedParamsBuild.foreignKey)));
+                                includedParamsBuild->foreignKey)));
     });
   } else {
     collection->each(^(resource_instance_t *resourceInstance) {
-      json_array_append_new(includedParamsBuild.ids,
+      json_array_append_new(includedParamsBuild->ids,
                             json_string(resourceInstance->id));
     });
   }
 
   resource_instance_collection_t *includedCollection =
-      includedParamsBuild.includedResource->all(
-          includedParamsBuild.getIncludedParams());
+      includedParamsBuild->includedResource->all(
+          includedParamsBuild->getIncludedParams());
 
   collection->includedResourceInstances
       [collection->includedResourceInstancesCount++] = includedCollection;
 
   for (size_t i = 0; i < collection->size; i++) {
     resource_instance_t *resourceInstance = collection->arr[i];
-    addRelatedToResource(resourceInstance, includedParamsBuild.foreignKey,
+    addRelatedToResource(resourceInstance, includedParamsBuild->foreignKey,
                          includedCollection);
   }
 }
@@ -155,20 +172,20 @@ void addIncludedResourcesToInstance(char *originalIncludedResourceName,
                                     resource_t *resource,
                                     resource_instance_t *resourceInstance,
                                     jsonapi_params_t *params) {
-  included_params_builder_t includedParamsBuild =
+  included_params_builder_t *includedParamsBuild =
       buildIncludedParams(originalIncludedResourceName, resource, params);
 
-  if (includedParamsBuild.includedResource == NULL)
+  if (includedParamsBuild->includedResource == NULL)
     return;
 
   /* Add id to the included resource */
-  json_array_append_new(includedParamsBuild.ids,
+  json_array_append_new(includedParamsBuild->ids,
                         json_string(resourceInstance->id));
 
   resource_instance_collection_t *includedCollection =
-      includedParamsBuild.includedResource->all(
-          includedParamsBuild.getIncludedParams());
+      includedParamsBuild->includedResource->all(
+          includedParamsBuild->getIncludedParams());
 
-  addRelatedToResource(resourceInstance, includedParamsBuild.foreignKey,
+  addRelatedToResource(resourceInstance, includedParamsBuild->foreignKey,
                        includedCollection);
 }
