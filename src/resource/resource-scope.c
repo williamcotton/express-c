@@ -255,6 +255,9 @@ query_t *applyQueryToScope(json_t *query, query_t *scope, resource_t *resource,
     scope = applyFiltersToScope(filters, scope, resource);
   }
 
+  // TODO: multiple stats
+  // TODO: always add total count
+
   json_t *stats = json_object_get(query, "stats");
   if (stats) {
     scope =
@@ -265,6 +268,8 @@ query_t *applyQueryToScope(json_t *query, query_t *scope, resource_t *resource,
   if (sorters) {
     scope = applySortersToScope(sorters, scope, resource);
   }
+
+  // TODO: nested pagination
 
   json_t *paginator = json_object_get(query, "page");
   if (paginator) {
@@ -281,10 +286,7 @@ query_t *applyQueryToScope(json_t *query, query_t *scope, resource_t *resource,
     scope = applyBelongsToFieldsToScope(scope, resource);
   }
 
-  // json_t *include = json_object_get(query, "include");
-  // if (include) {
-  //   scope = applyIncludeToScope(include, scope, resource);
-  // }
+  // TODO: extra_fields
 
   return scope;
 }
