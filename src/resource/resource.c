@@ -56,23 +56,20 @@ static void addIncludedResourcesToCollection(
 
   memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
 
-  /* Check for nested resources to include */
+  /* Check for nested resources to include
+
+    Nested resources are in the form of:
+
+    "includedResourceName.nestedResourceName"
+
+   */
   struct nested_and_included_names_t nestedAndIncludedNames =
       getNestedAndIncludedNames(originalIncludedResourceName);
-  char *nestedResourceName = nestedAndIncludedNames.nestedName;
   char *includedResourceName = nestedAndIncludedNames.includedName;
 
   resource_t *includedResource = resource->lookup(includedResourceName);
   if (includedResource == NULL)
     return;
-
-  jsonapi_params_t *includedParams =
-      memoryManager->malloc(sizeof(jsonapi_params_t));
-  includedParams->query = json_deep_copy(params->query);
-
-  memoryManager->cleanup(memoryManager->blockCopy(^{
-    json_decref(includedParams->query);
-  }));
 
   char *foreignKey = (char *)resource->model->getForeignKey(
       includedResource->model->tableName);
@@ -93,9 +90,24 @@ static void addIncludedResourcesToCollection(
     });
   }
 
+  /* Create a new jsonAPI query for the included resources
+
+    We need to do this because there are query parameters that only apply to the
+    base resource
+
+  */
+  jsonapi_params_t *includedParams =
+      memoryManager->malloc(sizeof(jsonapi_params_t));
+  includedParams->query = json_deep_copy(params->query);
+
+  memoryManager->cleanup(memoryManager->blockCopy(^{
+    json_decref(includedParams->query);
+  }));
+
   json_t *filters = json_object_get(includedParams->query, "filter");
 
-  /* Delete all filters that are not related to the included resource */
+  /* Delete all filters that are related to the base resource and not related to
+   * the included resource */
   char *keysToDelete[100];
   size_t keysToDeleteCount = 0;
   const char *key;
@@ -115,9 +127,12 @@ static void addIncludedResourcesToCollection(
     }));
   }
 
+  /* Filter the included resources by the ids of the base resources */
   json_object_set_new(filters, originalForeignKey, ids);
   json_object_set(includedParams->query, "filter", filters);
 
+  /* Only include the nested resource in the new query */
+  char *nestedResourceName = nestedAndIncludedNames.nestedName;
   if (nestedResourceName != NULL) {
     json_t *newIncludes = json_array();
     json_array_append_new(newIncludes, json_string(nestedResourceName));
@@ -126,12 +141,16 @@ static void addIncludedResourcesToCollection(
     json_object_del(includedParams->query, "include");
   }
 
+  /* Get the included resources */
   resource_instance_collection_t *includedCollection =
       includedResource->all(includedParams);
 
+  /* Add the included resources to the collection */
   collection->includedResourceInstances
       [collection->includedResourceInstancesCount++] = includedCollection;
 
+  /* Add the collection of included resources to each resource in the collection
+   */
   for (size_t i = 0; i < collection->size; i++) {
     resource_instance_t *resourceInstance = collection->arr[i];
     addRelatedToResource(resourceInstance, foreignKey, includedCollection);
@@ -142,19 +161,40 @@ static void addIncludedResourcesToInstance(
     char *originalIncludedResourceName, resource_t *resource,
     resource_instance_t *resourceInstance, jsonapi_params_t *params) {
 
-  UNUSED memory_manager_t *memoryManager =
-      resource->model->instanceMemoryManager;
+  memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
 
-  /* Check for nested resources to include */
+  /* Check for nested resources to include
+
+    Nested resources are in the form of:
+
+    "includedResourceName.nestedResourceName"
+
+   */
   struct nested_and_included_names_t nestedAndIncludedNames =
       getNestedAndIncludedNames(originalIncludedResourceName);
-  char *nestedResourceName = nestedAndIncludedNames.nestedName;
   char *includedResourceName = nestedAndIncludedNames.includedName;
 
   resource_t *includedResource = resource->lookup(includedResourceName);
   if (includedResource == NULL)
     return;
 
+  char *foreignKey = (char *)resource->model->getForeignKey(
+      includedResource->model->tableName);
+
+  char *originalForeignKey = foreignKey;
+
+  json_t *ids = json_array();
+  memoryManager->cleanup(memoryManager->blockCopy(^{
+    json_decref(ids);
+  }));
+  json_array_append_new(ids, json_string(resourceInstance->id));
+
+  /* Create a new jsonAPI query for the included resources
+
+    We need to do this because there are query parameters that only apply to the
+    base resource
+
+  */
   jsonapi_params_t *includedParams =
       memoryManager->malloc(sizeof(jsonapi_params_t));
   includedParams->query = json_deep_copy(params->query);
@@ -163,51 +203,48 @@ static void addIncludedResourcesToInstance(
     json_decref(includedParams->query);
   }));
 
-  char *foreignKey = (char *)resource->model->getForeignKey(
-      includedResource->model->tableName);
+  json_t *filters = json_object_get(includedParams->query, "filter");
 
-  json_t *ids = json_array();
-  memoryManager->cleanup(memoryManager->blockCopy(^{
-    json_decref(ids);
-  }));
-  json_array_append_new(ids, json_string(resourceInstance->id));
+  /* Delete all filters that are related to the base resource and not related to
+   * the included resource */
+  char *keysToDelete[100];
+  size_t keysToDeleteCount = 0;
+  const char *key;
+  json_t *value;
+  json_object_foreach(filters, key, value) {
+    resource_t *includedResourceFilter = resource->lookup(key);
+    if (includedResourceFilter == NULL)
+      keysToDelete[keysToDeleteCount++] = (char *)key;
+  }
+  for (size_t i = 0; i < keysToDeleteCount; i++)
+    json_object_del(filters, keysToDelete[i]);
 
+  if (filters == NULL) {
+    filters = json_object();
+    memoryManager->cleanup(memoryManager->blockCopy(^{
+      json_decref(filters);
+    }));
+  }
+
+  /* Filter the included resources by the ids of the base resources */
+  json_object_set(filters, originalForeignKey, ids);
+  json_object_set(includedParams->query, "filter", filters);
+
+  /* Only include the nested resource in the new query */
+  char *nestedResourceName = nestedAndIncludedNames.nestedName;
   if (nestedResourceName != NULL) {
     json_t *newIncludes = json_array();
     json_array_append_new(newIncludes, json_string(nestedResourceName));
     json_object_set_new(includedParams->query, "include", newIncludes);
-
-    json_t *filters = json_object_get(includedParams->query, "filter");
-
-    if (filters == NULL) {
-      filters = json_object();
-      memoryManager->cleanup(memoryManager->blockCopy(^{
-        json_decref(filters);
-      }));
-    }
-
-    char *keysToDelete[100];
-    size_t keysToDeleteCount = 0;
-    const char *key;
-    json_t *value;
-    json_object_foreach(filters, key, value) {
-      resource_t *includedResourceFilter = resource->lookup(key);
-      if (includedResourceFilter == NULL)
-        keysToDelete[keysToDeleteCount++] = (char *)key;
-    }
-    for (size_t i = 0; i < keysToDeleteCount; i++)
-      json_object_del(filters, keysToDelete[i]);
-
-    json_object_set(filters, foreignKey, ids);
-
-    json_object_set(includedParams->query, "filter", filters);
   } else {
     json_object_del(includedParams->query, "include");
   }
 
+  /* Get the included resources */
   resource_instance_collection_t *includedCollection =
       includedResource->all(includedParams);
 
+  /* Add the collection of included resources to the resource */
   addRelatedToResource(resourceInstance, foreignKey, includedCollection);
 }
 
@@ -405,6 +442,8 @@ resource_t *CreateResource(char *type, model_t *model) {
     resource_instance_collection_t *collection =
         createResourceInstanceCollection(resource, modelCollection, params);
 
+    /* If there are any included resources, add them to the base resource
+     * collection */
     json_t *include = json_object_get(params->query, "include");
     if (include) {
       size_t index;
@@ -442,7 +481,7 @@ resource_t *CreateResource(char *type, model_t *model) {
         resource_instance_t *instance =
             createResourceInstance(resource, modelInstance, params);
 
-        /* Add the included collections of resource instances to the resource
+        /* If there are any included resources, add them to the base resource
          * instance */
         json_t *include = json_object_get(params->query, "include");
         if (include) {
