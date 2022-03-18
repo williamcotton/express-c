@@ -208,6 +208,18 @@ typedef struct resource_library_t {
   void (^add)(const char *name, ModelFunction, ResourceFunction);
 } resource_library_t;
 
+typedef struct included_params_builder_t {
+  char *nestedName;
+  char *includedName;
+  jsonapi_params_t *includedParams;
+  json_t *filters;
+  resource_t *includedResource;
+  char *foreignKey;
+  char *originalForeignKey;
+  json_t *ids;
+  jsonapi_params_t * (^getIncludedParams)(void);
+} included_params_builder_t;
+
 query_t *applyFiltersToScope(json_t *filters, query_t *baseScope,
                              resource_t *resource);
 
@@ -234,6 +246,23 @@ void nestedIncludes(json_t *includedJSONAPI,
 void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
                                   memory_manager_t *appMemoryManager,
                                   char *attributeName, char *attributeType);
+
+void addRelatedToResource(resource_instance_t *resourceInstance,
+                          char *foreignKey,
+                          resource_instance_collection_t *includedCollection);
+
+included_params_builder_t
+buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
+                    jsonapi_params_t *params);
+
+void addIncludedResourcesToCollection(
+    char *originalIncludedResourceName, resource_t *resource,
+    resource_instance_collection_t *collection, jsonapi_params_t *params);
+
+void addIncludedResourcesToInstance(char *originalIncludedResourceName,
+                                    resource_t *resource,
+                                    resource_instance_t *resourceInstance,
+                                    jsonapi_params_t *params);
 
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
