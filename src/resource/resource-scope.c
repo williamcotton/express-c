@@ -221,7 +221,8 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
         attribute = (char *)attrKey;
       }
     }
-    if (strcmp(attribute, "total") == 0 & strcmp(stat, "count") == 0) {
+    if (stat != NULL && attribute != NULL && strcmp(attribute, "total") == 0 &&
+        strcmp(stat, "count") == 0) {
       statValue->attribute = "total";
       statValue->stat = "count";
       int count = scope->count();
