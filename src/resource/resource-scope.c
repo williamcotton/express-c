@@ -92,7 +92,9 @@ query_t *applySortersToScope(json_t *sorters, query_t *scope,
     }
 
     char *attributeName = NULL;
-    char *resourceName = strdup(attribute);
+    size_t len = strlen(attribute) + 1;
+    char *resourceName = resource->model->instanceMemoryManager->malloc(len);
+    strncpy(resourceName, attribute, len);
 
     char *splitPoint = strstr(resourceName, ".");
     if (splitPoint != NULL) {
