@@ -35,6 +35,7 @@ typedef struct resource_stat_value_t {
   char *attribute;
   char *stat;
   char *value;
+  char *type;
 } resource_stat_value_t;
 
 typedef void (^eachResourceInstanceCallback)(

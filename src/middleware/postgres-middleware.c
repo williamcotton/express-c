@@ -337,15 +337,16 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
         for (int i = 0; i < query->whereConditionsCount; i++) {
           free(query->whereConditions[i]);
         }
-
+        query->whereConditionsCount = 0;
         for (int i = 0; i < query->havingConditionsCount; i++) {
           free(query->havingConditions[i]);
         }
+        query->havingConditionsCount = 0;
       }));
 
       query->sql = sql;
 
-      debug("\n==SQL: %s", sql);
+      // debug("\n==SQL: %s", sql);
 
       return sql;
     });
@@ -383,7 +384,6 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       result->stat = stat;
       result->type = NULL;
 
-      debug("stat: %s", stat);
       if (strcmp(stat, "min") == 0) {
         query->selectConditions[0] = memoryManager->malloc(
             strlen("min(") + strlen(attribute) + strlen(")") + 1);

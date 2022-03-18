@@ -150,9 +150,20 @@ createResourceInstanceCollection(resource_t *resource,
     /* Add stats to the meta object */
     for (int i = 0; i < collection->statsArrayCount; i++) {
       json_t *stat = json_object();
-      json_object_set_new(stat, collection->statsArray[i]->stat,
-                          json_string(collection->statsArray[i]->value));
-      json_object_set_new(meta, collection->statsArray[i]->attribute, stat);
+      if (collection->statsArray[i] == NULL) {
+        continue;
+      }
+      if (collection->statsArray[i]->type == NULL) {
+        json_object_set_new(stat, collection->statsArray[i]->stat,
+                            json_string(collection->statsArray[i]->value));
+        json_object_set_new(meta, collection->statsArray[i]->attribute, stat);
+      } else {
+        json_t *type = json_object();
+        json_object_set_new(stat, collection->statsArray[i]->stat,
+                            json_string(collection->statsArray[i]->value));
+        json_object_set_new(type, collection->statsArray[i]->attribute, stat);
+        json_object_set_new(meta, collection->statsArray[i]->type, type);
+      }
     }
 
     __block json_t *response =

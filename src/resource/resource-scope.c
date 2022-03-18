@@ -194,35 +194,33 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
                            resource_stat_value_t **statsArray,
                            int *statsArrayCount) {
 
-  debug("stats %s", json_dumps(stats, JSON_COMPACT));
-
   resource_stat_value_t *statValue =
       resource->model->instanceMemoryManager->malloc(
           sizeof(resource_stat_value_t));
+
+  statValue->attribute = NULL;
+  statValue->stat = NULL;
+  statValue->value = NULL;
+  statValue->type = NULL;
 
   const char *key;
   json_t *value;
   json_object_foreach(stats, key, value) {
     char *attribute = (char *)key;
-    debug("attribute %s", attribute);
     json_t *statArray = value;
-    debug("statArray %s", json_dumps(statArray, JSON_COMPACT));
     char *stat = (char *)json_string_value(json_array_get(statArray, 0));
     if (stat == NULL) {
-      if (strcmp(attribute, resource->type) == 0) {
+      if (strcmp(attribute, resource->type) != 0) {
         continue;
       }
-      // const char *attrKey;
-      // json_t *attrStatArray;
-      // json_object_foreach(statArray, attrKey, attrStatArray) {
-      //   stat = (char *)json_string_value(json_array_get(attrStatArray, 0));
-      //   attribute = (char *)attrKey;
-      //   if (stat != NULL) {
-      //     break;
-      //   }
-      // }
+      statValue->type = resource->type;
+      const char *attrKey;
+      json_t *attrStatArray;
+      json_object_foreach(statArray, attrKey, attrStatArray) {
+        stat = (char *)json_string_value(json_array_get(attrStatArray, 0));
+        attribute = (char *)attrKey;
+      }
     }
-    debug("attribute %s stat %s", attribute, stat);
     if (strcmp(attribute, "total") == 0 & strcmp(stat, "count") == 0) {
       statValue->attribute = "total";
       statValue->stat = "count";
@@ -239,9 +237,6 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
       sprintf(statValue->value, "%s", result->value);
     }
   }
-
-  debug("value %s", statValue->value);
-  debug("attribute %s stat %s", statValue->attribute, statValue->stat);
 
   statsArray[*statsArrayCount] = statValue;
 

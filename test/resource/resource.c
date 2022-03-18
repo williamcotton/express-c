@@ -1226,10 +1226,8 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
 
-          return;
-
           t->strEqual(
-              "multiple deep nested related resources with stats",
+              "multiple deep nested related resources with nested stats",
               t->fetch("/api/v1/"
                        "notes?include=employees.teams.meetings&"
                        "fields[meetings]=max_"
@@ -1256,20 +1254,21 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
               "\"notes\", \"id\": \"1\", \"attributes\": {\"title\": \"a\", "
               "\"date\": \"2022-03-08\"}, \"relationships\": {\"employees\": "
               "{\"data\": [{\"id\": \"1\", \"type\": \"employees\"}]}}}], "
-              "\"meta\": {}, \"included\": [{\"type\": \"employees\", \"id\": "
-              "\"2\", \"attributes\": {\"name\": \"Bob\", \"email\": "
-              "\"bob@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
-              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"employees\", \"id\": "
-              "\"1\", \"attributes\": {\"name\": \"Alice\", \"email\": "
-              "\"alice@email.com\"}, \"relationships\": {\"teams\": {\"data\": "
-              "[{\"id\": \"2\", \"type\": \"teams\"}]}, \"notes\": {\"meta\": "
-              "{\"included\": false}}}}, {\"type\": \"teams\", \"id\": \"2\", "
-              "\"attributes\": {\"name\": \"product\"}, \"relationships\": "
-              "{\"meetings\": {\"data\": [{\"id\": \"2\", \"type\": "
-              "\"meetings\"}]}, \"employees\": {\"meta\": {\"included\": "
-              "false}}}}, {\"type\": \"meetings\", \"id\": \"2\", "
-              "\"attributes\": {\"max_size\": 5, \"max_temp\": "
+              "\"meta\": {\"meetings\": {\"max_temp\": {\"average\": "
+              "\"71.3235855102539\"}}}, \"included\": [{\"type\": "
+              "\"employees\", \"id\": \"2\", \"attributes\": {\"name\": "
+              "\"Bob\", \"email\": \"bob@email.com\"}, \"relationships\": "
+              "{\"teams\": {\"data\": [{\"id\": \"2\", \"type\": \"teams\"}]}, "
+              "\"notes\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+              "\"employees\", \"id\": \"1\", \"attributes\": {\"name\": "
+              "\"Alice\", \"email\": \"alice@email.com\"}, \"relationships\": "
+              "{\"teams\": {\"data\": [{\"id\": \"2\", \"type\": \"teams\"}]}, "
+              "\"notes\": {\"meta\": {\"included\": false}}}}, {\"type\": "
+              "\"teams\", \"id\": \"2\", \"attributes\": {\"name\": "
+              "\"product\"}, \"relationships\": {\"meetings\": {\"data\": "
+              "[{\"id\": \"2\", \"type\": \"meetings\"}]}, \"employees\": "
+              "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
+              "\"id\": \"2\", \"attributes\": {\"max_size\": 5, \"max_temp\": "
               "71.323586000000006}, \"relationships\": {\"teams\": {\"meta\": "
               "{\"included\": false}}}}]}");
         });

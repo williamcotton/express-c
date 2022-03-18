@@ -158,6 +158,11 @@ void addIncludedResourcesToCollection(
       includedParamsBuild->includedResource->all(
           includedParamsBuild->getIncludedParams());
 
+  for (int i = 0; i < includedCollection->statsArrayCount; i++) {
+    collection->statsArray[collection->statsArrayCount++] =
+        includedCollection->statsArray[i];
+  }
+
   collection->includedResourceInstances
       [collection->includedResourceInstancesCount++] = includedCollection;
 
