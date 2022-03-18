@@ -235,6 +235,7 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
       statValue->value = resource->model->instanceMemoryManager->malloc(
           strlen(result->value) + 1);
       sprintf(statValue->value, "%s", result->value);
+      free(result->value);
     }
   }
 

@@ -247,19 +247,16 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
 
       t->strEqual(
           "stats: average",
-          t->fetch("/api/v1/meetings?stats[max_temp]=average", "GET", headers,
-                   NULL),
+          t->fetch("/api/v1/"
+                   "meetings?stats[max_temp]=average&fields[meetings]=max_temp",
+                   "GET", headers, NULL),
           "{\"data\": [{\"type\": \"meetings\", \"id\": \"1\", \"attributes\": "
-          "{\"max_size\": 10, \"date\": \"2018-06-18\", \"timestamp\": "
-          "\"2018-06-18 06:00:00-05\", \"max_temp\": 72.295615999999995, "
-          "\"budget\": 85000.25, \"open\": true}, \"relationships\": "
-          "{\"teams\": {\"meta\": {\"included\": false}}}}, {\"type\": "
-          "\"meetings\", \"id\": \"2\", \"attributes\": {\"max_size\": 5, "
-          "\"date\": \"2021-03-08\", \"timestamp\": \"2021-03-08 "
-          "10:00:00-06\", \"max_temp\": 71.323586000000006, \"budget\": "
-          "45000.199999999997, \"open\": false}, \"relationships\": "
-          "{\"teams\": {\"meta\": {\"included\": false}}}}], \"meta\": "
-          "{\"max_temp\": {\"average\": \"71.80960083007812\"}}}");
+          "{\"max_temp\": 72.295615999999995}, \"relationships\": {\"teams\": "
+          "{\"meta\": {\"included\": false}}}}, {\"type\": \"meetings\", "
+          "\"id\": \"2\", \"attributes\": {\"max_temp\": 71.323586000000006}, "
+          "\"relationships\": {\"teams\": {\"meta\": {\"included\": "
+          "false}}}}], \"meta\": {\"max_temp\": {\"average\": "
+          "\"71.80960083007812\"}}}");
 
       t->strEqual(
           "filter name eq",
