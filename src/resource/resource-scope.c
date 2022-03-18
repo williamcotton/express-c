@@ -27,18 +27,24 @@ static query_t *applyAttributeFilterOperatorToScope(const char *attribute,
 
 query_t *applyFiltersToScope(json_t *filters, query_t *scope,
                              resource_t *resource) {
+  const char *attributesToDelete[100];
+  int attributesToDeleteCount = 0;
   const char *checkAttribute = NULL;
   json_t *checkValues;
   json_object_foreach(filters, checkAttribute, checkValues) {
-
     if (strcmp(checkAttribute, resource->type) == 0) {
       json_t *value;
       const char *key = NULL;
       json_object_foreach(checkValues, key, value) {
         json_object_set(filters, key, value);
       }
-      json_object_del(filters, checkAttribute);
+      // TODO: json_object_del causes problems
+      attributesToDelete[attributesToDeleteCount++] = checkAttribute;
     }
+  }
+
+  for (int i = 0; i < attributesToDeleteCount; i++) {
+    json_object_del(filters, attributesToDelete[i]);
   }
 
   const char *attribute = NULL;

@@ -171,7 +171,7 @@ resource_instance_t *createResourceInstance(resource_t *resource,
       json_decref(response);
     }));
 
-    debug("\n%s", json_dumps(response, JSON_INDENT(2)));
+    // debug("\n%s", json_dumps(response, JSON_INDENT(2)));
 
     return response;
   });

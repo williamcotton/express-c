@@ -39,7 +39,7 @@ getNestedAndIncludedNames(char *originalIncludedResourceName) {
 
   char *splitPoint = strstr(originalIncludedResourceName, ".");
   if (splitPoint != NULL) {
-    nestedResourceName = strdup(splitPoint + 1);
+    nestedResourceName = splitPoint + 1;
     *splitPoint = '\0';
     includedResourceName[splitPoint - includedResourceName] = '\0';
   }
@@ -70,7 +70,12 @@ static void addIncludedResourcesToCollection(
 
   jsonapi_params_t *includedParams =
       memoryManager->malloc(sizeof(jsonapi_params_t));
+  // TODO: json_deep_copy leaks memory
   includedParams->query = json_deep_copy(params->query);
+
+  memoryManager->cleanup(memoryManager->blockCopy(^{
+    json_decref(includedParams->query);
+  }));
 
   char *foreignKey = (char *)resource->model->getForeignKey(
       includedResource->model->tableName);
@@ -82,26 +87,36 @@ static void addIncludedResourcesToCollection(
     foreignKey = (char *)resource->model->getBelongsToKey(
         includedResource->model->tableName);
     collection->each(^(resource_instance_t *resourceInstance) {
-      json_array_append(
+      json_array_append_new(
           ids, json_string(resourceInstance->modelInstance->get(foreignKey)));
     });
   } else {
     collection->each(^(resource_instance_t *resourceInstance) {
-      json_array_append(ids, json_string(resourceInstance->id));
+      json_array_append_new(ids, json_string(resourceInstance->id));
     });
   }
 
   json_t *filters = json_object_get(includedParams->query, "filter");
 
-  if (filters == NULL)
-    filters = json_object();
-
+  // TODO: json_object_del causes problems
+  /* Delete all filters that are not related to the included resource */
+  char *keysToDelete[100];
+  size_t keysToDeleteCount = 0;
   const char *key;
   json_t *value;
   json_object_foreach(filters, key, value) {
     resource_t *includedResourceFilter = resource->lookup(key);
     if (includedResourceFilter == NULL)
-      json_object_del(filters, key);
+      keysToDelete[keysToDeleteCount++] = (char *)key;
+  }
+  for (size_t i = 0; i < keysToDeleteCount; i++)
+    json_object_del(filters, keysToDelete[i]);
+
+  if (filters == NULL) {
+    filters = json_object();
+    memoryManager->cleanup(memoryManager->blockCopy(^{
+      json_decref(filters);
+    }));
   }
 
   json_object_set_new(filters, originalForeignKey, ids);
@@ -110,7 +125,7 @@ static void addIncludedResourcesToCollection(
   if (nestedResourceName != NULL) {
     json_t *newIncludes = json_array();
     json_array_append_new(newIncludes, json_string(nestedResourceName));
-    json_object_set(includedParams->query, "include", newIncludes);
+    json_object_set_new(includedParams->query, "include", newIncludes);
   } else {
     json_object_del(includedParams->query, "include");
   }
@@ -149,36 +164,46 @@ static void addIncludedResourcesToInstance(
       memoryManager->malloc(sizeof(jsonapi_params_t));
   includedParams->query = json_deep_copy(params->query);
 
+  memoryManager->cleanup(memoryManager->blockCopy(^{
+    json_decref(includedParams->query);
+  }));
+
   char *foreignKey = (char *)resource->model->getForeignKey(
       includedResource->model->tableName);
 
   json_t *ids = json_array();
-  // debug("resourceInstance->type %s id:%s %s:%s", resourceInstance->type,
-  //       resourceInstance->id, foreignKey,
-  //       resourceInstance->modelInstance->get(foreignKey));
-  // json_array_append(
-  //     ids, json_string(resourceInstance->modelInstance->get(foreignKey)));
-  json_array_append(ids, json_string(resourceInstance->id));
+  memoryManager->cleanup(memoryManager->blockCopy(^{
+    json_decref(ids);
+  }));
+  json_array_append_new(ids, json_string(resourceInstance->id));
 
   if (nestedResourceName != NULL) {
     json_t *newIncludes = json_array();
     json_array_append_new(newIncludes, json_string(nestedResourceName));
-    json_object_set(includedParams->query, "include", newIncludes);
+    json_object_set_new(includedParams->query, "include", newIncludes);
 
     json_t *filters = json_object_get(includedParams->query, "filter");
 
-    if (filters == NULL)
+    if (filters == NULL) {
       filters = json_object();
+      memoryManager->cleanup(memoryManager->blockCopy(^{
+        json_decref(filters);
+      }));
+    }
 
+    char *keysToDelete[100];
+    size_t keysToDeleteCount = 0;
     const char *key;
     json_t *value;
     json_object_foreach(filters, key, value) {
       resource_t *includedResourceFilter = resource->lookup(key);
       if (includedResourceFilter == NULL)
-        json_object_del(filters, key);
+        keysToDelete[keysToDeleteCount++] = (char *)key;
     }
+    for (size_t i = 0; i < keysToDeleteCount; i++)
+      json_object_del(filters, keysToDelete[i]);
 
-    json_object_set_new(filters, foreignKey, ids);
+    json_object_set(filters, foreignKey, ids);
 
     json_object_set(includedParams->query, "filter", filters);
   } else {
@@ -367,8 +392,8 @@ resource_t *CreateResource(char *type, model_t *model) {
   });
 
   resource->all = appMemoryManager->blockCopy(^(jsonapi_params_t *params) {
-    debug("%s->all() %s", resource->model->tableName,
-          json_dumps(params->query, JSON_INDENT(2)));
+    // debug("%s->all() %s", resource->model->tableName,
+    //       json_dumps(params->query, JSON_INDENT(2)));
     /* Get the base scope, a query_t object */
     query_t *baseScope = resource->baseScoper->callback(resource->model);
 
