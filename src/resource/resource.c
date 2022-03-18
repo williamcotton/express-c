@@ -52,11 +52,9 @@ getNestedAndIncludedNames(char *originalIncludedResourceName) {
 
 static void addIncludedResourcesToCollection(
     char *originalIncludedResourceName, resource_t *resource,
-    resource_instance_collection_t *collection, jsonapi_params_t *params,
-    UNUSED json_t *include, UNUSED size_t index) {
+    resource_instance_collection_t *collection, jsonapi_params_t *params) {
 
-  UNUSED memory_manager_t *memoryManager =
-      resource->model->instanceMemoryManager;
+  memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
 
   /* Check for nested resources to include */
   struct nested_and_included_names_t nestedAndIncludedNames =
@@ -70,7 +68,6 @@ static void addIncludedResourcesToCollection(
 
   jsonapi_params_t *includedParams =
       memoryManager->malloc(sizeof(jsonapi_params_t));
-  // TODO: json_deep_copy leaks memory
   includedParams->query = json_deep_copy(params->query);
 
   memoryManager->cleanup(memoryManager->blockCopy(^{
@@ -98,7 +95,6 @@ static void addIncludedResourcesToCollection(
 
   json_t *filters = json_object_get(includedParams->query, "filter");
 
-  // TODO: json_object_del causes problems
   /* Delete all filters that are not related to the included resource */
   char *keysToDelete[100];
   size_t keysToDeleteCount = 0;
@@ -144,8 +140,7 @@ static void addIncludedResourcesToCollection(
 
 static void addIncludedResourcesToInstance(
     char *originalIncludedResourceName, resource_t *resource,
-    resource_instance_t *resourceInstance, jsonapi_params_t *params,
-    UNUSED json_t *include, UNUSED size_t index) {
+    resource_instance_t *resourceInstance, jsonapi_params_t *params) {
 
   UNUSED memory_manager_t *memoryManager =
       resource->model->instanceMemoryManager;
@@ -418,7 +413,7 @@ resource_t *CreateResource(char *type, model_t *model) {
         char *includedResourceName =
             (char *)json_string_value(includedResource);
         addIncludedResourcesToCollection(includedResourceName, resource,
-                                         collection, params, include, index);
+                                         collection, params);
       }
     }
 
@@ -457,7 +452,7 @@ resource_t *CreateResource(char *type, model_t *model) {
             char *includedResourceName =
                 (char *)json_string_value(includedResource);
             addIncludedResourcesToInstance(includedResourceName, resource,
-                                           instance, params, include, index);
+                                           instance, params);
           }
         }
 

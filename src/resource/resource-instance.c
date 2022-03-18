@@ -25,18 +25,6 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->type = resource->type;
   instance->includedResourceInstancesCount = 0;
 
-  for (int i = 0; i < modelInstance->includesCount; i++) {
-    char *includedModelTableName = modelInstance->includesArray[i];
-    resource_t *includedResource =
-        resource->lookupByModel(includedModelTableName);
-    if (includedResource == NULL)
-      continue;
-    model_instance_collection_t *relatedModelInstances =
-        modelInstance->includedModelInstanceCollections[i];
-    instance->includedResourceInstances[i] = createResourceInstanceCollection(
-        includedResource, relatedModelInstances, params);
-  }
-
   instance->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
     json_t *includedJSONAPI = json_array();
 

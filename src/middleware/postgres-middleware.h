@@ -39,8 +39,6 @@ typedef struct query_t {
   char *limitCondition;
   char *offsetCondition;
   char *havingConditions[100];
-  void *includesArray[100];
-  int includesCount;
   int havingConditionsCount;
   char *joinsConditions;
   char *groupConditions;
@@ -55,7 +53,6 @@ typedef struct query_t {
   struct query_t * (^having)(const char *, ...);
   struct query_t * (^joins)(const char *);
   struct query_t * (^distinct)();
-  struct query_t * (^includes)(const char *);
   char * (^toSql)();
   int (^count)();
   void * (^find)(char *);

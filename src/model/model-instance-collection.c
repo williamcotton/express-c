@@ -8,7 +8,6 @@ model_instance_collection_t *createModelInstanceCollection(model_t *model) {
 
   collection->arr = NULL;
   collection->size = 0;
-  collection->includesCount = 0;
 
   collection->at = memoryManager->blockCopy(^(size_t index) {
     if (collection->arr == NULL) {

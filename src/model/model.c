@@ -1,84 +1,5 @@
 #include "model.h"
 
-UNUSED static void
-addIncludesToCollection(char **includesArray, int includesCount,
-                        model_instance_collection_t *collection) {
-  /* The final includes count depends on valid models */
-  int finalIncludesCount = 0;
-
-  /* Iterate through the includes array */
-  for (int i = 0; i < includesCount; i++) {
-    char *relatedModelTableName = includesArray[i];
-
-    char *nestedModelTableName = NULL;
-
-    /* Check if the related model is a nested model */
-    char *t = strstr(relatedModelTableName, ".");
-    if (t != NULL) {
-      /* Get the nested model table name */
-      nestedModelTableName = t + 1;
-      /* Get the related model table name */
-      relatedModelTableName[t - relatedModelTableName] = '\0';
-    }
-
-    /* Get the related models query */
-    query_t *relatedQuery = collection->r(relatedModelTableName);
-    if (relatedQuery == NULL)
-      continue;
-
-    // how to apply filters to nested query?
-
-    /* Get the related model instance collection and add them to the collection
-     */
-    collection->includesArray[i] = includesArray[i];
-    collection->includedModelInstanceCollections[i] = relatedQuery->all();
-
-    /* If the related model is a nested model, add the nested model instance
-     * collection to the collection */
-    if (nestedModelTableName != NULL) {
-      addIncludesToCollection(&nestedModelTableName, 1,
-                              collection->includedModelInstanceCollections[i]);
-    }
-
-    finalIncludesCount++;
-  }
-
-  collection->includesCount = finalIncludesCount;
-}
-
-UNUSED static void addIncludesToInstance(char **includesArray,
-                                         int includesCount,
-                                         model_instance_t *instance) {
-  int finalIncludesCount = 0;
-
-  for (int i = 0; i < includesCount; i++) {
-    char *relatedModelTableName = includesArray[i];
-
-    char *nestedModelTableName = NULL;
-    char *t = strstr(relatedModelTableName, ".");
-    if (t != NULL) {
-      nestedModelTableName = t + 1;
-      relatedModelTableName[t - relatedModelTableName] = '\0';
-    }
-
-    query_t *relatedQuery = instance->r(relatedModelTableName);
-    if (relatedQuery == NULL)
-      continue;
-
-    instance->includesArray[i] = includesArray[i];
-    instance->includedModelInstanceCollections[i] = relatedQuery->all();
-
-    if (nestedModelTableName != NULL) {
-      addIncludesToCollection(&nestedModelTableName, 1,
-                              instance->includedModelInstanceCollections[i]);
-    }
-
-    finalIncludesCount++;
-  }
-
-  instance->includesCount = finalIncludesCount;
-}
-
 model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
   model_t *model = appMemoryManager->malloc(sizeof(model_t));
 
@@ -131,30 +52,6 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
     __block query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
     void * (^originalFind)(char *) = modelQuery->find;
-    // query_t * (^originalWhere)(const char *, ...) = modelQuery->where;
-    // query_t * (^originalSort)(const char *, ...) = modelQuery->sort;
-
-    modelQuery->includes =
-        model->instanceMemoryManager->blockCopy(^(char *includesResource) {
-          /* Add included resource to the current query */
-          modelQuery->includesArray[modelQuery->includesCount++] =
-              includesResource;
-          return modelQuery;
-        });
-
-    // modelQuery->where =
-    //     model->instanceMemoryManager->blockCopy(^(char *columnName, ...) {
-    //       // where do we store the included where?
-    //       int nParams = pgParamCount(columnName);
-    //       debug("nParams: %d", nParams);
-    //       va_list args;
-    //       va_start(args, columnName);
-    //       char *value = va_arg(args, char *);
-    //       va_end(args);
-    //       debug("[where] %s = %s", columnName, value);
-    //       modelQuery = originalWhere(columnName, value);
-    //       return modelQuery;
-    //     });
 
     modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
       PGresult *result = originalAll();
@@ -182,10 +79,6 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           }
         }
       }
-      /* Add included resources to the collection of model instances */
-      // addIncludesToCollection((char **)modelQuery->includesArray,
-      //                         modelQuery->includesCount, collection);
-      // debug("Model: %s", model->tableName);
       PQclear(result);
       return collection;
     });
@@ -214,8 +107,6 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
           instance->initAttr(name, value, 0);
         }
       }
-      // addIncludesToInstance((char **)modelQuery->includesArray,
-      //                       modelQuery->includesCount, instance);
       PQclear(result);
       return instance;
     });

@@ -63,11 +63,6 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
     query->havingConditionsCount = 0;
     query->joinsConditions = "";
     query->distinctCondition = 0;
-    query->includesCount = 0;
-
-    query->includes = memoryManager->blockCopy(^{
-      return query;
-    });
 
     query->select = memoryManager->blockCopy(^(const char *select) {
       query->selectConditions[query->selectConditionsCount++] = select;

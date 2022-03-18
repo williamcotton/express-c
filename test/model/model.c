@@ -410,24 +410,6 @@ void modelTests(tape_t *t, const char *databaseUrl,
         name->free();
       });
     });
-
-    t->test("includes", ^(tape_t *t) {
-      t->test("find", ^(tape_t *t) {
-        team_t *team = Team->query()->includes("employees")->find("2");
-
-        string_t *nameValue = string(team->get("name"));
-        t->strEqual("name", nameValue, "product");
-
-        nameValue->free();
-      });
-
-      // t->test("all nested", ^(tape_t *t) {
-      //   UNUSED team_t *teams = Team->query()
-      //                              ->includes("employees.notes")
-      //                              ->includes("meetings")
-      //                              ->all();
-      // });
-    });
   });
 
   pg->free();

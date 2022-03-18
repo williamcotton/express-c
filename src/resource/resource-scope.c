@@ -172,20 +172,6 @@ error:
   return scope;
 }
 
-UNUSED query_t *applyIncludeToScope(json_t *include, query_t *scope,
-                                    UNUSED resource_t *resource) {
-
-  /* Loop through the array of included resources and build up an array of
-   * resource types */
-  size_t index;
-  json_t *includedResource;
-  json_array_foreach(include, index, includedResource) {
-    scope = scope->includes(json_string_value(includedResource));
-  }
-
-  return scope;
-};
-
 query_t *applyQueryToScope(json_t *query, query_t *scope,
                            resource_t *resource) {
 
