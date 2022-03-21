@@ -1,4 +1,4 @@
-#include "controllers/api.h"
+#include "controllers/api/v1.h"
 #include "controllers/todo.h"
 #include <dotenv-c/dotenv.h>
 #include <express.h>
@@ -46,7 +46,7 @@ int main() {
 
   /* Controllers */
   app->useRouter("/", todosController(embeddedFiles));
-  app->useRouter("/api/v1", apiController(databaseUrl, databasePoolSize));
+  app->useRouter("/api/v1", resourceRouter(databaseUrl, databasePoolSize));
 
   /* Clean up */
   app->cleanup(^{
