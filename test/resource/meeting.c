@@ -1,7 +1,7 @@
 #include "meeting.h"
 
-resource_t *MeetingResource(model_t *model) {
-  resource_t *Meeting = CreateResource("meetings", model);
+resource_t *MeetingResource(model_t *model, resource_store_t *resourceStore) {
+  resource_t *Meeting = CreateResource("meetings", model, resourceStore);
 
   Meeting->attribute("max_size", "integer", NULL);
   Meeting->attribute("date", "date", NULL);

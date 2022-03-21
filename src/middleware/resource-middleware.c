@@ -7,11 +7,14 @@ resourceMiddleware(UNUSED resource_library_t *resourceLibrary) {
                       void (^cleanup)(cleanupHandler)) {
     pg_t *pg = req->m("pg");
 
+    model_store_t *modelStore = createModelStore(req->memoryManager);
+    resource_store_t *resourceStore = createResourceStore(req->memoryManager);
+
     for (int i = 0; i < resourceLibrary->count; i++) {
       resource_library_item_t *item = resourceLibrary->items[i];
-      item->Model->setPg(pg);
-      item->Model->setInstanceMemoryManager(req->memoryManager);
-      req->mSet(item->name, item->Resource);
+      model_t *Model = item->ModelFunction(req->memoryManager, pg, modelStore);
+      resource_t *Resource = item->ResourceFunction(Model, resourceStore);
+      req->mSet(item->name, Resource);
     }
 
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){

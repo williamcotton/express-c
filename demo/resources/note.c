@@ -1,7 +1,7 @@
 #include "resources.h"
 
-resource_t *NoteResource(model_t *model) {
-  resource_t *Note = CreateResource("notes", model);
+resource_t *NoteResource(model_t *model, resource_store_t *resourceStore) {
+  resource_t *Note = CreateResource("notes", model, resourceStore);
 
   Note->attribute("notable_id", "integer", NULL);
   Note->attribute("notable_type", "string", NULL);

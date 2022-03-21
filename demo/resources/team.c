@@ -1,7 +1,7 @@
 #include "resources.h"
 
-resource_t *TeamResource(model_t *model) {
-  resource_t *Team = CreateResource("teams", model);
+resource_t *TeamResource(model_t *model, resource_store_t *resourceStore) {
+  resource_t *Team = CreateResource("teams", model, resourceStore);
 
   Team->attribute("name", "string", NULL);
   Team->attribute("created_at", "datetime", NULL);

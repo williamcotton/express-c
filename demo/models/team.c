@@ -1,7 +1,8 @@
 #include "models.h"
 
-model_t *TeamModel(memory_manager_t *memoryManager) {
-  model_t *Team = CreateModel("teams", memoryManager);
+model_t *TeamModel(memory_manager_t *memoryManager, pg_t *pg,
+                   model_store_t *modelStore) {
+  model_t *Team = CreateModel("teams", memoryManager, pg, modelStore);
 
   Team->attribute("name", "varchar(255)", NULL);
   Team->attribute("created_at", "timestamp", NULL);

@@ -62,17 +62,13 @@ void modelTests(tape_t *t, const char *databaseUrl,
   pg_t *pg = initPg(databaseUrl);
   pg->query = getPostgresQuery(memoryManager, pg);
 
+  model_store_t *modelStore = createModelStore(memoryManager);
+
   setupTest(pg);
 
-  Team_t *Team = TeamModel(memoryManager);
-  Team->setPg(pg);
-  Team->setInstanceMemoryManager(memoryManager);
-  Employee_t *Employee = EmployeeModel(memoryManager);
-  Employee->setPg(pg);
-  Employee->setInstanceMemoryManager(memoryManager);
-  Island_t *Island = IslandModel(memoryManager);
-  Island->setPg(pg);
-  Island->setInstanceMemoryManager(memoryManager);
+  Team_t *Team = TeamModel(memoryManager, pg, modelStore);
+  Employee_t *Employee = EmployeeModel(memoryManager, pg, modelStore);
+  Island_t *Island = IslandModel(memoryManager, pg, modelStore);
 
   t->test("model", ^(tape_t *t) {
     t->test("find existing", ^(tape_t *t) {

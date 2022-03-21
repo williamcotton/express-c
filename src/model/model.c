@@ -1,21 +1,33 @@
 #include "model.h"
 
-model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
+model_store_t *createModelStore(memory_manager_t *memoryManager) {
+  model_store_t *store = memoryManager->malloc(sizeof(model_store_t));
+  store->count = 0;
+  store->add = memoryManager->blockCopy(^(model_t *model) {
+    store->models[store->count++] = model;
+  });
+  store->lookup = memoryManager->blockCopy(^(char *tableName) {
+    for (int i = 0; i < store->count; i++) {
+      if (strcmp(store->models[i]->tableName, tableName) == 0) {
+        return store->models[i];
+      }
+    }
+    return (model_t *)NULL;
+  });
+  return store;
+}
 
-  debug("Creating model for table %s", tableName);
+model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
+                     pg_t *pg, model_store_t *modelStore) {
 
   model_t *model = appMemoryManager->malloc(sizeof(model_t));
 
-  /* Global model store */
-  static int modelCount = 0;
-  static model_t *models[100];
-  models[modelCount] = model;
-  modelCount++;
+  modelStore->add(model);
 
   model->tableName = tableName;
-  model->instanceMemoryManager = NULL;
   model->appMemoryManager = appMemoryManager;
-  model->pg = NULL;
+  model->instanceMemoryManager = appMemoryManager;
+  model->pg = pg;
   model->attributesCount = 0;
   model->validationsCount = 0;
   model->hasManyCount = 0;
@@ -31,23 +43,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
   model->beforeCreateCallbacksCount = 0;
   model->afterCreateCallbacksCount = 0;
 
-  model->setPg = appMemoryManager->blockCopy(^(pg_t *pg) {
-    model->pg = pg;
-  });
-
-  model->setInstanceMemoryManager =
-      appMemoryManager->blockCopy(^(memory_manager_t *instanceMemoryManager) {
-        model->instanceMemoryManager = instanceMemoryManager;
-      });
-
-  model->lookup = appMemoryManager->blockCopy(^(const char *lookupTableName) {
-    for (int i = 0; i < modelCount; i++) {
-      if (strcmp(models[i]->tableName, lookupTableName) == 0) {
-        return models[i];
-      }
-    }
-    return (model_t *)NULL;
-  });
+  model->lookup = modelStore->lookup;
 
   model->query = appMemoryManager->blockCopy(^() {
     query_t * (^baseQuery)(const char *) =

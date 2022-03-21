@@ -1,7 +1,8 @@
 #include "models.h"
 
-model_t *EmployeeModel(memory_manager_t *memoryManager) {
-  model_t *Employee = CreateModel("employees", memoryManager);
+model_t *EmployeeModel(memory_manager_t *memoryManager, pg_t *pg,
+                       model_store_t *modelStore) {
+  model_t *Employee = CreateModel("employees", memoryManager, pg, modelStore);
 
   Employee->attribute("first_name", "varchar(255)", NULL);
   Employee->attribute("last_name", "varchar(255)", NULL);

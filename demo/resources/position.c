@@ -1,7 +1,7 @@
 #include "resources.h"
 
-resource_t *PositionResource(model_t *model) {
-  resource_t *Position = CreateResource("positions", model);
+resource_t *PositionResource(model_t *model, resource_store_t *resourceStore) {
+  resource_t *Position = CreateResource("positions", model, resourceStore);
 
   Position->attribute("title", "string", NULL);
   Position->attribute("historical_index", "integer", NULL);

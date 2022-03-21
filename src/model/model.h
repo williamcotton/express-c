@@ -123,7 +123,6 @@ typedef struct model_t {
   int afterCreateCallbacksCount;
   query_t * (^query)();
   pg_t *pg;
-  void (^setPg)(pg_t *pg);
   void (^attribute)(char *name, char *type, void *);
   void (^validatesAttribute)(char *name, char *validation, void *);
   void (^belongsTo)(char *tableName, char *foreignKey, void *);
@@ -146,12 +145,20 @@ typedef struct model_t {
   model_instance_t * (^new)();
   struct model_t * (^lookup)(const char *);
   memory_manager_t *instanceMemoryManager;
-  void (^setInstanceMemoryManager)(memory_manager_t *memoryManager);
   memory_manager_t *appMemoryManager;
 } __attribute__((packed)) model_t;
 
+typedef struct model_store_t {
+  model_t *models[100];
+  int count;
+  model_t * (^lookup)(const char *);
+  int (^add)(model_t *);
+} model_store_t;
+
 model_instance_collection_t *createModelInstanceCollection(model_t *model);
 model_instance_t *createModelInstance(model_t *model);
-model_t *CreateModel(char *tableName, memory_manager_t *memoryManager);
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager, pg_t *pg,
+                     model_store_t *modelStore);
+model_store_t *createModelStore(memory_manager_t *memoryManager);
 
 #endif // MODEL_H

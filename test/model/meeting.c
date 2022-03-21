@@ -1,7 +1,8 @@
 #include "meeting.h"
 
-model_t *MeetingModel(memory_manager_t *memoryManager) {
-  model_t *Meeting = CreateModel("meetings", memoryManager);
+model_t *MeetingModel(memory_manager_t *memoryManager, pg_t *pg,
+                      model_store_t *modelStore) {
+  model_t *Meeting = CreateModel("meetings", memoryManager, pg, modelStore);
 
   Meeting->attribute("max_size", "integer", NULL);
   Meeting->attribute("date", "date", NULL);

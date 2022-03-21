@@ -10,8 +10,8 @@ resource_library_t *initResourceLibrary(memory_manager_t *appMemoryManager) {
         resource_library_item_t *item =
             appMemoryManager->malloc(sizeof(resource_library_item_t));
         item->name = name;
-        item->Model = ModelFunction(appMemoryManager);
-        item->Resource = ResourceFunction(item->Model);
+        item->ModelFunction = ModelFunction;
+        item->ResourceFunction = ResourceFunction;
         library->items[library->count++] = item;
       });
   return library;

@@ -1,14 +1,28 @@
 #include "resource.h"
 
-resource_t *CreateResource(char *type, model_t *model) {
+resource_store_t *createResourceStore(memory_manager_t *memoryManager) {
+  resource_store_t *store = memoryManager->malloc(sizeof(resource_store_t));
+  store->count = 0;
+  store->add = memoryManager->blockCopy(^(resource_t *resource) {
+    store->resources[store->count++] = resource;
+  });
+  store->lookup = memoryManager->blockCopy(^(char *type) {
+    for (int i = 0; i < store->count; i++) {
+      if (strcmp(store->resources[i]->type, type) == 0) {
+        return store->resources[i];
+      }
+    }
+    return (resource_t *)NULL;
+  });
+  return store;
+}
+
+resource_t *CreateResource(char *type, model_t *model,
+                           resource_store_t *resourceStore) {
   memory_manager_t *appMemoryManager = model->appMemoryManager;
   resource_t *resource = appMemoryManager->malloc(sizeof(resource_t));
 
-  /* Global resource store */
-  static int resourceCount = 0;
-  static resource_t *resources[100];
-  resources[resourceCount] = resource;
-  resourceCount++;
+  resourceStore->add(resource);
 
   resource->type = type;
   resource->model = model;
@@ -29,24 +43,7 @@ resource_t *CreateResource(char *type, model_t *model) {
   resource->beforeCreateCallbacksCount = 0;
   resource->afterCreateCallbacksCount = 0;
 
-  resource->lookup = appMemoryManager->blockCopy(^(const char *lookupType) {
-    for (int i = 0; i < resourceCount; i++) {
-      if (strcmp(resources[i]->type, lookupType) == 0) {
-        return resources[i];
-      }
-    }
-    return (resource_t *)NULL;
-  });
-
-  resource->lookupByModel =
-      appMemoryManager->blockCopy(^(const char *lookupTableName) {
-        for (int i = 0; i < resourceCount; i++) {
-          if (strcmp(resources[i]->model->tableName, lookupTableName) == 0) {
-            return resources[i];
-          }
-        }
-        return (resource_t *)NULL;
-      });
+  resource->lookup = resourceStore->lookup;
 
   resource->belongsTo = appMemoryManager->blockCopy(^(char *relatedResourceName,
                                                       char *foreignKey) {

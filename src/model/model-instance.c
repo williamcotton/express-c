@@ -73,9 +73,6 @@ model_instance_t *createModelInstance(model_t *model) {
       return (query_t *)NULL;
     }
 
-    relatedModel->setPg(model->pg);
-    relatedModel->setInstanceMemoryManager(memoryManager);
-
     char *whereForeignKey = NULL;
 
     char *hasManyForeignKey = NULL;

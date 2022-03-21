@@ -201,17 +201,24 @@ typedef struct resource_t {
   resource_instance_collection_t * (^all)(jsonapi_params_t *params);
   resource_instance_t * (^build)(jsonapi_params_t *params);
   struct resource_t * (^lookup)(const char *);
-  struct resource_t * (^lookupByModel)(const char *);
 } __attribute__((packed)) resource_t;
 
-typedef model_t *(*ModelFunction)(memory_manager_t *);
-typedef resource_t *(*ResourceFunction)(model_t *);
+typedef model_t *(*ModelFunction)(memory_manager_t *, pg_t *pg,
+                                  model_store_t *);
+
+typedef struct resource_store_t {
+  resource_t *resources[100];
+  int count;
+  resource_t * (^lookup)(const char *);
+  int (^add)(resource_t *);
+} resource_store_t;
+
+typedef resource_t *(*ResourceFunction)(model_t *, resource_store_t *);
 
 typedef struct resource_library_item_t {
   const char *name;
-  model_t *Model;
-  resource_t *Resource;
-
+  ModelFunction ModelFunction;
+  ResourceFunction ResourceFunction;
 } resource_library_item_t;
 
 typedef struct resource_library_t {
@@ -285,7 +292,9 @@ createResourceInstanceCollection(resource_t *resource,
 resource_instance_t *createResourceInstance(resource_t *resource,
                                             model_instance_t *modelInstance,
                                             jsonapi_params_t *params);
-resource_t *CreateResource(char *type, model_t *model);
+resource_t *CreateResource(char *type, model_t *model,
+                           resource_store_t *resourceStore);
 resource_library_t *initResourceLibrary();
+resource_store_t *createResourceStore(memory_manager_t *memoryManager);
 
 #endif // RESOURCE_H
