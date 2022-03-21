@@ -96,7 +96,8 @@
     "memory_resource": "c",
     "resource.h": "c",
     "errno.h": "c",
-    "compare": "c"
+    "compare": "c",
+    "resources.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

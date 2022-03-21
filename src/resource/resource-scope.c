@@ -38,7 +38,6 @@ query_t *applyFiltersToScope(json_t *filters, query_t *scope,
       json_object_foreach(checkValues, key, value) {
         json_object_set(filters, key, value);
       }
-      // TODO: json_object_del causes problems
       attributesToDelete[attributesToDeleteCount++] = checkAttribute;
     }
   }
@@ -119,6 +118,7 @@ error:
 
 query_t *applyPaginatorToScope(json_t *paginator, query_t *scope,
                                resource_t *resource) {
+  // TODO: nested pagination
   json_t *numberObject = json_object_get(paginator, "number");
   check(numberObject != NULL, "Invalid paginator: number is required");
   json_t *sizeObject = json_object_get(paginator, "size");
@@ -194,6 +194,9 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
                            resource_stat_value_t **statsArray,
                            int *statsArrayCount) {
 
+  // TODO: multiple stats
+  // TODO: always add total count
+
   resource_stat_value_t *statValue =
       resource->model->instanceMemoryManager->malloc(
           sizeof(resource_stat_value_t));
@@ -243,7 +246,6 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
   statsArray[*statsArrayCount] = statValue;
 
   (*statsArrayCount)++;
-
   return scope;
 }
 
@@ -251,35 +253,36 @@ query_t *applyQueryToScope(json_t *query, query_t *scope, resource_t *resource,
                            resource_stat_value_t **statsArray,
                            int *statsArrayCount) {
 
+  /* Apply filters */
   json_t *filters = json_object_get(query, "filter");
   if (filters) {
     scope = applyFiltersToScope(filters, scope, resource);
   }
 
-  // TODO: multiple stats
-  // TODO: always add total count
-
+  /* Gather stats and store them in the stats array */
   json_t *stats = json_object_get(query, "stats");
   if (stats) {
     scope =
         applyStatsToScope(stats, scope, resource, statsArray, statsArrayCount);
   }
 
+  /* Apply sorters in the form of scope->order */
   json_t *sorters = json_object_get(query, "sort");
   if (sorters) {
     scope = applySortersToScope(sorters, scope, resource);
   }
 
-  // TODO: nested pagination
-
+  /* Apply pagination */
   json_t *paginator = json_object_get(query, "page");
   if (paginator) {
     scope = applyPaginatorToScope(paginator, scope, resource);
   }
 
+  /* Apply fields */
   json_t *fields = json_object_get(query, "fields");
   if (fields) {
     applyResourceAttributeToScope(scope, resource, "id");
+    /* If there are no specified fields, apply all fields */
     if (json_object_get(fields, resource->type) == NULL) {
       scope = applyAllFieldsToScope(scope, resource);
     }

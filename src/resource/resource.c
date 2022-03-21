@@ -197,7 +197,9 @@ resource_t *CreateResource(char *type, model_t *model) {
     query_t *queriedScope = applyQueryToScope(
         params->query, baseScope, resource, statsArray, &statsArrayCount);
 
-    /* Query the database and return a collection of model instances */
+    /* Query the database and return a collection of model instances
+
+     */
     model_instance_collection_t *modelCollection =
         resource->allResolver->callback(queriedScope);
 

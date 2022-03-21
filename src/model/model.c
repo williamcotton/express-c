@@ -1,6 +1,9 @@
 #include "model.h"
 
 model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager) {
+
+  debug("Creating model for table %s", tableName);
+
   model_t *model = appMemoryManager->malloc(sizeof(model_t));
 
   /* Global model store */
