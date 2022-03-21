@@ -28,7 +28,7 @@ memory_manager_t *createMemoryManager() {
   memoryManager->mallocCount = 0;
   memoryManager->maxMallocCount = 1024;
   memoryManager->blockCopyCount = 0;
-  memoryManager->maxBlockCopyCount = 1024;
+  memoryManager->maxBlockCopyCount = 2048;
   memoryManager->cleanupHandlersCount = 0;
   memoryManager->maxCleanupHandlersCount = 1024;
 
@@ -42,7 +42,10 @@ memory_manager_t *createMemoryManager() {
 
   memoryManager->malloc = Block_copy(^(size_t size) {
     if (memoryManager->mallocCount >= memoryManager->maxMallocCount) {
+      printf("MemoryManager: mallocCount >= maxMallocCount");
       memoryManager->maxMallocCount *= 2;
+      printf("MemoryManager: Increasing maxMallocCount to %d",
+             memoryManager->maxMallocCount);
       memoryManager->mallocs =
           realloc(memoryManager->mallocs, sizeof(memory_manager_malloc_t) *
                                               memoryManager->maxMallocCount);
@@ -70,7 +73,10 @@ memory_manager_t *createMemoryManager() {
 
   memoryManager->blockCopy = Block_copy(^(void *block) {
     if (memoryManager->blockCopyCount >= memoryManager->maxBlockCopyCount) {
+      printf("MemoryManager: blockCopyCount >= maxBlockCopyCount");
       memoryManager->maxBlockCopyCount *= 2;
+      printf("MemoryManager: Increasing maxBlockCopyCount to %d",
+             memoryManager->maxBlockCopyCount);
       memoryManager->blockCopies = realloc(
           memoryManager->blockCopies, sizeof(memory_manager_block_copy_t) *
                                           memoryManager->maxBlockCopyCount);
@@ -88,7 +94,10 @@ memory_manager_t *createMemoryManager() {
   memoryManager->cleanup = Block_copy(^(memoryManagerCleanupHandler handler) {
     if (memoryManager->cleanupHandlersCount >=
         memoryManager->maxCleanupHandlersCount) {
+      printf("MemoryManager: cleanupHandlersCount >= maxCleanupHandlersCount");
       memoryManager->maxCleanupHandlersCount *= 2;
+      printf("MemoryManager: Increasing maxCleanupHandlersCount to %d",
+             memoryManager->maxCleanupHandlersCount);
       memoryManager->cleanupHandlers =
           realloc(memoryManager->cleanupHandlers,
                   sizeof(memoryManagerCleanupHandler) *

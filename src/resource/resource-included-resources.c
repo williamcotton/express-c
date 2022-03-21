@@ -29,10 +29,14 @@ void addRelatedToResource(resource_instance_t *resourceInstance,
 included_params_builder_t *
 buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
                     jsonapi_params_t *params) {
+
   memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
   included_params_builder_t *result =
       (included_params_builder_t *)memoryManager->malloc(
           sizeof(included_params_builder_t));
+
+  check(originalIncludedResourceName != NULL,
+        "originalIncludedResourceName is NULL");
   char *nestedName = NULL;
   char *includedName = originalIncludedResourceName;
 
@@ -43,10 +47,8 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
   }
 
   resource_t *includedResource = resource->lookup(includedName);
-  if (includedResource == NULL) {
-    result->includedResource = NULL;
-    return result;
-  }
+  check(includedResource != NULL, "Could not find included resource %s",
+        includedName);
 
   jsonapi_params_t *includedParams =
       memoryManager->malloc(sizeof(jsonapi_params_t));
@@ -98,6 +100,8 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
   char *foreignKey = (char *)resource->model->getForeignKey(
       includedResource->model->tableName);
 
+  check(foreignKey != NULL, "Could not find foreign key for included resource");
+
   char *originalForeignKey = foreignKey;
 
   /* Only add nested resources to the includes filter */
@@ -126,6 +130,9 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
   result->originalForeignKey = originalForeignKey;
   result->ids = ids;
   result->getIncludedParams = getIncludedParams;
+  return result;
+error:
+  result->includedResource = NULL;
   return result;
 }
 
