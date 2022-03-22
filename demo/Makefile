@@ -19,12 +19,18 @@ ifeq ($(PLATFORM),DARWIN)
 	FORMAT = $(shell brew --prefix llvm)/bin/clang-format
 endif
 
-TARGETS := $(notdir $(patsubst %.c,%,$(wildcard *.c)))
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -I/usr/local/include -L/usr/local/lib -lexpress
+
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq libjwt jansson) -I$(shell pg_config --includedir) -ljansson -ljwt
+EXPRESS_SRC = $(wildcard ../src/*/*.c) $(wildcard ../src/*.c) $(wildcard ../deps/*/*.c) $(wildcard ../deps/*.c)
+SRC = $(EXPRESS_SRC) $(wildcard */*.c) $(wildcard */*/*.c)
+
+# CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -I/usr/local/include -L/usr/local/lib -lexpress
+# SRC = $(wildcard */*.c) $(wildcard */*/*.c)
+
+TARGETS := $(notdir $(patsubst %.c,%,$(wildcard *.c)))
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-SRC = $(wildcard */*.c) $(wildcard */*/*.c)
 TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)mak
 BUILD_DIR = build
 
