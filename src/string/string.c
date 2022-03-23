@@ -285,13 +285,14 @@ string_t *string(const char *strng) {
     string_collection_t *collection = stringCollection(0, NULL);
     collection->size = 0;
     collection->arr = malloc(sizeof(string_t *));
-    char *token = strtok(s->value, delim);
+    char *tknPtr;
+    char *token = strtok_r(s->value, delim, &tknPtr);
     while (token != NULL) {
       collection->size++;
       collection->arr =
           realloc(collection->arr, collection->size * sizeof(string_t *));
       collection->arr[collection->size - 1] = string(token);
-      token = strtok(NULL, delim);
+      token = strtok_r(NULL, delim, &tknPtr);
     }
     return collection;
   });
@@ -432,10 +433,11 @@ string_t *string(const char *strng) {
 
   s->split = s->blockCopy(^(const char *delim) {
     string_collection_t *collection = stringCollection(0, NULL);
-    char *token = strtok(s->value, delim);
+    char *tknPtr;
+    char *token = strtok_r(s->value, delim, &tknPtr);
     while (token != NULL) {
       collection->push(string(token));
-      token = strtok(NULL, delim);
+      token = strtok_r(NULL, delim, &tknPtr);
     }
     return collection;
   });

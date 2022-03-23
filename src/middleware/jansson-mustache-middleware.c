@@ -87,7 +87,8 @@ janssonMustacheMiddleware(char *viewsPath,
   void (^loadPartials)(json_t *data, char *templateFile, request_t *req) = ^(
       json_t *data, char *templateFile, request_t *req) {
     if (embeddedFiles.count > 0) {
-      char *templateName = strtok(templateFile, ".");
+      char *tknPtr;
+      char *templateName = strtok_r(templateFile, ".", &tknPtr);
       for (int i = 0; i < embeddedFiles.count; i++) {
         if (strstr(embeddedFiles.names[i], "mustache")) {
           char *partialName = embeddedFiles.names[i];
@@ -96,8 +97,8 @@ janssonMustacheMiddleware(char *viewsPath,
           char *token = partialName;
           char *extention = token;
           char *name = token;
-          strtok(token, "_");
-          while ((token = strtok(NULL, "_")) != NULL) {
+          strtok_r(token, "_", &tknPtr);
+          while ((token = strtok_r(NULL, "_", &tknPtr)) != NULL) {
             name = extention;
             extention = token;
           }
@@ -120,7 +121,8 @@ janssonMustacheMiddleware(char *viewsPath,
         size_t partialNameLength = strlen(de->d_name) + 1;
         char *partialName = req->malloc(partialNameLength);
         strlcpy(partialName, de->d_name, partialNameLength);
-        char *partialNameSplit = strtok(partialName, ".");
+        char *tknPtr;
+        char *partialNameSplit = strtok_r(partialName, ".", &tknPtr);
         json_t *partialJson = json_string(partial);
         json_object_set_new(data, partialNameSplit, partialJson);
         free(partial);

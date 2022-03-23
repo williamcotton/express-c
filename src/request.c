@@ -15,15 +15,16 @@ static void removeWhitespace(char *str) {
 static const char **split(char *str, char *delim, int *count) {
   char **result = NULL;
   char *token = NULL;
+  char *tokPtr;
   int i = 0;
 
-  token = strtok(str, delim);
+  token = strtok_r(str, delim, &tokPtr);
   while (token != NULL) {
     result = realloc(result, sizeof(char *) * (i + 1));
     removeWhitespace(token);
     result[i] = token;
     i++;
-    token = strtok(NULL, delim);
+    token = strtok_r(NULL, delim, &tokPtr);
   }
 
   *count = i;
@@ -220,18 +221,19 @@ static getBlock reqCookieFactory(request_t *req) {
   memset(req->cookies, 0, sizeof(req->cookies));
   char *cookies = (char *)req->cookiesString;
   if (req->cookiesString != NULL) {
-    char *cookie = strtok(cookies, ";");
+    char *tknPtr;
+    char *cookie = strtok_r(cookies, ";", &tknPtr);
     int i = 0;
     while (cookie != NULL) {
       req->cookies[i] = cookie;
-      cookie = strtok(NULL, ";");
+      cookie = strtok_r(NULL, ";", &tknPtr);
       req->cookiesKeyValueCount = ++i;
     }
     for (i = 0; i < 4096; i++) {
       if (req->cookies[i] == NULL)
         break;
-      char *key = strtok((char *)req->cookies[i], "=");
-      char *value = strtok(NULL, "=");
+      char *key = strtok_r((char *)req->cookies[i], "=", &tknPtr);
+      char *value = strtok_r(NULL, "=", &tknPtr);
       if (key[0] == ' ')
         key++;
       req->cookiesKeyValues[i].key = key;

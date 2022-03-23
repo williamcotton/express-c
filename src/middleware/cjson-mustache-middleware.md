@@ -59,6 +59,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
     sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
     if (embeddedFiles.count > 0) {
       template = matchEmbeddedFile(templatePath, embeddedFiles);
+      free(templatePath);
       return template;
     }
     FILE *templateFd = fopen(templatePath, "r");
@@ -75,20 +76,22 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
     return template;
   };
 
+
   void (^loadPartials)(cJSON *data, char *templateFile, request_t *req) = ^(
       cJSON *data, char *templateFile, request_t *req) {
+    char *tknPtr;
     if (embeddedFiles.count > 0) {
-      char *templateName = strtok(templateFile, ".");
+      char *templateName = strtok_r(templateFile, ".", &tknPtr);
       for (int i = 0; i < embeddedFiles.count; i++) {
         if (strstr(embeddedFiles.names[i], "mustache")) {
           char *partialName = embeddedFiles.names[i];
           char *partial = (char *)embeddedFiles.data[i];
 
-          char *token = strdup(partialName);
+          char *token = partialName;
           char *extention = token;
           char *name = token;
-          strtok(token, "_");
-          while ((token = strtok(NULL, "_")) != NULL) {
+          strtok_r(token, "_", &tknPtr);
+          while ((token = strtok_r(NULL, "_", &tknPtr)) != NULL) {
             name = extention;
             extention = token;
           }
@@ -107,9 +110,10 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
     while ((de = readdir(dr)) != NULL) {
       if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile)) {
         char *partial = loadTemplate(de->d_name);
-        char *partialName = req->malloc(strlen(de->d_name) + 1);
-        strcpy(partialName, de->d_name);
-        char *partialNameSplit = strtok(partialName, ".");
+        size_t partialNameLength = strlen(de->d_name) + 1;
+        char *partialName = req->malloc(partialNameLength);
+        strlcpy(partialName, de->d_name, partialNameLength);
+        char *partialNameSplit = strtok_r(partialName, ".", &tknPtr);
         cJSON_AddStringToObject(data, partialNameSplit, partial);
         free(partial);
       }

@@ -53,10 +53,11 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
             curl_easy_unescape(req->curl, req->queryKeyValues[i].value,
                                req->queryKeyValues[i].valueLen, NULL);
         json_t *value = json_array();
-        char *token = strtok(decodedValue, ",");
+        char *tknPtr;
+        char *token = strtok_r(decodedValue, ",", &tknPtr);
         while (token != NULL) {
           json_array_append_new(value, json_string(token));
-          token = strtok(NULL, ",");
+          token = strtok_r(NULL, ",", &tknPtr);
         }
         size_t keyDiff = req->queryKeyValues[i].keyLen - startOfKey;
         if (startOfKey > 0) {
