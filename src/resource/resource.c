@@ -19,8 +19,8 @@ resource_store_t *createResourceStore(memory_manager_t *memoryManager) {
 
 resource_t *CreateResource(char *type, model_t *model,
                            resource_store_t *resourceStore) {
-  memory_manager_t *appMemoryManager = model->appMemoryManager;
-  resource_t *resource = appMemoryManager->malloc(sizeof(resource_t));
+  memory_manager_t *memoryManager = model->memoryManager;
+  resource_t *resource = memoryManager->malloc(sizeof(resource_t));
 
   resourceStore->add(resource);
 
@@ -45,30 +45,31 @@ resource_t *CreateResource(char *type, model_t *model,
 
   resource->lookup = resourceStore->lookup;
 
-  resource->belongsTo = appMemoryManager->blockCopy(^(char *relatedResourceName,
-                                                      char *foreignKey) {
-    resource->relationshipsCount++;
-    belongs_to_resource_t *newBelongsTo =
-        appMemoryManager->malloc(sizeof(belongs_to_resource_t));
-    newBelongsTo->resourceName = relatedResourceName;
-    newBelongsTo->foreignKey = foreignKey;
-    resource->belongsToRelationships[resource->belongsToCount] = newBelongsTo;
-    resource->belongsToCount++;
-  });
+  resource->belongsTo =
+      memoryManager->blockCopy(^(char *relatedResourceName, char *foreignKey) {
+        resource->relationshipsCount++;
+        belongs_to_resource_t *newBelongsTo =
+            memoryManager->malloc(sizeof(belongs_to_resource_t));
+        newBelongsTo->resourceName = relatedResourceName;
+        newBelongsTo->foreignKey = foreignKey;
+        resource->belongsToRelationships[resource->belongsToCount] =
+            newBelongsTo;
+        resource->belongsToCount++;
+      });
 
-  resource->hasMany = appMemoryManager->blockCopy(
-      ^(char *relatedResourceName, char *foreignKey) {
+  resource->hasMany =
+      memoryManager->blockCopy(^(char *relatedResourceName, char *foreignKey) {
         resource->relationshipsCount++;
         has_many_resource_t *newHasMany =
-            appMemoryManager->malloc(sizeof(has_many_resource_t));
+            memoryManager->malloc(sizeof(has_many_resource_t));
         newHasMany->resourceName = relatedResourceName;
         newHasMany->foreignKey = foreignKey;
         resource->hasManyRelationships[resource->hasManyCount] = newHasMany;
         resource->hasManyCount++;
       });
 
-  resource->relationshipNames = appMemoryManager->blockCopy(^() {
-    char **relationshipNames = appMemoryManager->malloc(
+  resource->relationshipNames = memoryManager->blockCopy(^() {
+    char **relationshipNames = memoryManager->malloc(
         sizeof(char *) * (resource->belongsToCount + resource->hasManyCount));
     for (int i = 0; i < resource->belongsToCount; i++) {
       relationshipNames[i] = resource->belongsToRelationships[i]->resourceName;
@@ -80,10 +81,10 @@ resource_t *CreateResource(char *type, model_t *model,
     return relationshipNames;
   });
 
-  resource->filter = appMemoryManager->blockCopy(
+  resource->filter = memoryManager->blockCopy(
       ^(char *attribute, char *operator, filterCallback callback) {
         resource_filter_t *newFilter =
-            appMemoryManager->malloc(sizeof(resource_filter_t));
+            memoryManager->malloc(sizeof(resource_filter_t));
         newFilter->attribute = attribute;
         newFilter->operator= operator;
         newFilter->callback = callback;
@@ -92,9 +93,9 @@ resource_t *CreateResource(char *type, model_t *model,
       });
 
   resource->sort =
-      appMemoryManager->blockCopy(^(char *attribute, sortCallback callback) {
+      memoryManager->blockCopy(^(char *attribute, sortCallback callback) {
         resource_sort_t *newSort =
-            appMemoryManager->malloc(sizeof(resource_sort_t));
+            memoryManager->malloc(sizeof(resource_sort_t));
         newSort->attribute = attribute;
         newSort->callback = callback;
         resource->sorters[resource->sortersCount] = newSort;
@@ -102,57 +103,55 @@ resource_t *CreateResource(char *type, model_t *model,
       });
 
   resource->resolveAll =
-      appMemoryManager->blockCopy(^(resolveAllCallback callback) {
+      memoryManager->blockCopy(^(resolveAllCallback callback) {
         resource_resolve_all_t *newResolveAll =
-            appMemoryManager->malloc(sizeof(resource_resolve_all_t));
+            memoryManager->malloc(sizeof(resource_resolve_all_t));
         newResolveAll->callback = callback;
         resource->allResolver = newResolveAll;
       });
 
   resource->resolveFind =
-      appMemoryManager->blockCopy(^(resolveFindCallback callback) {
+      memoryManager->blockCopy(^(resolveFindCallback callback) {
         resource_resolve_find_t *newResolveFind =
-            appMemoryManager->malloc(sizeof(resource_resolve_find_t));
+            memoryManager->malloc(sizeof(resource_resolve_find_t));
         newResolveFind->callback = callback;
         resource->findResolver = newResolveFind;
       });
 
-  resource->paginate =
-      appMemoryManager->blockCopy(^(paginateCallback callback) {
-        resource_paginate_t *newPaginate =
-            appMemoryManager->malloc(sizeof(resource_paginate_t));
-        newPaginate->callback = callback;
-        resource->paginator = newPaginate;
-      });
+  resource->paginate = memoryManager->blockCopy(^(paginateCallback callback) {
+    resource_paginate_t *newPaginate =
+        memoryManager->malloc(sizeof(resource_paginate_t));
+    newPaginate->callback = callback;
+    resource->paginator = newPaginate;
+  });
 
-  resource->baseScope =
-      appMemoryManager->blockCopy(^(baseScopeCallback callback) {
-        resource_base_scope_t *newBaseScope =
-            appMemoryManager->malloc(sizeof(resource_base_scope_t));
-        newBaseScope->callback = callback;
-        resource->baseScoper = newBaseScope;
-      });
+  resource->baseScope = memoryManager->blockCopy(^(baseScopeCallback callback) {
+    resource_base_scope_t *newBaseScope =
+        memoryManager->malloc(sizeof(resource_base_scope_t));
+    newBaseScope->callback = callback;
+    resource->baseScoper = newBaseScope;
+  });
 
   resource->attribute =
-      appMemoryManager->blockCopy(^(char *attributeName, char *attributeType) {
+      memoryManager->blockCopy(^(char *attributeName, char *attributeType) {
         class_attribute_t *newAttribute =
-            appMemoryManager->malloc(sizeof(class_attribute_t));
+            memoryManager->malloc(sizeof(class_attribute_t));
         newAttribute->name = attributeName;
         newAttribute->type = attributeType;
         resource->attributes[resource->attributesCount] = newAttribute;
         resource->attributesCount++;
 
-        addDefaultFiltersToAttribute(resource, model, appMemoryManager,
+        addDefaultFiltersToAttribute(resource, model, memoryManager,
                                      attributeName, attributeType);
 
-        resource->sort(attributeName,
-                       appMemoryManager->blockCopy(^(query_t *scope,
-                                                     const char *direction) {
-                         return scope->order(attributeName, (char *)direction);
-                       }));
+        resource->sort(
+            attributeName,
+            memoryManager->blockCopy(^(query_t *scope, const char *direction) {
+              return scope->order(attributeName, (char *)direction);
+            }));
       });
 
-  resource->hasAttribute = appMemoryManager->blockCopy(^(char *attributeName) {
+  resource->hasAttribute = memoryManager->blockCopy(^(char *attributeName) {
     for (int i = 0; i < resource->attributesCount; i++) {
       if (strcmp(resource->attributes[i]->name, attributeName) == 0) {
         return true;
@@ -181,7 +180,7 @@ resource_t *CreateResource(char *type, model_t *model,
     return (model_instance_t *)scope->find(id);
   });
 
-  resource->all = appMemoryManager->blockCopy(^(jsonapi_params_t *params) {
+  resource->all = memoryManager->blockCopy(^(jsonapi_params_t *params) {
     // debug("%s->all() %s", resource->model->tableName,
     //       json_dumps(params->query, JSON_INDENT(2)));
     /* Get the base scope, a query_t object */
@@ -229,7 +228,7 @@ resource_t *CreateResource(char *type, model_t *model,
   });
 
   resource->find =
-      appMemoryManager->blockCopy(^(jsonapi_params_t *params, char *id) {
+      memoryManager->blockCopy(^(jsonapi_params_t *params, char *id) {
         /* Get the base scope, a query_t object */
         query_t *baseScope = resource->baseScoper->callback(resource->model);
 
@@ -275,13 +274,13 @@ resource_t *CreateResource(char *type, model_t *model,
         return instance;
       });
 
-  addDefaultFiltersToAttribute(resource, model, appMemoryManager, "id",
+  addDefaultFiltersToAttribute(resource, model, memoryManager, "id",
                                "integer_id");
 
   for (int i = 0; i < model->belongsToCount; i++) {
     resource->belongsToModelRelationships[i] = model->belongsToRelationships[i];
     addDefaultFiltersToAttribute(
-        resource, model, appMemoryManager,
+        resource, model, memoryManager,
         resource->belongsToModelRelationships[i]->foreignKey, "integer_id");
   }
   resource->belongsToModelCount = model->belongsToCount;

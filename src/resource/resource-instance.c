@@ -15,7 +15,7 @@ static int isMemberOfJsonArray(json_t *array, char *value) {
 resource_instance_t *createResourceInstance(resource_t *resource,
                                             model_instance_t *modelInstance,
                                             jsonapi_params_t *params) {
-  memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
+  memory_manager_t *memoryManager = resource->model->memoryManager;
 
   resource_instance_t *instance =
       memoryManager->malloc(sizeof(resource_instance_t));

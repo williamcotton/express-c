@@ -6,9 +6,8 @@ static query_t *applyAttributeFilterOperatorToScope(const char *attribute,
                                                     query_t *scope,
                                                     resource_t *resource) {
   int count = (int)json_array_size(valueArray);
-  const char **values =
-      (const char **)resource->model->instanceMemoryManager->malloc(
-          sizeof(char *) * count);
+  const char **values = (const char **)resource->model->memoryManager->malloc(
+      sizeof(char *) * count);
   size_t index;
   json_t *jsonValue;
   json_array_foreach(valueArray, index, jsonValue) {
@@ -92,7 +91,7 @@ query_t *applySortersToScope(json_t *sorters, query_t *scope,
 
     char *attributeName = NULL;
     size_t len = strlen(attribute) + 1;
-    char *resourceName = resource->model->instanceMemoryManager->malloc(len);
+    char *resourceName = resource->model->memoryManager->malloc(len);
     strncpy(resourceName, attribute, len);
 
     char *splitPoint = strstr(resourceName, ".");
@@ -141,7 +140,7 @@ error:
 
 query_t *applyResourceAttributeToScope(query_t *scope, resource_t *resource,
                                        char *attributeName) {
-  char *selectCondition = resource->model->instanceMemoryManager->malloc(
+  char *selectCondition = resource->model->memoryManager->malloc(
       strlen(resource->type) + strlen(".") + strlen(attributeName) + 1);
   sprintf(selectCondition, "%s.%s", resource->type, attributeName);
   scope = scope->select(selectCondition);
@@ -198,8 +197,7 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
   // TODO: always add total count
 
   resource_stat_value_t *statValue =
-      resource->model->instanceMemoryManager->malloc(
-          sizeof(resource_stat_value_t));
+      resource->model->memoryManager->malloc(sizeof(resource_stat_value_t));
 
   statValue->attribute = NULL;
   statValue->stat = NULL;
@@ -230,14 +228,14 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
       statValue->stat = "count";
       int count = scope->count();
       statValue->value =
-          resource->model->instanceMemoryManager->malloc(sizeof(int) * 2);
+          resource->model->memoryManager->malloc(sizeof(int) * 2);
       sprintf(statValue->value, "%d", count);
     } else if (resource->hasAttribute(attribute)) {
       statValue->attribute = attribute;
       statValue->stat = stat;
       query_stat_result_t *result = scope->stat(attribute, stat);
-      statValue->value = resource->model->instanceMemoryManager->malloc(
-          strlen(result->value) + 1);
+      statValue->value =
+          resource->model->memoryManager->malloc(strlen(result->value) + 1);
       sprintf(statValue->value, "%s", result->value);
       free(result->value);
     }

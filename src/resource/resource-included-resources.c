@@ -30,7 +30,7 @@ included_params_builder_t *
 buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
                     jsonapi_params_t *params) {
 
-  memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
+  memory_manager_t *memoryManager = resource->model->memoryManager;
   included_params_builder_t *result =
       (included_params_builder_t *)memoryManager->malloc(
           sizeof(included_params_builder_t));

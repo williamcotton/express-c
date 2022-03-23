@@ -25,7 +25,7 @@ createResourceInstanceCollection(resource_t *resource,
   // debug("createResourceInstanceCollection %s", resource->type);
   /* Create a collection of resource instances from a collection of model
    * instances. */
-  memory_manager_t *memoryManager = resource->model->instanceMemoryManager;
+  memory_manager_t *memoryManager = resource->model->memoryManager;
 
   resource_instance_collection_t *collection =
       (resource_instance_collection_t *)memoryManager->malloc(

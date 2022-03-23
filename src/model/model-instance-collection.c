@@ -1,7 +1,7 @@
 #include "model.h"
 
 model_instance_collection_t *createModelInstanceCollection(model_t *model) {
-  memory_manager_t *memoryManager = model->instanceMemoryManager;
+  memory_manager_t *memoryManager = model->memoryManager;
 
   model_instance_collection_t *collection =
       memoryManager->malloc(sizeof(model_instance_collection_t));

@@ -17,16 +17,15 @@ model_store_t *createModelStore(memory_manager_t *memoryManager) {
   return store;
 }
 
-model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
-                     pg_t *pg, model_store_t *modelStore) {
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager, pg_t *pg,
+                     model_store_t *modelStore) {
 
-  model_t *model = appMemoryManager->malloc(sizeof(model_t));
+  model_t *model = memoryManager->malloc(sizeof(model_t));
 
   modelStore->add(model);
 
   model->tableName = tableName;
-  model->appMemoryManager = appMemoryManager;
-  model->instanceMemoryManager = appMemoryManager;
+  model->memoryManager = memoryManager;
   model->pg = pg;
   model->attributesCount = 0;
   model->validationsCount = 0;
@@ -45,24 +44,24 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
 
   model->lookup = modelStore->lookup;
 
-  model->query = appMemoryManager->blockCopy(^() {
+  model->query = memoryManager->blockCopy(^() {
     query_t * (^baseQuery)(const char *) =
-        getPostgresQuery(model->instanceMemoryManager, model->pg);
+        getPostgresQuery(model->memoryManager, model->pg);
     __block query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
     void * (^originalFind)(char *) = modelQuery->find;
 
-    modelQuery->all = model->instanceMemoryManager->blockCopy(^() {
+    modelQuery->all = model->memoryManager->blockCopy(^() {
       PGresult *result = originalAll();
       model_instance_collection_t *collection =
           createModelInstanceCollection(model);
       int recordCount = PQntuples(result);
-      collection->arr = model->instanceMemoryManager->malloc(
+      collection->arr = model->memoryManager->malloc(
           sizeof(model_instance_t *) * recordCount);
       collection->size = recordCount;
       for (int i = 0; i < recordCount; i++) {
         char *idValue = PQgetvalue(result, i, 0);
-        char *id = model->instanceMemoryManager->malloc(strlen(idValue) + 1);
+        char *id = model->memoryManager->malloc(strlen(idValue) + 1);
         strncpy(id, idValue, strlen(idValue) + 1);
         collection->arr[i] = createModelInstance(model);
         collection->arr[i]->id = id;
@@ -72,7 +71,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
           if (model->getAttribute(name)) {
             char *pgValue = PQgetvalue(result, i, j);
             size_t valueLen = strlen(pgValue) + 1;
-            char *value = model->instanceMemoryManager->malloc(valueLen);
+            char *value = model->memoryManager->malloc(valueLen);
             strlcpy(value, pgValue, valueLen);
             collection->arr[i]->initAttr(name, value, 0);
           }
@@ -82,7 +81,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
       return collection;
     });
 
-    modelQuery->find = appMemoryManager->blockCopy(^(char *id) {
+    modelQuery->find = memoryManager->blockCopy(^(char *id) {
       if (!id) {
         log_err("id is required");
         return (model_instance_t *)NULL;
@@ -101,7 +100,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
         if (model->getAttribute(name)) {
           char *pgValue = PQgetvalue(result, 0, i);
           size_t valueLen = strlen(pgValue) + 1;
-          char *value = model->instanceMemoryManager->malloc(valueLen);
+          char *value = model->memoryManager->malloc(valueLen);
           strlcpy(value, pgValue, valueLen);
           instance->initAttr(name, value, 0);
         }
@@ -113,25 +112,25 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
     return modelQuery;
   });
 
-  model->find = appMemoryManager->blockCopy(^(char *id) {
+  model->find = memoryManager->blockCopy(^(char *id) {
     return model->query()->find(id);
   });
 
-  model->all = appMemoryManager->blockCopy(^() {
+  model->all = memoryManager->blockCopy(^() {
     return model->query()->all();
   });
 
   model->attribute =
-      appMemoryManager->blockCopy(^(char *attributeName, char *type) {
+      memoryManager->blockCopy(^(char *attributeName, char *type) {
         class_attribute_t *newAttribute =
-            appMemoryManager->malloc(sizeof(class_attribute_t));
+            memoryManager->malloc(sizeof(class_attribute_t));
         newAttribute->name = attributeName;
         newAttribute->type = type;
         model->attributes[model->attributesCount] = newAttribute;
         model->attributesCount++;
       });
 
-  model->getAttribute = appMemoryManager->blockCopy(^(char *attributeName) {
+  model->getAttribute = memoryManager->blockCopy(^(char *attributeName) {
     for (int i = 0; i < model->attributesCount; i++) {
       if (strcmp(model->attributes[i]->name, attributeName) == 0) {
         return model->attributes[i];
@@ -141,25 +140,25 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
   });
 
   model->validatesAttribute =
-      appMemoryManager->blockCopy(^(char *attributeName, char *validation) {
+      memoryManager->blockCopy(^(char *attributeName, char *validation) {
         model->validations[model->validationsCount] =
-            appMemoryManager->malloc(sizeof(validation_t));
+            memoryManager->malloc(sizeof(validation_t));
         model->validations[model->validationsCount]->attributeName =
             attributeName;
         model->validations[model->validationsCount]->validation = validation;
         model->validationsCount++;
       });
 
-  model->new = appMemoryManager->blockCopy(^() {
+  model->new = memoryManager->blockCopy(^() {
     model_instance_t *instance = createModelInstance(model);
     return instance;
   });
 
   model->belongsTo =
-      appMemoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+      memoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
         model->attribute(foreignKey, "integer", NULL);
         belongs_to_t *newBelongsTo =
-            appMemoryManager->malloc(sizeof(belongs_to_t));
+            memoryManager->malloc(sizeof(belongs_to_t));
         newBelongsTo->tableName = relatedTableName;
         newBelongsTo->foreignKey = foreignKey;
         model->belongsToRelationships[model->belongsToCount] = newBelongsTo;
@@ -167,8 +166,8 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
       });
 
   model->hasMany =
-      appMemoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
-        has_many_t *newHasMany = appMemoryManager->malloc(sizeof(has_many_t));
+      memoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+        has_many_t *newHasMany = memoryManager->malloc(sizeof(has_many_t));
         newHasMany->tableName = relatedTableName;
         newHasMany->foreignKey = foreignKey;
         model->hasManyRelationships[model->hasManyCount] = newHasMany;
@@ -176,45 +175,44 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
       });
 
   model->hasOne =
-      appMemoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
-        has_one_t *newHasOne = appMemoryManager->malloc(sizeof(has_one_t));
+      memoryManager->blockCopy(^(char *relatedTableName, char *foreignKey) {
+        has_one_t *newHasOne = memoryManager->malloc(sizeof(has_one_t));
         newHasOne->tableName = relatedTableName;
         newHasOne->foreignKey = foreignKey;
         model->hasOneRelationships[model->hasOneCount] = newHasOne;
         model->hasOneCount++;
       });
 
-  model->getForeignKey =
-      appMemoryManager->blockCopy(^(const char *relationName) {
-        model_t *relatedModel = model->lookup(relationName);
-        if (relatedModel == NULL) {
-          log_err("Could not find model '%s'", relationName);
-          return (char *)NULL;
-        }
-        for (int i = 0; i < model->hasManyCount; i++) {
-          if (strcmp(model->hasManyRelationships[i]->tableName,
-                     relatedModel->tableName) == 0) {
-            return model->hasManyRelationships[i]->foreignKey;
-          }
-        }
-        for (int i = 0; i < model->hasOneCount; i++) {
-          if (strcmp(model->hasOneRelationships[i]->tableName,
-                     relatedModel->tableName) == 0) {
-            return model->hasOneRelationships[i]->foreignKey;
-          }
-        }
-        for (int i = 0; i < model->belongsToCount; i++) {
-          if (strcmp(model->belongsToRelationships[i]->tableName,
-                     relatedModel->tableName) == 0) {
-            return "id";
-          }
-        }
-        log_err("Could not find foreign key for '%s'", relationName);
-        return (char *)NULL;
-      });
+  model->getForeignKey = memoryManager->blockCopy(^(const char *relationName) {
+    model_t *relatedModel = model->lookup(relationName);
+    if (relatedModel == NULL) {
+      log_err("Could not find model '%s'", relationName);
+      return (char *)NULL;
+    }
+    for (int i = 0; i < model->hasManyCount; i++) {
+      if (strcmp(model->hasManyRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        return model->hasManyRelationships[i]->foreignKey;
+      }
+    }
+    for (int i = 0; i < model->hasOneCount; i++) {
+      if (strcmp(model->hasOneRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        return model->hasOneRelationships[i]->foreignKey;
+      }
+    }
+    for (int i = 0; i < model->belongsToCount; i++) {
+      if (strcmp(model->belongsToRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        return "id";
+      }
+    }
+    log_err("Could not find foreign key for '%s'", relationName);
+    return (char *)NULL;
+  });
 
   model->getBelongsToKey =
-      appMemoryManager->blockCopy(^(const char *relationName) {
+      memoryManager->blockCopy(^(const char *relationName) {
         model_t *relatedModel = model->lookup(relationName);
         if (relatedModel == NULL) {
           log_err("Could not find model '%s'", relationName);
@@ -230,58 +228,51 @@ model_t *CreateModel(char *tableName, memory_manager_t *appMemoryManager,
         return (char *)NULL;
       });
 
-  model->validates = appMemoryManager->blockCopy(^(instanceCallback callback) {
+  model->validates = memoryManager->blockCopy(^(instanceCallback callback) {
     model->validatesCallbacks[model->validatesCallbacksCount] = callback;
     model->validatesCallbacksCount++;
   });
 
-  model->beforeSave = appMemoryManager->blockCopy(^(beforeCallback callback) {
+  model->beforeSave = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeSaveCallbacks[model->beforeSaveCallbacksCount] = callback;
     model->beforeSaveCallbacksCount++;
   });
 
-  model->afterSave = appMemoryManager->blockCopy(^(instanceCallback callback) {
+  model->afterSave = memoryManager->blockCopy(^(instanceCallback callback) {
     model->afterSaveCallbacks[model->afterSaveCallbacksCount] = callback;
     model->afterSaveCallbacksCount++;
   });
 
-  model->beforeDestroy =
-      appMemoryManager->blockCopy(^(beforeCallback callback) {
-        model->beforeDestroyCallbacks[model->beforeDestroyCallbacksCount] =
-            callback;
-        model->beforeDestroyCallbacksCount++;
-      });
+  model->beforeDestroy = memoryManager->blockCopy(^(beforeCallback callback) {
+    model->beforeDestroyCallbacks[model->beforeDestroyCallbacksCount] =
+        callback;
+    model->beforeDestroyCallbacksCount++;
+  });
 
-  model->afterDestroy =
-      appMemoryManager->blockCopy(^(instanceCallback callback) {
-        model->afterDestroyCallbacks[model->afterDestroyCallbacksCount] =
-            callback;
-        model->afterDestroyCallbacksCount++;
-      });
+  model->afterDestroy = memoryManager->blockCopy(^(instanceCallback callback) {
+    model->afterDestroyCallbacks[model->afterDestroyCallbacksCount] = callback;
+    model->afterDestroyCallbacksCount++;
+  });
 
-  model->beforeUpdate = appMemoryManager->blockCopy(^(beforeCallback callback) {
+  model->beforeUpdate = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeUpdateCallbacks[model->beforeUpdateCallbacksCount] = callback;
     model->beforeUpdateCallbacksCount++;
   });
 
-  model->afterUpdate =
-      appMemoryManager->blockCopy(^(instanceCallback callback) {
-        model->afterUpdateCallbacks[model->afterUpdateCallbacksCount] =
-            callback;
-        model->afterUpdateCallbacksCount++;
-      });
+  model->afterUpdate = memoryManager->blockCopy(^(instanceCallback callback) {
+    model->afterUpdateCallbacks[model->afterUpdateCallbacksCount] = callback;
+    model->afterUpdateCallbacksCount++;
+  });
 
-  model->beforeCreate = appMemoryManager->blockCopy(^(beforeCallback callback) {
+  model->beforeCreate = memoryManager->blockCopy(^(beforeCallback callback) {
     model->beforeCreateCallbacks[model->beforeCreateCallbacksCount] = callback;
     model->beforeCreateCallbacksCount++;
   });
 
-  model->afterCreate =
-      appMemoryManager->blockCopy(^(instanceCallback callback) {
-        model->afterCreateCallbacks[model->afterCreateCallbacksCount] =
-            callback;
-        model->afterCreateCallbacksCount++;
-      });
+  model->afterCreate = memoryManager->blockCopy(^(instanceCallback callback) {
+    model->afterCreateCallbacks[model->afterCreateCallbacksCount] = callback;
+    model->afterCreateCallbacksCount++;
+  });
 
   return model;
 }

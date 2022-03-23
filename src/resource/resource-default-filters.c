@@ -1,7 +1,7 @@
 #include "resource.h"
 
 void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
-                                  memory_manager_t *appMemoryManager,
+                                  memory_manager_t *memoryManager,
                                   char *attributeName, char *attributeType) {
   if (strcmp(attributeType, "integer") == 0 ||
       strcmp(attributeType, "integer_id") == 0 ||
@@ -12,10 +12,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "gt",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" > $") + 1);
               sprintf(whereCondition, "%s > $", attributeName);
               return scope->where(whereCondition, value);
@@ -23,10 +23,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "gte",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" >= $") + 1);
               sprintf(whereCondition, "%s >= $", attributeName);
               return scope->where(whereCondition, value);
@@ -34,10 +34,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "lt",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" < $") + 1);
               sprintf(whereCondition, "%s < $", attributeName);
               return scope->where(whereCondition, value);
@@ -45,10 +45,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "lte",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" <= $") + 1);
               sprintf(whereCondition, "%s <= $", attributeName);
               return scope->where(whereCondition, value);
@@ -67,10 +67,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "eq",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, int count) {
               if (count == 1) {
-                char *whereCondition = model->instanceMemoryManager->malloc(
+                char *whereCondition = model->memoryManager->malloc(
                     strlen(attributeName) + strlen(" = $") + 1);
                 sprintf(whereCondition, "%s = $", attributeName);
                 return scope->where(whereCondition, values[0]);
@@ -80,10 +80,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "not_eq",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, int count) {
               if (count == 1) {
-                char *whereCondition = model->instanceMemoryManager->malloc(
+                char *whereCondition = model->memoryManager->malloc(
                     strlen(attributeName) + strlen(" NOT = $") + 1);
                 sprintf(whereCondition, "NOT %s = $", attributeName);
                 return scope->where(whereCondition, values[0]);
@@ -95,10 +95,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
   if (strcmp(attributeType, "string") == 0) {
     resource->filter(
         attributeName, "eq",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, int count) {
               if (count == 1) {
-                char *whereCondition = model->instanceMemoryManager->malloc(
+                char *whereCondition = model->memoryManager->malloc(
                     strlen(attributeName) + strlen("LOWER() = LOWER($)") + 1);
                 sprintf(whereCondition, "LOWER(%s) = LOWER($)", attributeName);
                 return scope->where(whereCondition, values[0]);
@@ -109,10 +109,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "not_eq",
-        appMemoryManager->blockCopy(^(query_t *scope, const char **values,
-                                      int count) {
+        memoryManager->blockCopy(^(query_t *scope, const char **values,
+                                   int count) {
           if (count == 1) {
-            char *whereCondition = model->instanceMemoryManager->malloc(
+            char *whereCondition = model->memoryManager->malloc(
                 strlen(attributeName) + strlen("NOT LOWER() = LOWER($)") + 1);
             sprintf(whereCondition, "NOT LOWER(%s) = LOWER($)", attributeName);
             return scope->where(whereCondition, values[0]);
@@ -123,10 +123,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "eql",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, int count) {
               if (count == 1) {
-                char *whereCondition = model->instanceMemoryManager->malloc(
+                char *whereCondition = model->memoryManager->malloc(
                     strlen(attributeName) + strlen(" = $") + 1);
                 sprintf(whereCondition, "%s = $", attributeName);
                 return scope->where(whereCondition, values[0]);
@@ -136,10 +136,10 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "not_eql",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, int count) {
               if (count == 1) {
-                char *whereCondition = model->instanceMemoryManager->malloc(
+                char *whereCondition = model->memoryManager->malloc(
                     strlen(attributeName) + strlen(" NOT = $") + 1);
                 sprintf(whereCondition, "NOT %s = $", attributeName);
                 return scope->where(whereCondition, values[0]);
@@ -149,90 +149,84 @@ void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
 
     resource->filter(
         attributeName, "match",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" LIKE $") + 1);
               sprintf(whereCondition, "%s LIKE $", attributeName);
               size_t matchValueLen = strlen(value) + strlen("%%") + 1;
-              char *matchValue =
-                  model->instanceMemoryManager->malloc(matchValueLen);
+              char *matchValue = model->memoryManager->malloc(matchValueLen);
               snprintf(matchValue, matchValueLen, "%%%s%%", value);
               return scope->where(whereCondition, matchValue);
             }));
 
     resource->filter(
         attributeName, "not_match",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" NOT LIKE $") + 1);
               sprintf(whereCondition, "%s NOT LIKE $", attributeName);
               size_t matchValueLen = strlen(value) + strlen("%%") + 1;
-              char *matchValue =
-                  model->instanceMemoryManager->malloc(matchValueLen);
+              char *matchValue = model->memoryManager->malloc(matchValueLen);
               snprintf(matchValue, matchValueLen, "%%%s%%", value);
               return scope->where(whereCondition, matchValue);
             }));
 
     resource->filter(
         attributeName, "prefix",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" LIKE $") + 1);
               sprintf(whereCondition, "%s LIKE $", attributeName);
               size_t matchValueLen = strlen(value) + strlen("%") + 1;
-              char *matchValue =
-                  model->instanceMemoryManager->malloc(matchValueLen);
+              char *matchValue = model->memoryManager->malloc(matchValueLen);
               snprintf(matchValue, matchValueLen, "%s%%", value);
               return scope->where(whereCondition, matchValue);
             }));
 
     resource->filter(
         attributeName, "not_prefix",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" NOT LIKE $") + 1);
               sprintf(whereCondition, "%s NOT LIKE $", attributeName);
               size_t matchValueLen = strlen(value) + strlen("%") + 1;
-              char *matchValue =
-                  model->instanceMemoryManager->malloc(matchValueLen);
+              char *matchValue = model->memoryManager->malloc(matchValueLen);
               snprintf(matchValue, matchValueLen, "%s%%", value);
               return scope->where(whereCondition, matchValue);
             }));
 
     resource->filter(
         attributeName, "suffix",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" LIKE $") + 1);
               sprintf(whereCondition, "%s LIKE $", attributeName);
               size_t matchValueLen = strlen(value) + strlen("%") + 1;
-              char *matchValue =
-                  model->instanceMemoryManager->malloc(matchValueLen);
+              char *matchValue = model->memoryManager->malloc(matchValueLen);
               snprintf(matchValue, matchValueLen, "%%%s", value);
               return scope->where(whereCondition, matchValue);
             }));
 
     resource->filter(
         attributeName, "not_suffix",
-        appMemoryManager->blockCopy(
+        memoryManager->blockCopy(
             ^(query_t *scope, const char **values, UNUSED int count) {
               const char *value = values[0];
-              char *whereCondition = model->instanceMemoryManager->malloc(
+              char *whereCondition = model->memoryManager->malloc(
                   strlen(attributeName) + strlen(" NOT LIKE $") + 1);
               sprintf(whereCondition, "%s NOT LIKE $", attributeName);
               size_t matchValueLen = strlen(value) + strlen("%") + 1;
-              char *matchValue =
-                  model->instanceMemoryManager->malloc(matchValueLen);
+              char *matchValue = model->memoryManager->malloc(matchValueLen);
               snprintf(matchValue, matchValueLen, "%%%s", value);
               return scope->where(whereCondition, matchValue);
             }));

@@ -265,7 +265,7 @@ void nestedIncludes(json_t *includedJSONAPI,
                     resource_instance_collection_t *collection);
 
 void addDefaultFiltersToAttribute(resource_t *resource, model_t *model,
-                                  memory_manager_t *appMemoryManager,
+                                  memory_manager_t *memoryManager,
                                   char *attributeName, char *attributeType);
 
 void addRelatedToResource(resource_instance_t *resourceInstance,

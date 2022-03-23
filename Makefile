@@ -130,6 +130,9 @@ install: $(BUILD_DIR)/libexpress.so
 	mkdir -p /usr/local/bin
 	mkdir -p /usr/local/share
 	rm -f /usr/local/lib/libexpress.so
+ifeq ($(PLATFORM),DARWIN)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress.so
+endif
 	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
 	cp -Rp src/* /usr/local/include
 	cp -Rp deps/* /usr/local/include

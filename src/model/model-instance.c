@@ -1,7 +1,7 @@
 #include "model.h"
 
 model_instance_t *createModelInstance(model_t *model) {
-  memory_manager_t *memoryManager = model->instanceMemoryManager;
+  memory_manager_t *memoryManager = model->memoryManager;
   model_instance_t *instance = memoryManager->malloc(sizeof(model_instance_t));
   instance->attributesCount = 0;
   instance->errors = memoryManager->malloc(sizeof(instance_errors_t));

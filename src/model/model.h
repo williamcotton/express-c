@@ -144,8 +144,7 @@ typedef struct model_t {
   model_instance_collection_t * (^all)();
   model_instance_t * (^new)();
   struct model_t * (^lookup)(const char *);
-  memory_manager_t *instanceMemoryManager;
-  memory_manager_t *appMemoryManager;
+  memory_manager_t *memoryManager;
 } __attribute__((packed)) model_t;
 
 typedef struct model_store_t {
