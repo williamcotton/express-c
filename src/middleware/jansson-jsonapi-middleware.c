@@ -60,7 +60,7 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
           token = strtok_r(NULL, ",", &tknPtr);
         }
         size_t keyDiff = req->queryKeyValues[i].keyLen - startOfKey;
-        if (startOfKey > 0) {
+        if (startOfKey > 0 && keyDiff > 1) {
           keyDiff--;
         }
         char *key = req->malloc(keyDiff + 1);
