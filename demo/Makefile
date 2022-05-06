@@ -63,6 +63,10 @@ test: test-database-create
 test-database-create:
 	-dbmate -e TEST_DATABASE_URL create
 
+test-database-seed:
+	$(CC) -o $(BUILD_DIR)/$@ db-seed.c $(SRC) $(CFLAGS) $(DEV_CFLAGS) -DDB_SEED=1
+	$(BUILD_DIR)/$@
+
 test-coverage-output:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/coverage

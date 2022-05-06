@@ -26,6 +26,7 @@ resource_t *CreateResource(char *type, model_t *model,
 
   resource->type = type;
   resource->model = model;
+  resource->context = (void *)NULL;
 
   resource->attributesCount = 0;
   resource->belongsToCount = 0;

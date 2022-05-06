@@ -132,9 +132,13 @@ typedef struct resource_base_scope_t {
   baseScopeCallback callback;
 } resource_base_scope_t;
 
+typedef int (^beforeSaveResourceCallback)(void *context, query_t *scope);
+typedef int (^afterSaveResourceCallback)(void *context, query_t *scope);
+
 typedef struct resource_t {
   char *type;
   model_t *model;
+  void *context;
   int defaultPageSize;
   const char *endpointNamespace;
   default_sort_t defaultSort;

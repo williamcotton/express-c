@@ -14,6 +14,7 @@ resourceMiddleware(UNUSED resource_library_t *resourceLibrary) {
       resource_library_item_t *item = resourceLibrary->items[i];
       model_t *Model = item->ModelFunction(req->memoryManager, pg, modelStore);
       resource_t *Resource = item->ResourceFunction(Model, resourceStore);
+      Resource->context = req;
       req->mSet(item->name, Resource);
     }
 
