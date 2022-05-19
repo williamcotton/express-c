@@ -535,15 +535,16 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
     __block pg_t *pg = NULL;
 
     /* Get connection */
-    dispatch_sync(postgres->queue, ^{
-      for (int i = 0; i < postgres->poolSize; i++) {
-        if (postgres->pool[i]->used == 0) {
-          postgres->pool[i]->used = 1;
-          pg = postgres->pool[i];
-          break;
+    while (pg == NULL)
+      dispatch_sync(postgres->queue, ^{
+        for (int i = 0; i < postgres->poolSize; i++) {
+          if (postgres->pool[i]->used == 0) {
+            postgres->pool[i]->used = 1;
+            pg = postgres->pool[i];
+            break;
+          }
         }
-      }
-    });
+      });
 
     pg->query = getPostgresQuery(req->memoryManager, pg);
 
