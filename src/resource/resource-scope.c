@@ -49,8 +49,6 @@ query_t *applyFiltersToScope(json_t *filters, query_t *scope,
   json_t *operatorValues;
   json_object_foreach(filters, attribute, operatorValues) {
     check(operatorValues != NULL, "operatorValues is NULL");
-    if (strcmp(attribute, resource->type) == 0) {
-    }
     const char *oper = NULL;
     json_t *valueArray;
     /* check if it is an array */
