@@ -138,4 +138,26 @@ endif
 	cp -Rp deps/* /usr/local/include
 	cp -Rp scripts/* /usr/local/bin
 	cp express.supp /usr/local/share
+
+.PHONY: $(BUILD_DIR)/libexpress-trace.so
+$(BUILD_DIR)/libexpress-trace.so:
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(TEST_CFLAGS) -g -O0 -fPIC
+
+# TODO: copy express.supp, debug.plist to /usr/local/share
+
+install-trace: $(BUILD_DIR)/libexpress-trace.so
+	mkdir -p /usr/local/include
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share
+	rm -f /usr/local/lib/libexpress-trace.so
+ifeq ($(PLATFORM),DARWIN)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress-trace.so
+endif
+	cp $(BUILD_DIR)/libexpress-trace.so /usr/local/lib/libexpress-trace.so
+	cp -Rp src/* /usr/local/include
+	cp -Rp deps/* /usr/local/include
+	cp -Rp scripts/* /usr/local/bin
+	cp express.supp /usr/local/share
 	

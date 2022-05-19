@@ -140,16 +140,16 @@ test-threads:
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 $(BUILD_DIR)/test
 
-$(TARGETS)-trace:
-	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) -g -O0
+TodoMVC-trace:
+	$(CC) -o $(BUILD_DIR)/TodoMVC TodoMVC.c $(SRC) $(CFLAGS) -lexpress-trace -g -O0
 ifeq ($(PLATFORM),DARWIN)
-	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/TodoMVC
 endif
 
-$(TARGETS)-prod-trace: embeddedFiles.h
-	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
+TodoMVC-prod-trace: embeddedFiles.h
+	$(CC) -o $(BUILD_DIR)/TodoMVC TodoMVC.c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 ifeq ($(PLATFORM),DARWIN)
-	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/$(TARGETS)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/TodoMVC
 endif
 
 $(TARGETS)-analyze:
