@@ -79,7 +79,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       string_t *whereConditions = string(conditions);
       char *sequentialConditions =
           strdup(whereConditions->replace("$", varNum)->value);
-      whereConditions->free();
+
+      memoryManager->cleanup(whereConditions->free);
 
       query->whereConditions[query->whereConditionsCount++] =
           sequentialConditions;
@@ -119,7 +120,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
           whereConditionsString->concat(")");
           query->whereConditions[query->whereConditionsCount++] =
               strdup(whereConditionsString->value);
-          whereConditionsString->free();
+          memoryManager->cleanup(whereConditionsString->free);
           return query;
         });
 
@@ -173,7 +174,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       string_t *havingConditions = string(conditions);
       char *sequentialConditions =
           strdup(havingConditions->replace("$", varNum)->value);
-      havingConditions->free();
+      memoryManager->cleanup(havingConditions->free);
 
       query->havingConditions[query->havingConditionsCount++] =
           sequentialConditions;
@@ -535,16 +536,15 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
     __block pg_t *pg = NULL;
 
     /* Get connection */
-    while (pg == NULL)
-      dispatch_sync(postgres->queue, ^{
-        for (int i = 0; i < postgres->poolSize; i++) {
-          if (postgres->pool[i]->used == 0) {
-            postgres->pool[i]->used = 1;
-            pg = postgres->pool[i];
-            break;
-          }
+    dispatch_sync(postgres->queue, ^{
+      for (int i = 0; i < postgres->poolSize; i++) {
+        if (postgres->pool[i]->used == 0) {
+          postgres->pool[i]->used = 1;
+          pg = postgres->pool[i];
+          break;
         }
-      });
+      }
+    });
 
     pg->query = getPostgresQuery(req->memoryManager, pg);
 
