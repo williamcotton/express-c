@@ -214,6 +214,8 @@ void expressTests(tape_t *t) {
   void postgresMiddlewareTests(tape_t * t);
   postgresMiddlewareTests(t);
 #endif
+  void sqliteMiddlewareTests(tape_t * t);
+  sqliteMiddlewareTests(t);
   void cJSONMustacheMiddlewareTests(tape_t * t);
   cJSONMustacheMiddlewareTests(t);
   void janssonMustacheMiddlewareTests(tape_t * t);

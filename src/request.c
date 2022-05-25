@@ -15,7 +15,7 @@ static void removeWhitespace(char *str) {
 static const char **split(char *str, char *delim, int *count) {
   char **result = NULL;
   char *token = NULL;
-  char *tokPtr;
+  char *tokPtr = NULL;
   int i = 0;
 
   token = strtok_r(str, delim, &tokPtr);

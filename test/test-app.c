@@ -1,7 +1,9 @@
 #include "../src/express.h"
 #include <dotenv-c/dotenv.h>
+#include <sqlite/sqlite3.h>
 
 router_t *postgresRouter(const char *pgUri, int poolSize);
+router_t *sqliteRouter(sqlite3 *db);
 router_t *cJSONMustacheRouter();
 router_t *janssonMustacheRouter();
 router_t *janssonJsonapiRouter();
@@ -33,6 +35,10 @@ app_t *testApp() {
   int poolSize = 3;
   router_t *pgRouter = postgresRouter(TEST_DATABASE_URL, poolSize);
   app->useRouter("/pg", pgRouter);
+
+  sqlite3 *db = NULL;
+  router_t *sqlRouter = sqliteRouter(db);
+  app->useRouter("/sqlite", sqlRouter);
 
   app->useRouter("/cjson-mustache", cJSONMustacheRouter());
   app->useRouter("/jansson-mustache", janssonMustacheRouter());

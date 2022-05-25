@@ -39,7 +39,7 @@ static char *matchFilepath(request_t *req, const char *path) {
 }
 
 middlewareHandler expressStatic(const char *path, const char *fullPath,
-                                embedded_files_data_t embeddedFiles) {
+                                UNUSED embedded_files_data_t embeddedFiles) {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){

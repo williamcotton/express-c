@@ -1,5 +1,5 @@
-#include "../../src/express.h"
-#include "../../src/middleware/postgres-middleware.h"
+#include <express.h>
+#include <middleware/postgres-middleware.h>
 
 static void setupTestTable(pg_t *pg) {
   PQclear(pg->exec("DROP TABLE IF EXISTS test"));
