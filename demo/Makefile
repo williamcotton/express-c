@@ -28,10 +28,9 @@ CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -I/usr/local/include -L/usr/local/lib -lexpress
 SRC = $(wildcard */*.c) $(wildcard */*/*.c)
 
-TARGETS := $(notdir $(patsubst %.c,%,$(wildcard *.c)))
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
-TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)mak
+TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
 BUILD_DIR = build
 
 ifeq ($(PLATFORM),LINUX)
@@ -43,16 +42,13 @@ else ifeq ($(PLATFORM),DARWIN)
 	PROD_CFLAGS = -Ofast
 endif
 
-all: $(TARGETS)
-
-.PHONY: $(TARGETS)
-$(TARGETS):
+TodoMVC:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -o $(BUILD_DIR)/$@ $@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS) -DERR_STACKTRACE
 
-$(TARGETS)-prod: embeddedFiles.h
+TodoMVC-prod: embeddedFiles.h
 	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$(TARGETS) $(TARGETS).c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
+	$(CC) -o $(BUILD_DIR)/TodoMVC TodoMVC.c $(SRC) $(CFLAGS) $(PROD_CFLAGS) -DEMBEDDED_FILES=1
 
 .PHONY: test
 test: test-database-create
@@ -105,14 +101,14 @@ clean:
 	rm -rf $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)
 
-$(TARGETS)-watch: $(TARGETS) $(TARGETS)-run-background
-	fswatch --event Updated TodoMVC.c .env models/ controllers/ | xargs -n1 -I{} watch.sh $(TARGETS)
+TodoMVC-watch: TodoMVC TodoMVC-run-background
+	fswatch --event Updated TodoMVC.c .env models/ controllers/ | xargs -n1 -I{} watch.sh TodoMVC
 
-$(TARGETS)-run-background: $(TARGETS)-kill
-	$(BUILD_DIR)/$(TARGETS) &
+TodoMVC-run-background: TodoMVC-kill
+	$(BUILD_DIR)/TodoMVC &
 
-$(TARGETS)-kill:
-	kill.sh $(TARGETS)
+TodoMVC-kill:
+	kill.sh TodoMVC
 
 test-watch:
 	make --no-print-directory test || :
@@ -152,8 +148,8 @@ ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/TodoMVC
 endif
 
-$(TARGETS)-analyze:
-	$(CC) --analyze $(TARGETS).c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
+TodoMVC-analyze:
+	$(CC) --analyze TodoMVC.c $(SRC) $(CFLAGS) -Xclang -analyzer-output=text
 
 .PHONY: embeddedFiles.h
 embeddedFiles.h:

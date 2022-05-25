@@ -161,3 +161,25 @@ endif
 	cp -Rp scripts/* /usr/local/bin
 	cp express.supp /usr/local/share
 	
+.PHONY: $(BUILD_DIR)/libexpress-debug.so
+$(BUILD_DIR)/libexpress-debug.so:
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(DEV_CFLAGS) -fPIC
+
+# TODO: copy express.supp, debug.plist to /usr/local/share
+
+install-debug: $(BUILD_DIR)/libexpress-debug.so
+	mkdir -p /usr/local/include
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share
+	rm -f /usr/local/lib/libexpress-debug.so
+ifeq ($(PLATFORM),DARWIN)
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress-debug.so
+endif
+	cp $(BUILD_DIR)/libexpress-debug.so /usr/local/lib/libexpress-debug.so
+	cp -Rp src/* /usr/local/include
+	cp -Rp deps/* /usr/local/include
+	cp -Rp scripts/* /usr/local/bin
+	cp express.supp /usr/local/share
+	
