@@ -90,7 +90,9 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
       char *templateName = strtok_r(templateFile, ".", &tknPtr);
       for (int i = 0; i < embeddedFiles.count; i++) {
         if (strstr(embeddedFiles.names[i], "mustache")) {
-          char *partialName = embeddedFiles.names[i];
+          size_t partialNameLen = strlen(embeddedFiles.names[i]) + 1;
+          char *partialName = req->malloc(partialNameLen);
+          strlcpy(partialName, embeddedFiles.names[i], partialNameLen);
           char *partial = (char *)embeddedFiles.data[i];
 
           char *token = partialName;
