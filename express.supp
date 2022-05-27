@@ -45,6 +45,16 @@
    fun:initClientAcceptEventHandler
 }
 {
+
+   epoll server
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:clientAcceptEventHandler
+   fun:start_thread
+   fun:clone
+}
+{
    epoll server
    Memcheck:Param
    epoll_ctl(event)
