@@ -51,8 +51,6 @@
    match-leak-kinds: possible
    fun:malloc
    fun:clientAcceptEventHandler
-   fun:start_thread
-   fun:clone
 }
 {
    epoll server
