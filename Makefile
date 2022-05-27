@@ -33,8 +33,8 @@ ifeq ($(BUILD_ENV),development)
 endif
 
 ifeq ($(PLATFORM),LINUX)
-	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread
-	TEST_CFLAGS += -Wl,--wrap=stat -Wl,--wrap=regcomp -Wl,--wrap=accept -Wl,--wrap=socket -Wl,--wrap=epoll_ctl, -Wl,--wrap=listen
+	CFLAGS += -lm -lBlocksRuntime -ldispatch -lbsd -luuid -lpthread -ldl
+	TEST_CFLAGS += -Wl,--wrap=stat -Wl,--wrap=regcomp -Wl,--wrap=accept -Wl,--wrap=socket -Wl,--wrap=epoll_ctl -Wl,--wrap=listen
 	PROD_CFLAGS = -Ofast
 else ifeq ($(PLATFORM),DARWIN)
 	DEV_CFLAGS += -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability
