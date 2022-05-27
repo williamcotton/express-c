@@ -7,5 +7,4 @@
 -Wextra
 -Wformat
 -Wshadow
--Wdouble-promotion
 -Wmisleading-indentation
