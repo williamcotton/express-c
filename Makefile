@@ -27,6 +27,9 @@ EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)
 SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c)
 TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
 BUILD_DIR = build
+SQLITE_SRC = deps/sqlite/sqlite3.c
+
+SRC_WITHOUT_SQLITE = $(filter-out $(SQLITE_SRC),$(SRC))
 
 ifeq ($(BUILD_ENV),development)
 	TEST_CFLAGS += -DDEV_ENV
@@ -107,7 +110,7 @@ else ifeq ($(PLATFORM),DARWIN)
 endif
 
 test-analyze:
-	clang --analyze $(SRC) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+	clang --analyze $(SRC_WITHOUT_SQLITE) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 test-threads:
 	mkdir -p $(BUILD_DIR)
