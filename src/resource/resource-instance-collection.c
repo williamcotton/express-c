@@ -176,9 +176,9 @@ createResourceInstanceCollection(resource_t *resource,
       json_object_set_new(response, "included", included);
     }
 
-    memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
-      json_decref(response);
-    }));
+    mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
+                json_decref(response);
+              }));
 
     // debug("\n%s", json_dumps(response, JSON_INDENT(2)));
 

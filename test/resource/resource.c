@@ -1503,7 +1503,7 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
   });
 
   headers->free();
-  memoryManager->free();
+  mmFree(memoryManager);
   pg->free();
 }
 

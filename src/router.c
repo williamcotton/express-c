@@ -437,7 +437,7 @@ router_t *expressRouter() {
     }
     free(router->appCleanupBlocks);
 
-    router->memoryManager->free();
+    mmFree(router->memoryManager);
 
     /* Free router */
     Block_release(router->get);

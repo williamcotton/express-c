@@ -28,5 +28,5 @@ int main() {
     employee->save();
   }
 
-  memoryManager->free();
+  mmFree(memoryManager);
 };

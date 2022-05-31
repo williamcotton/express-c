@@ -86,9 +86,9 @@ resource_instance_t *createResourceInstance(resource_t *resource,
         json_object_set(attributes, attribute->name, value);
       }
 
-      memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
-        json_decref(value);
-      }));
+      mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
+                  json_decref(value);
+                }));
     }
 
     json_t *relationships = json_object();
@@ -155,9 +155,9 @@ resource_instance_t *createResourceInstance(resource_t *resource,
       json_object_set_new(response, "included", included);
     }
 
-    memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
-      json_decref(response);
-    }));
+    mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
+                json_decref(response);
+              }));
 
     // debug("\n%s", json_dumps(response, JSON_INDENT(2)));
 

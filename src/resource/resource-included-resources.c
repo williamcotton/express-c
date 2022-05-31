@@ -53,9 +53,9 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
       mmMalloc(memoryManager, sizeof(jsonapi_params_t));
   includedParams->query = json_deep_copy(params->query);
 
-  memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
-    json_decref(includedParams->query);
-  }));
+  mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
+              json_decref(includedParams->query);
+            }));
 
   json_t *filters = json_object_get(includedParams->query, "filter");
 
@@ -75,9 +75,9 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
 
   if (filters == NULL) {
     filters = json_object();
-    memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
-      json_decref(filters);
-    }));
+    mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
+                json_decref(filters);
+              }));
   }
 
   /* Delete all sorts that are related to the base resource and not relared to

@@ -503,6 +503,16 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   req->path = malloc(sizeof(char) * pathLen);
   snprintf((char *)req->path, pathLen, "%s", path);
 
+  req->get = NULL;
+  req->query = NULL;
+  req->params = NULL;
+  req->body = NULL;
+  req->cookie = NULL;
+  req->m = NULL;
+  req->mSet = NULL;
+  req->malloc = NULL;
+  req->blockCopy = NULL;
+
   initReqParams(req, baseRouter);
   initReqBody(req);
   // initReqMiddlewareSet
@@ -574,6 +584,7 @@ void freeRequest(request_t *req) {
   Block_release(req->m);
   Block_release(req->mSet);
   Block_release(req->malloc);
+  Block_release(req->blockCopy);
   curl_easy_cleanup(req->curl);
   free((void *)req->queryString);
   free(req);

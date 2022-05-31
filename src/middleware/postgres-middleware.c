@@ -80,7 +80,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       char *sequentialConditions =
           strdup(whereConditions->replace("$", varNum)->value);
 
-      memoryManager->cleanup(whereConditions->free);
+      mmCleanup(memoryManager, whereConditions->free);
 
       query->whereConditions[query->whereConditionsCount++] =
           sequentialConditions;
@@ -121,7 +121,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
           whereConditionsString->concat(")");
           query->whereConditions[query->whereConditionsCount++] =
               strdup(whereConditionsString->value);
-          memoryManager->cleanup(whereConditionsString->free);
+          mmCleanup(memoryManager, whereConditionsString->free);
           return query;
         });
 
@@ -175,7 +175,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       string_t *havingConditions = string(conditions);
       char *sequentialConditions =
           strdup(havingConditions->replace("$", varNum)->value);
-      memoryManager->cleanup(havingConditions->free);
+      mmCleanup(memoryManager, havingConditions->free);
 
       query->havingConditions[query->havingConditionsCount++] =
           sequentialConditions;
@@ -209,8 +209,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
           strlcpy(selectConditions, query->selectConditions[i], selectLen);
         } else {
           size_t selectsLen = strlen(selectConditions);
-          selectConditions = memoryManager->realloc(selectConditions,
-                                                    selectsLen + selectLen + 2);
+          selectConditions = mmRealloc(memoryManager, selectConditions,
+                                       selectsLen + selectLen + 2);
           strlcat(selectConditions, ", ", selectsLen + 2);
           strlcat(selectConditions, query->selectConditions[i],
                   selectsLen + selectLen + 2);
@@ -336,16 +336,16 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       sprintf(sql, "%s%s%s%s%s%s%s%s%s", select, from, joins, where, group,
               having, limit, offset, order);
 
-      memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
-        for (int i = 0; i < query->whereConditionsCount; i++) {
-          free(query->whereConditions[i]);
-        }
-        query->whereConditionsCount = 0;
-        for (int i = 0; i < query->havingConditionsCount; i++) {
-          free(query->havingConditions[i]);
-        }
-        query->havingConditionsCount = 0;
-      }));
+      mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
+                  for (int i = 0; i < query->whereConditionsCount; i++) {
+                    free(query->whereConditions[i]);
+                  }
+                  query->whereConditionsCount = 0;
+                  for (int i = 0; i < query->havingConditionsCount; i++) {
+                    free(query->havingConditions[i]);
+                  }
+                  query->havingConditionsCount = 0;
+                }));
 
       query->sql = sql;
 

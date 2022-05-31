@@ -456,6 +456,23 @@ void buildResponse(client_t client, request_t *req, response_t *res) {
   res->didSend = 0;
   res->sendersCount = 0;
 
+  res->send = NULL;
+  res->sendf = NULL;
+  res->sendFile = NULL;
+  res->sendStatus = NULL;
+  res->set = NULL;
+  res->get = NULL;
+  res->cookie = NULL;
+  res->clearCookie = NULL;
+  res->location = NULL;
+  res->redirect = NULL;
+  res->type = NULL;
+  res->json = NULL;
+  res->download = NULL;
+  res->error = NULL;
+  res->s = NULL;
+  res->sSet = NULL;
+
   // initResError
   res->err = NULL;
 

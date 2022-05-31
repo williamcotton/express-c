@@ -47,7 +47,7 @@ void runTests(int runAndExit, test_harness_t *testHarness,
 #endif
   });
 
-  memoryManager->free();
+  mmFree(memoryManager);
   Block_release(test->test);
   free(test);
 
