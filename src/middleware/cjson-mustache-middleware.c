@@ -91,7 +91,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
       for (int i = 0; i < embeddedFiles.count; i++) {
         if (strstr(embeddedFiles.names[i], "mustache")) {
           size_t partialNameLen = strlen(embeddedFiles.names[i]) + 1;
-          char *partialName = req->malloc(partialNameLen);
+          char *partialName = expressReqMalloc(req, partialNameLen);
           strlcpy(partialName, embeddedFiles.names[i], partialNameLen);
           char *partial = (char *)embeddedFiles.data[i];
 
@@ -119,7 +119,7 @@ middlewareHandler cJSONMustacheMiddleware(char *viewsPath,
       if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile)) {
         char *partial = loadTemplate(de->d_name);
         size_t partialNameLength = strlen(de->d_name) + 1;
-        char *partialName = req->malloc(partialNameLength);
+        char *partialName = expressReqMalloc(req, partialNameLength);
         strlcpy(partialName, de->d_name, partialNameLength);
         char *partialNameSplit = strtok_r(partialName, ".", &tknPtr);
         cJSON_AddStringToObject(data, partialNameSplit, partial);

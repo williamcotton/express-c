@@ -119,7 +119,7 @@ janssonMustacheMiddleware(char *viewsPath,
       if (strstr(de->d_name, ".mustache") && strcmp(de->d_name, templateFile)) {
         char *partial = loadTemplate(de->d_name);
         size_t partialNameLength = strlen(de->d_name) + 1;
-        char *partialName = req->malloc(partialNameLength);
+        char *partialName = expressReqMalloc(req, partialNameLength);
         strlcpy(partialName, de->d_name, partialNameLength);
         char *tknPtr;
         char *partialNameSplit = strtok_r(partialName, ".", &tknPtr);

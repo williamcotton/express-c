@@ -31,9 +31,8 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
                     jsonapi_params_t *params) {
 
   memory_manager_t *memoryManager = resource->model->memoryManager;
-  included_params_builder_t *result =
-      (included_params_builder_t *)memoryManager->malloc(
-          sizeof(included_params_builder_t));
+  included_params_builder_t *result = (included_params_builder_t *)mmMalloc(
+      memoryManager, sizeof(included_params_builder_t));
 
   check(originalIncludedResourceName != NULL,
         "originalIncludedResourceName is NULL");
@@ -51,10 +50,10 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
         includedName);
 
   jsonapi_params_t *includedParams =
-      memoryManager->malloc(sizeof(jsonapi_params_t));
+      mmMalloc(memoryManager, sizeof(jsonapi_params_t));
   includedParams->query = json_deep_copy(params->query);
 
-  memoryManager->cleanup(memoryManager->blockCopy(^{
+  memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
     json_decref(includedParams->query);
   }));
 
@@ -76,7 +75,7 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
 
   if (filters == NULL) {
     filters = json_object();
-    memoryManager->cleanup(memoryManager->blockCopy(^{
+    memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
       json_decref(filters);
     }));
   }
@@ -115,7 +114,7 @@ buildIncludedParams(char *originalIncludedResourceName, resource_t *resource,
 
   json_t *ids = json_array();
 
-  jsonapi_params_t * (^getIncludedParams)(void) = memoryManager->blockCopy(^{
+  jsonapi_params_t * (^getIncludedParams)(void) = mmBlockCopy(memoryManager, ^{
     json_object_set_new(filters, originalForeignKey, ids);
     json_object_set(includedParams->query, "filter", filters);
     return includedParams;

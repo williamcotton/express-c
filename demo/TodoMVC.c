@@ -13,6 +13,9 @@ embedded_files_data_t embeddedFiles = {0};
 int main() {
   app_t *app = express();
 
+  /* Use req helpers, eg, req->get("Host") vs expressReqGet(req, "Host") */
+  app->use(expressHelpersMiddleware());
+
   /* Load .env file */
   env_load(".", false);
 

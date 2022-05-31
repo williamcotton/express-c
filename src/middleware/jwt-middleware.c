@@ -18,7 +18,7 @@ middlewareHandler jwtMiddleware(const unsigned char *privateKey,
       jwt_set_alg(jwt, jwtAlgorithm, privateKey, sizeof(privateKey));
       char *jwtToken = jwt_encode_str(jwt);
       size_t jwtTokenLength = strlen(jwtToken) + 1;
-      char *token = req->malloc(jwtTokenLength);
+      char *token = expressReqMalloc(req, jwtTokenLength);
       strlcpy(token, jwtToken, jwtTokenLength);
       free(jwtToken);
       jwt_free(jwt);
@@ -30,7 +30,7 @@ middlewareHandler jwtMiddleware(const unsigned char *privateKey,
       jwt_decode(&jwt, token, privateKey, sizeof(privateKey));
       char *jwtDecoded = jwt_get_grants_json(jwt, NULL);
       size_t jwtDecodedLength = strlen(jwtDecoded) + 1;
-      char *decodedJson = req->malloc(jwtDecodedLength);
+      char *decodedJson = expressReqMalloc(req, jwtDecodedLength);
       strlcpy(decodedJson, jwtDecoded, jwtDecodedLength);
       free(jwtDecoded);
       jwt_free(jwt);

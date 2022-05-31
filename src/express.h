@@ -186,6 +186,27 @@ typedef struct error_t {
   char *message;
 } error_t;
 
+/* Server */
+
+typedef struct server_t {
+  int socket;
+  int port;
+  dispatch_queue_t serverQueue;
+  void (^close)();
+  int (^listen)(int port);
+  int (^initSocket)();
+  void (^free)();
+} server_t;
+
+server_t *expressServer();
+
+/* Client */
+
+typedef struct client_t {
+  int socket;
+  char *ip;
+} client_t;
+
 /* Request */
 
 struct request_t;
@@ -246,8 +267,19 @@ typedef struct request_t {
   void (^mSet)(const char *middlewareKey, void *middleware);
   void * (^malloc)(size_t size);
   void * (^blockCopy)(void *);
-  void (^free)();
 } request_t;
+
+char *expressReqQuery(request_t *req, const char *key);
+char *expressReqGet(request_t *req, const char *headerKey);
+char *expressReqParams(request_t *req, const char *key);
+char *expressReqCookie(request_t *req, const char *key);
+void *expressReqMiddlewareGet(request_t *req, const char *key);
+void expressReqMiddlewareSet(request_t *req, const char *key, void *middleware);
+char *expressReqBody(request_t *req, const char *key);
+void *expressReqMalloc(request_t *req, size_t size);
+void *expressReqBlockCopy(request_t *req, void *block);
+
+void expressReqHelpers(request_t *req);
 
 /* Response */
 struct response_t;
@@ -260,6 +292,8 @@ typedef struct response_sender_t {
 } response_sender_t;
 
 typedef struct response_t {
+  client_t client;
+  request_t *req;
   error_t *err;
   void *headersHash;
   key_value_t headersKeyValues[100];
@@ -288,6 +322,29 @@ typedef struct response_t {
   void (^render)(void *, void *);
   void (^error)(error_t *err);
 } response_t;
+
+void expressResSet(response_t *res, const char *key, const char *value);
+char *expressResGet(response_t *res, const char *key);
+void expressResError(response_t *res, error_t *err);
+void expressResSend(response_t *res, const char *body);
+void expressResSendf(response_t *res, const char *format, ...);
+void expressResSendFile(response_t *res, const char *path);
+void expressResStatus(response_t *res, int status);
+void expressResType(response_t *res, const char *type);
+void expressResJson(response_t *res, const char *json);
+void expressResDownload(response_t *res, const char *filePath,
+                        const char *fileName);
+void expressResCookie(response_t *res, const char *key, const char *value,
+                      cookie_opts_t opts);
+void expressResClearCookie(response_t *res, const char *key,
+                           cookie_opts_t opts);
+void expressResLocation(response_t *res, const char *url);
+void expressResRedirect(response_t *res, const char *url);
+void expressResSender(response_t *res, const char *key,
+                      responseSenderCallback callback);
+void expressResSetSender(response_t *res, const char *key, void *value);
+
+void expressResHelpers(response_t *res);
 
 /* Handlers */
 
@@ -351,6 +408,7 @@ middlewareHandler expressStatic(const char *path, const char *fullPath,
                                 embedded_files_data_t embeddedFiles);
 middlewareHandler memSessionMiddlewareFactory(mem_session_t *memSession,
                                               dispatch_queue_t memSessionQueue);
+middlewareHandler expressHelpersMiddleware();
 
 /* expressRouter */
 
@@ -406,27 +464,6 @@ typedef struct router_t {
 } router_t;
 
 router_t *expressRouter();
-
-/* server */
-
-typedef struct server_t {
-  int socket;
-  int port;
-  dispatch_queue_t serverQueue;
-  void (^close)();
-  int (^listen)(int port);
-  int (^initSocket)();
-  void (^free)();
-} server_t;
-
-server_t *expressServer();
-
-/* client */
-
-typedef struct client_t {
-  int socket;
-  char *ip;
-} client_t;
 
 /* express */
 

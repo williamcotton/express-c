@@ -126,30 +126,41 @@ static void collectRegexRouteHandlers(router_t *router,
                               regExRouteHandlerCount);
 }
 
+void *expressReqMalloc(request_t *req, size_t size) {
+  return mmMalloc(req->memoryManager, size);
+}
+
+void *expressReqBlockCopy(request_t *req, void *block) {
+  return mmBlockCopy(req->memoryManager, block);
+}
+
+char *expressReqQuery(request_t *req, const char *key) {
+  for (size_t i = 0; i != req->queryKeyValueCount; ++i) {
+    size_t keyLen = strlen(key);
+    char *decodedKey = curl_easy_unescape(req->curl, req->queryKeyValues[i].key,
+                                          req->queryKeyValues[i].keyLen, NULL);
+    if (strncmp(decodedKey, key, keyLen) == 0) {
+      curl_free(decodedKey);
+      char *value = expressReqMalloc(
+          req, sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
+      strlcpy(value, req->queryKeyValues[i].value,
+              req->queryKeyValues[i].valueLen + 1);
+      char *decodedCurlValue = curl_easy_unescape(
+          req->curl, value, req->queryKeyValues[i].valueLen, NULL);
+      char *decodedValue =
+          expressReqMalloc(req, sizeof(char) * strlen(decodedCurlValue) + 1);
+      strncpy(decodedValue, decodedCurlValue, strlen(decodedCurlValue) + 1);
+      curl_free(decodedCurlValue);
+      return decodedValue;
+    }
+    curl_free(decodedKey);
+  }
+  return (char *)NULL;
+}
+
 static getBlock reqQueryFactory(request_t *req) {
   return Block_copy(^(const char *key) {
-    for (size_t i = 0; i != req->queryKeyValueCount; ++i) {
-      size_t keyLen = strlen(key);
-      char *decodedKey =
-          curl_easy_unescape(req->curl, req->queryKeyValues[i].key,
-                             req->queryKeyValues[i].keyLen, NULL);
-      if (strncmp(decodedKey, key, keyLen) == 0) {
-        curl_free(decodedKey);
-        char *value =
-            req->malloc(sizeof(char) * (req->queryKeyValues[i].valueLen + 1));
-        strlcpy(value, req->queryKeyValues[i].value,
-                req->queryKeyValues[i].valueLen + 1);
-        char *decodedCurlValue = curl_easy_unescape(
-            req->curl, value, req->queryKeyValues[i].valueLen, NULL);
-        char *decodedValue =
-            req->malloc(sizeof(char) * strlen(decodedCurlValue) + 1);
-        strncpy(decodedValue, decodedCurlValue, strlen(decodedCurlValue) + 1);
-        curl_free(decodedCurlValue);
-        return decodedValue;
-      }
-      curl_free(decodedKey);
-    }
-    return (char *)NULL;
+    return expressReqQuery(req, key);
   });
 }
 
@@ -158,23 +169,27 @@ static session_t *reqSessionFactory(UNUSED request_t *req) {
   return session;
 }
 
+char *expressReqGet(request_t *req, const char *headerKey) {
+  for (size_t i = 0; i != req->numHeaders; ++i) {
+    if (strncmp(req->headers[i].name, headerKey, req->headers[i].name_len) ==
+        0) {
+      char *value =
+          expressReqMalloc(req, sizeof(char) * (req->headers[i].value_len + 1));
+      sprintf(value, "%.*s", (int)req->headers[i].value_len,
+              req->headers[i].value);
+      return value;
+    }
+  }
+  return (char *)NULL;
+}
+
 static getBlock reqGetFactory(request_t *req) {
   return Block_copy(^(const char *headerKey) {
-    for (size_t i = 0; i != req->numHeaders; ++i) {
-      if (strncmp(req->headers[i].name, headerKey, req->headers[i].name_len) ==
-          0) {
-        char *value =
-            req->malloc(sizeof(char) * (req->headers[i].value_len + 1));
-        sprintf(value, "%.*s", (int)req->headers[i].value_len,
-                req->headers[i].value);
-        return value;
-      }
-    }
-    return (char *)NULL;
+    return expressReqGet(req, headerKey);
   });
 }
 
-static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
+static void initReqParams(request_t *req, router_t *baseRouter) {
   route_handler_t regExRouteHandlers[4096];
   int regExRouteHandlerCount = 0;
   collectRegexRouteHandlers(baseRouter, regExRouteHandlers,
@@ -188,7 +203,7 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
     if (match) {
       int pathMatchLen = strlen(regExRouteHandlers[i].basePath) +
                          strlen(regExRouteHandlers[i].path) + 1;
-      req->pathMatch = req->malloc(sizeof(char) * pathMatchLen);
+      req->pathMatch = expressReqMalloc(req, sizeof(char) * pathMatchLen);
       snprintf((char *)req->pathMatch, pathMatchLen, "%s%s",
                regExRouteHandlers[i].basePath, regExRouteHandlers[i].path);
       req->paramKeyValueCount = regExRouteHandlers[i].paramMatch->count;
@@ -200,24 +215,31 @@ static getBlock reqParamsFactory(request_t *req, router_t *baseRouter) {
       break;
     }
   }
-  return Block_copy(^(const char *key) {
-    for (size_t j = 0; j < req->paramKeyValueCount; j++) {
-      size_t keyLen = strlen(key);
-      if (strncmp(req->paramKeyValues[j].key, key, keyLen) == 0) {
-        char *value =
-            req->malloc(sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
-        strlcpy(value, req->paramKeyValues[j].value,
-                req->paramKeyValues[j].valueLen + 1);
-        return (char *)value;
-      }
+}
+
+char *expressReqParams(request_t *req, const char *key) {
+  for (size_t j = 0; j < req->paramKeyValueCount; j++) {
+    size_t keyLen = strlen(key);
+    if (strncmp(req->paramKeyValues[j].key, key, keyLen) == 0) {
+      char *value = expressReqMalloc(
+          req, sizeof(char) * (req->paramKeyValues[j].valueLen + 1));
+      strlcpy(value, req->paramKeyValues[j].value,
+              req->paramKeyValues[j].valueLen + 1);
+      return (char *)value;
     }
-    return (char *)NULL;
+  }
+  return (char *)NULL;
+}
+
+static getBlock reqParamsFactory(request_t *req) {
+  return Block_copy(^(const char *key) {
+    return expressReqParams(req, key);
   });
 }
 
-static getBlock reqCookieFactory(request_t *req) {
+void initReqCookie(request_t *req) {
   req->cookiesKeyValueCount = 0;
-  req->cookiesString = (char *)req->get("Cookie");
+  req->cookiesString = expressReqGet(req, "Cookie");
   memset(req->cookies, 0, sizeof(req->cookies));
   char *cookies = (char *)req->cookiesString;
   if (req->cookiesString != NULL) {
@@ -242,46 +264,60 @@ static getBlock reqCookieFactory(request_t *req) {
       req->cookiesKeyValues[i].valueLen = strlen(value);
     }
   }
+}
 
-  return Block_copy(^(const char *key) {
-    check_silent(req->cookiesKeyValueCount > 0, "No cookies found");
-    for (int j = req->cookiesKeyValueCount - 1; j >= 0; j--) {
-      check_silent(req->cookiesKeyValues[j].key != NULL, "No cookies found");
-      size_t keyLen = strlen(key);
-      if (strncmp(req->cookiesKeyValues[j].key, key, keyLen) == 0) {
-        char *value =
-            req->malloc(sizeof(char) * (req->cookiesKeyValues[j].valueLen + 1));
-        strlcpy(value, req->cookiesKeyValues[j].value,
-                req->cookiesKeyValues[j].valueLen + 1);
-        return (char *)value;
-      }
+char *expressReqCookie(request_t *req, const char *key) {
+  check_silent(req->cookiesKeyValueCount > 0, "No cookies found");
+  for (int j = req->cookiesKeyValueCount - 1; j >= 0; j--) {
+    check_silent(req->cookiesKeyValues[j].key != NULL, "No cookies found");
+    size_t keyLen = strlen(key);
+    if (strncmp(req->cookiesKeyValues[j].key, key, keyLen) == 0) {
+      char *value = expressReqMalloc(
+          req, sizeof(char) * (req->cookiesKeyValues[j].valueLen + 1));
+      strlcpy(value, req->cookiesKeyValues[j].value,
+              req->cookiesKeyValues[j].valueLen + 1);
+      return (char *)value;
     }
-  error:
-    return (char *)NULL;
+  }
+error:
+  return (char *)NULL;
+}
+
+static getBlock reqCookieFactory(request_t *req) {
+  return Block_copy(^(const char *key) {
+    return expressReqCookie(req, key);
   });
+}
+
+void *expressReqMiddlewareGet(request_t *req, const char *key) {
+  for (size_t i = 0; i < req->middlewareKeyValueCount; i++) {
+    if (strcmp(req->middlewareKeyValues[i].key, key) == 0)
+      return req->middlewareKeyValues[i].value;
+  }
+  log_err("Middleware key not found: %s", key);
+  return NULL;
 }
 
 static getMiddlewareBlock reqMiddlewareFactory(request_t *req) {
   return Block_copy(^(const char *key) {
-    for (size_t i = 0; i < req->middlewareKeyValueCount; i++) {
-      if (strcmp(req->middlewareKeyValues[i].key, key) == 0)
-        return req->middlewareKeyValues[i].value;
-    }
-    log_err("Middleware key not found: %s", key);
-    return NULL;
+    return expressReqMiddlewareGet(req, key);
   });
+}
+
+void expressReqMiddlewareSet(request_t *req, const char *key,
+                             void *middleware) {
+  req->middlewareKeyValues[req->middlewareKeyValueCount].key = key;
+  req->middlewareKeyValues[req->middlewareKeyValueCount].value = middleware;
+  req->middlewareKeyValueCount++;
 }
 
 static getMiddlewareSetBlock reqMiddlewareSetFactory(request_t *req) {
-  req->middlewareKeyValueCount = 0;
   return Block_copy(^(const char *key, void *middleware) {
-    req->middlewareKeyValues[req->middlewareKeyValueCount].key = key;
-    req->middlewareKeyValues[req->middlewareKeyValueCount].value = middleware;
-    req->middlewareKeyValueCount++;
+    expressReqMiddlewareSet(req, key, middleware);
   });
 }
 
-static getBlock reqBodyFactory(request_t *req) {
+static void initReqBody(request_t *req) {
   req->bodyKeyValueCount = 0;
   req->bodyString = NULL;
   if (strncmp(req->method, "POST", 4) == 0 ||
@@ -291,11 +327,12 @@ static getBlock reqBodyFactory(request_t *req) {
     char *body = strstr(rawRequest, "\r\n\r\n");
     body += 4;
 
-    req->bodyString = req->malloc(sizeof(char) * req->contentLength + 1);
+    req->bodyString =
+        expressReqMalloc(req, sizeof(char) * req->contentLength + 1);
     memcpy((char *)req->bodyString, body, req->contentLength);
     req->bodyString[req->contentLength] = '\0';
     if (req->bodyString && strlen(req->bodyString) > 0) {
-      char *contentType = (char *)req->get("Content-Type");
+      char *contentType = expressReqGet(req, "Content-Type");
       if (strncmp(contentType, "application/x-www-form-urlencoded", 33) == 0) {
         size_t bodyStringLen = strlen(req->bodyString);
         parseQueryString(req->bodyString, req->bodyString + bodyStringLen,
@@ -311,36 +348,78 @@ static getBlock reqBodyFactory(request_t *req) {
       req->bodyString[0] = '\0';
     }
   }
-  return Block_copy(^(const char *key) {
-    for (size_t i = 0; i != req->bodyKeyValueCount; ++i) {
-      size_t keyLen = strlen(key);
-      char *decodedKey =
-          curl_easy_unescape(req->curl, req->bodyKeyValues[i].key,
-                             req->bodyKeyValues[i].keyLen, NULL);
-      if (strncmp(decodedKey, key, keyLen) == 0) {
-        char *value =
-            req->malloc(sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
-        strlcpy(value, req->bodyKeyValues[i].value,
-                req->bodyKeyValues[i].valueLen + 1);
-        int j = 0;
-        while (value[j] != '\0') {
-          if (value[j] == '+')
-            value[j] = ' ';
-          j++;
-        }
-        char *decodedCurlValue = curl_easy_unescape(
-            req->curl, value, req->bodyKeyValues[i].valueLen, NULL);
-        char *decodedValue =
-            req->malloc(sizeof(char) * strlen(decodedCurlValue) + 1);
-        strncpy(decodedValue, decodedCurlValue, strlen(decodedCurlValue) + 1);
-        curl_free(decodedCurlValue);
-        curl_free(decodedKey);
-        return decodedValue;
+}
+
+char *expressReqBody(request_t *req, const char *key) {
+  for (size_t i = 0; i != req->bodyKeyValueCount; ++i) {
+    size_t keyLen = strlen(key);
+    char *decodedKey = curl_easy_unescape(req->curl, req->bodyKeyValues[i].key,
+                                          req->bodyKeyValues[i].keyLen, NULL);
+    if (strncmp(decodedKey, key, keyLen) == 0) {
+      char *value = expressReqMalloc(
+          req, sizeof(char) * (req->bodyKeyValues[i].valueLen + 1));
+      strlcpy(value, req->bodyKeyValues[i].value,
+              req->bodyKeyValues[i].valueLen + 1);
+      int j = 0;
+      while (value[j] != '\0') {
+        if (value[j] == '+')
+          value[j] = ' ';
+        j++;
       }
+      char *decodedCurlValue = curl_easy_unescape(
+          req->curl, value, req->bodyKeyValues[i].valueLen, NULL);
+      char *decodedValue =
+          expressReqMalloc(req, sizeof(char) * strlen(decodedCurlValue) + 1);
+      strncpy(decodedValue, decodedCurlValue, strlen(decodedCurlValue) + 1);
+      curl_free(decodedCurlValue);
       curl_free(decodedKey);
+      return decodedValue;
     }
-    return (char *)NULL;
+    curl_free(decodedKey);
+  }
+  return (char *)NULL;
+}
+
+static getBlock reqBodyFactory(request_t *req) {
+  return Block_copy(^(const char *key) {
+    return expressReqBody(req, key);
   });
+}
+
+static mallocBlock reqMallocFactory(request_t *req) {
+  return Block_copy(^(size_t size) {
+    return expressReqMalloc(req, size);
+  });
+}
+
+static copyBlock reqBlockCopyFactory(request_t *req) {
+  return Block_copy(^(void *ptr) {
+    return expressReqBlockCopy(req, ptr);
+  });
+}
+
+void expressReqHelpers(request_t *req) {
+  req->malloc = reqMallocFactory(req);
+  req->blockCopy = reqBlockCopyFactory(req);
+  req->get = reqGetFactory(req);
+  req->params = reqParamsFactory(req);
+  req->query = reqQueryFactory(req);
+  req->body = reqBodyFactory(req);
+  req->session = reqSessionFactory(req);
+  req->cookie = reqCookieFactory(req);
+  req->m = reqMiddlewareFactory(req);
+  req->mSet = reqMiddlewareSetFactory(req);
+}
+
+middlewareHandler expressHelpersMiddleware() {
+  return ^(request_t *req, UNUSED response_t *res, void (^next)(),
+           void (^cleanup)(cleanupHandler)) {
+    expressReqHelpers(req);
+    expressResHelpers(res);
+    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
+    }));
+    next();
+  };
 }
 
 void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
@@ -348,8 +427,6 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   req->rawRequestSize = 0;
 
   req->memoryManager = createMemoryManager();
-
-  req->malloc = req->memoryManager->malloc;
 
   char *method, *originalUrl;
   int parseBytes = 0, minorVersion;
@@ -377,8 +454,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
         &methodLen, (const char **)&originalUrl, &originalUrlLen, &minorVersion,
         req->headers, &req->numHeaders, prevBufferLen);
     if (parseBytes > 0) {
-      req->get = reqGetFactory(req);
-      char *contentLength = (char *)req->get("Content-Length");
+      char *contentLength = expressReqGet(req, "Content-Length");
       req->contentLength =
           contentLength != NULL ? strtoll(contentLength, NULL, 10) : 0;
       if (req->contentLength != 0 && parseBytes == readBytes)
@@ -396,7 +472,6 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   long long maxBodyLen = (MAX_REQUEST_SIZE)-parseBytes;
   check(req->contentLength <= maxBodyLen, "Request body too large");
 
-  req->blockCopy = req->memoryManager->blockCopy;
   req->middlewareCleanupBlocks = malloc(sizeof(cleanupHandler *));
 
   req->curl = curl_easy_init(); // TODO: move to global scope
@@ -428,22 +503,20 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   req->path = malloc(sizeof(char) * pathLen);
   snprintf((char *)req->path, pathLen, "%s", path);
 
-  req->params = reqParamsFactory(req, baseRouter);
-  req->query = reqQueryFactory(req);
-  req->body = reqBodyFactory(req);
-  req->session = reqSessionFactory(req);
-  req->cookie = reqCookieFactory(req);
-  req->m = reqMiddlewareFactory(req);
-  req->mSet = reqMiddlewareSetFactory(req);
+  initReqParams(req, baseRouter);
+  initReqBody(req);
+  // initReqMiddlewareSet
+  req->middlewareKeyValueCount = 0;
+  initReqCookie(req);
 
-  req->hostname = req->get("Host");
+  req->hostname = expressReqGet(req, "Host");
   req->ip = client.ip;
   req->protocol = "http"; // TODO: TLS/SSL support
   req->secure = strcmp(req->protocol, "https") == 0;
-  req->XRequestedWith = req->get("X-Requested-With");
+  req->XRequestedWith = expressReqGet(req, "X-Requested-With");
   req->xhr =
       req->XRequestedWith && strcmp(req->XRequestedWith, "XMLHttpRequest") == 0;
-  req->XForwardedFor = req->get("X-Forwarded-For");
+  req->XForwardedFor = expressReqGet(req, "X-Forwarded-For");
   req->ipsCount = 0;
   req->ips = req->XForwardedFor ? split(req->XForwardedFor, ",", &req->ipsCount)
                                 : (const char **)NULL;
@@ -457,7 +530,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
 
   req->middlewareStackCount = 0;
 
-  req->_method = req->body("_method");
+  req->_method = expressReqBody(req, "_method");
   if (req->_method) {
     toUpper((char *)req->_method);
     if (strcmp(req->_method, "PUT") == 0 ||
@@ -471,7 +544,7 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   return;
 error:
   req->method = NULL;
-  req->memoryManager->free();
+  mmFree(req->memoryManager);
   if (parseBytes > 0)
     Block_release(req->get);
   return;
@@ -491,7 +564,7 @@ void freeRequest(request_t *req) {
   free(req->session);
   free((void *)req->ips);
   free((void *)req->subdomains);
-  req->memoryManager->free();
+  mmFree(req->memoryManager);
   free((void *)req->path);
   Block_release(req->get);
   Block_release(req->query);
@@ -500,6 +573,7 @@ void freeRequest(request_t *req) {
   Block_release(req->cookie);
   Block_release(req->m);
   Block_release(req->mSet);
+  Block_release(req->malloc);
   curl_easy_cleanup(req->curl);
   free((void *)req->queryString);
   free(req);

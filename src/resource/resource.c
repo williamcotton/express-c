@@ -1,12 +1,12 @@
 #include "resource.h"
 
 resource_store_t *createResourceStore(memory_manager_t *memoryManager) {
-  resource_store_t *store = memoryManager->malloc(sizeof(resource_store_t));
+  resource_store_t *store = mmMalloc(memoryManager, sizeof(resource_store_t));
   store->count = 0;
-  store->add = memoryManager->blockCopy(^(resource_t *resource) {
+  store->add = mmBlockCopy(memoryManager, ^(resource_t *resource) {
     store->resources[store->count++] = resource;
   });
-  store->lookup = memoryManager->blockCopy(^(char *type) {
+  store->lookup = mmBlockCopy(memoryManager, ^(char *type) {
     for (int i = 0; i < store->count; i++) {
       if (strcmp(store->resources[i]->type, type) == 0) {
         return store->resources[i];
@@ -20,7 +20,7 @@ resource_store_t *createResourceStore(memory_manager_t *memoryManager) {
 resource_t *CreateResource(char *type, model_t *model,
                            resource_store_t *resourceStore) {
   memory_manager_t *memoryManager = model->memoryManager;
-  resource_t *resource = memoryManager->malloc(sizeof(resource_t));
+  resource_t *resource = mmMalloc(memoryManager, sizeof(resource_t));
 
   resourceStore->add(resource);
 
@@ -46,32 +46,32 @@ resource_t *CreateResource(char *type, model_t *model,
 
   resource->lookup = resourceStore->lookup;
 
-  resource->belongsTo =
-      memoryManager->blockCopy(^(char *relatedResourceName, char *foreignKey) {
-        resource->relationshipsCount++;
-        belongs_to_resource_t *newBelongsTo =
-            memoryManager->malloc(sizeof(belongs_to_resource_t));
-        newBelongsTo->resourceName = relatedResourceName;
-        newBelongsTo->foreignKey = foreignKey;
-        resource->belongsToRelationships[resource->belongsToCount] =
-            newBelongsTo;
-        resource->belongsToCount++;
-      });
+  resource->belongsTo = mmBlockCopy(memoryManager, ^(char *relatedResourceName,
+                                                     char *foreignKey) {
+    resource->relationshipsCount++;
+    belongs_to_resource_t *newBelongsTo =
+        mmMalloc(memoryManager, sizeof(belongs_to_resource_t));
+    newBelongsTo->resourceName = relatedResourceName;
+    newBelongsTo->foreignKey = foreignKey;
+    resource->belongsToRelationships[resource->belongsToCount] = newBelongsTo;
+    resource->belongsToCount++;
+  });
 
-  resource->hasMany =
-      memoryManager->blockCopy(^(char *relatedResourceName, char *foreignKey) {
+  resource->hasMany = mmBlockCopy(
+      memoryManager, ^(char *relatedResourceName, char *foreignKey) {
         resource->relationshipsCount++;
         has_many_resource_t *newHasMany =
-            memoryManager->malloc(sizeof(has_many_resource_t));
+            mmMalloc(memoryManager, sizeof(has_many_resource_t));
         newHasMany->resourceName = relatedResourceName;
         newHasMany->foreignKey = foreignKey;
         resource->hasManyRelationships[resource->hasManyCount] = newHasMany;
         resource->hasManyCount++;
       });
 
-  resource->relationshipNames = memoryManager->blockCopy(^() {
-    char **relationshipNames = memoryManager->malloc(
-        sizeof(char *) * (resource->belongsToCount + resource->hasManyCount));
+  resource->relationshipNames = mmBlockCopy(memoryManager, ^() {
+    char **relationshipNames =
+        mmMalloc(memoryManager, sizeof(char *) * (resource->belongsToCount +
+                                                  resource->hasManyCount));
     for (int i = 0; i < resource->belongsToCount; i++) {
       relationshipNames[i] = resource->belongsToRelationships[i]->resourceName;
     }
@@ -82,21 +82,22 @@ resource_t *CreateResource(char *type, model_t *model,
     return relationshipNames;
   });
 
-  resource->filter = memoryManager->blockCopy(
-      ^(char *attribute, char *operator, filterCallback callback) {
-        resource_filter_t *newFilter =
-            memoryManager->malloc(sizeof(resource_filter_t));
-        newFilter->attribute = attribute;
-        newFilter->operator= operator;
-        newFilter->callback = callback;
-        resource->filters[resource->filtersCount] = newFilter;
-        resource->filtersCount++;
-      });
+  resource->filter =
+      mmBlockCopy(memoryManager,
+                  ^(char *attribute, char *operator, filterCallback callback) {
+                    resource_filter_t *newFilter =
+                        mmMalloc(memoryManager, sizeof(resource_filter_t));
+                    newFilter->attribute = attribute;
+                    newFilter->operator= operator;
+                    newFilter->callback = callback;
+                    resource->filters[resource->filtersCount] = newFilter;
+                    resource->filtersCount++;
+                  });
 
   resource->sort =
-      memoryManager->blockCopy(^(char *attribute, sortCallback callback) {
+      mmBlockCopy(memoryManager, ^(char *attribute, sortCallback callback) {
         resource_sort_t *newSort =
-            memoryManager->malloc(sizeof(resource_sort_t));
+            mmMalloc(memoryManager, sizeof(resource_sort_t));
         newSort->attribute = attribute;
         newSort->callback = callback;
         resource->sorters[resource->sortersCount] = newSort;
@@ -104,39 +105,40 @@ resource_t *CreateResource(char *type, model_t *model,
       });
 
   resource->resolveAll =
-      memoryManager->blockCopy(^(resolveAllCallback callback) {
+      mmBlockCopy(memoryManager, ^(resolveAllCallback callback) {
         resource_resolve_all_t *newResolveAll =
-            memoryManager->malloc(sizeof(resource_resolve_all_t));
+            mmMalloc(memoryManager, sizeof(resource_resolve_all_t));
         newResolveAll->callback = callback;
         resource->allResolver = newResolveAll;
       });
 
   resource->resolveFind =
-      memoryManager->blockCopy(^(resolveFindCallback callback) {
+      mmBlockCopy(memoryManager, ^(resolveFindCallback callback) {
         resource_resolve_find_t *newResolveFind =
-            memoryManager->malloc(sizeof(resource_resolve_find_t));
+            mmMalloc(memoryManager, sizeof(resource_resolve_find_t));
         newResolveFind->callback = callback;
         resource->findResolver = newResolveFind;
       });
 
-  resource->paginate = memoryManager->blockCopy(^(paginateCallback callback) {
+  resource->paginate = mmBlockCopy(memoryManager, ^(paginateCallback callback) {
     resource_paginate_t *newPaginate =
-        memoryManager->malloc(sizeof(resource_paginate_t));
+        mmMalloc(memoryManager, sizeof(resource_paginate_t));
     newPaginate->callback = callback;
     resource->paginator = newPaginate;
   });
 
-  resource->baseScope = memoryManager->blockCopy(^(baseScopeCallback callback) {
-    resource_base_scope_t *newBaseScope =
-        memoryManager->malloc(sizeof(resource_base_scope_t));
-    newBaseScope->callback = callback;
-    resource->baseScoper = newBaseScope;
-  });
+  resource->baseScope =
+      mmBlockCopy(memoryManager, ^(baseScopeCallback callback) {
+        resource_base_scope_t *newBaseScope =
+            mmMalloc(memoryManager, sizeof(resource_base_scope_t));
+        newBaseScope->callback = callback;
+        resource->baseScoper = newBaseScope;
+      });
 
   resource->attribute =
-      memoryManager->blockCopy(^(char *attributeName, char *attributeType) {
+      mmBlockCopy(memoryManager, ^(char *attributeName, char *attributeType) {
         class_attribute_t *newAttribute =
-            memoryManager->malloc(sizeof(class_attribute_t));
+            mmMalloc(memoryManager, sizeof(class_attribute_t));
         newAttribute->name = attributeName;
         newAttribute->type = attributeType;
         resource->attributes[resource->attributesCount] = newAttribute;
@@ -145,14 +147,14 @@ resource_t *CreateResource(char *type, model_t *model,
         addDefaultFiltersToAttribute(resource, model, memoryManager,
                                      attributeName, attributeType);
 
-        resource->sort(
-            attributeName,
-            memoryManager->blockCopy(^(query_t *scope, const char *direction) {
-              return scope->order(attributeName, (char *)direction);
-            }));
+        resource->sort(attributeName,
+                       mmBlockCopy(memoryManager, ^(query_t *scope,
+                                                    const char *direction) {
+                         return scope->order(attributeName, (char *)direction);
+                       }));
       });
 
-  resource->hasAttribute = memoryManager->blockCopy(^(char *attributeName) {
+  resource->hasAttribute = mmBlockCopy(memoryManager, ^(char *attributeName) {
     for (int i = 0; i < resource->attributesCount; i++) {
       if (strcmp(resource->attributes[i]->name, attributeName) == 0) {
         return true;
@@ -181,7 +183,7 @@ resource_t *CreateResource(char *type, model_t *model,
     return (model_instance_t *)scope->find(id);
   });
 
-  resource->all = memoryManager->blockCopy(^(jsonapi_params_t *params) {
+  resource->all = mmBlockCopy(memoryManager, ^(jsonapi_params_t *params) {
     // debug("%s->all() %s", resource->model->tableName,
     //       json_dumps(params->query, JSON_INDENT(2)));
     /* Get the base scope, a query_t object */
@@ -229,7 +231,7 @@ resource_t *CreateResource(char *type, model_t *model,
   });
 
   resource->find =
-      memoryManager->blockCopy(^(jsonapi_params_t *params, char *id) {
+      mmBlockCopy(memoryManager, ^(jsonapi_params_t *params, char *id) {
         /* Get the base scope, a query_t object */
         query_t *baseScope = resource->baseScoper->callback(resource->model);
 

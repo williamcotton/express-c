@@ -15,7 +15,7 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
   pg_t *pg = initPg(databaseUrl);
   memory_manager_t *memoryManager = createMemoryManager();
   pg->query = getPostgresQuery(memoryManager, pg);
-  request_t *req = memoryManager->malloc(sizeof(request_t));
+  request_t *req = mmMalloc(memoryManager, sizeof(request_t));
   req->memoryManager = memoryManager;
 
   setupTest(pg);

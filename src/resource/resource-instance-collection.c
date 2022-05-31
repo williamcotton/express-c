@@ -28,12 +28,12 @@ createResourceInstanceCollection(resource_t *resource,
   memory_manager_t *memoryManager = resource->model->memoryManager;
 
   resource_instance_collection_t *collection =
-      (resource_instance_collection_t *)memoryManager->malloc(
-          sizeof(resource_instance_collection_t));
+      (resource_instance_collection_t *)mmMalloc(
+          memoryManager, sizeof(resource_instance_collection_t));
 
   collection->type = resource->type;
-  collection->arr = memoryManager->malloc(sizeof(resource_instance_t *) *
-                                          modelCollection->size);
+  collection->arr = mmMalloc(memoryManager, sizeof(resource_instance_t *) *
+                                                modelCollection->size);
   collection->size = modelCollection->size;
   collection->modelCollection = modelCollection;
   collection->includedResourceInstancesCount = 0;
@@ -48,7 +48,7 @@ createResourceInstanceCollection(resource_t *resource,
     collection->arr[i] = resourceInstance;
   }
 
-  collection->at = memoryManager->blockCopy(^(size_t index) {
+  collection->at = mmBlockCopy(memoryManager, ^(size_t index) {
     if (index >= collection->size) {
       return (resource_instance_t *)NULL;
     }
@@ -56,14 +56,14 @@ createResourceInstanceCollection(resource_t *resource,
   });
 
   collection->each =
-      memoryManager->blockCopy(^(eachResourceInstanceCallback callback) {
+      mmBlockCopy(memoryManager, ^(eachResourceInstanceCallback callback) {
         for (size_t i = 0; i < collection->size; i++) {
           callback(collection->arr[i]);
         }
       });
 
   collection->filter =
-      memoryManager->blockCopy(^(filterResourceInstanceCallback callback) {
+      mmBlockCopy(memoryManager, ^(filterResourceInstanceCallback callback) {
         resource_instance_collection_t *filteredCollection =
             createResourceInstanceCollection(resource, modelCollection, params);
         // debug("filteredCollection->type: %p %s %d", filteredCollection,
@@ -87,7 +87,7 @@ createResourceInstanceCollection(resource_t *resource,
       });
 
   collection->find =
-      memoryManager->blockCopy(^(findResourceInstanceCallback callback) {
+      mmBlockCopy(memoryManager, ^(findResourceInstanceCallback callback) {
         for (size_t i = 0; i < collection->size; i++) {
           if (callback(collection->arr[i])) {
             return collection->arr[i];
@@ -96,15 +96,16 @@ createResourceInstanceCollection(resource_t *resource,
         return (resource_instance_t *)NULL;
       });
 
-  collection->eachWithIndex = memoryManager->blockCopy(
-      ^(eachResourceInstanceWithIndexCallback callback) {
+  collection->eachWithIndex = mmBlockCopy(
+      memoryManager, ^(eachResourceInstanceWithIndexCallback callback) {
         for (size_t i = 0; i < collection->size; i++) {
           callback(collection->arr[i], i);
         }
       });
 
-  collection->reduce = memoryManager->blockCopy(
-      ^(void *accumulator, reducerResourceInstanceCallback callback) {
+  collection->reduce =
+      mmBlockCopy(memoryManager, ^(void *accumulator,
+                                   reducerResourceInstanceCallback callback) {
         for (size_t i = 0; i < collection->size; i++) {
           accumulator = callback(accumulator, collection->arr[i]);
         }
@@ -112,16 +113,16 @@ createResourceInstanceCollection(resource_t *resource,
       });
 
   collection->map =
-      memoryManager->blockCopy(^(mapResourceInstanceCallback callback) {
+      mmBlockCopy(memoryManager, ^(mapResourceInstanceCallback callback) {
         void **map =
-            (void **)memoryManager->malloc(sizeof(void *) * collection->size);
+            (void **)mmMalloc(memoryManager, sizeof(void *) * collection->size);
         for (size_t i = 0; i < collection->size; i++) {
           map[i] = callback(collection->arr[i]);
         }
         return map;
       });
 
-  collection->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
+  collection->includedToJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
     json_t *includedJSONAPI = json_array();
 
     nestedIncludes(includedJSONAPI, collection);
@@ -134,7 +135,7 @@ createResourceInstanceCollection(resource_t *resource,
     return includedJSONAPI;
   });
 
-  collection->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+  collection->toJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
     json_t *data = json_array();
     collection->each(^(resource_instance_t *instance) {
       // instance->includedToJSONAPI();
@@ -175,7 +176,7 @@ createResourceInstanceCollection(resource_t *resource,
       json_object_set_new(response, "included", included);
     }
 
-    memoryManager->cleanup(memoryManager->blockCopy(^{
+    memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
       json_decref(response);
     }));
 

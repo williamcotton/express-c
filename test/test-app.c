@@ -20,12 +20,13 @@ app_t *testApp() {
 
   __block app_t *app = express();
 
+  app->use(expressHelpersMiddleware());
+
   char *staticFilesPath = cwdFullPath("test/files");
   embedded_files_data_t embeddedFiles = {0};
   app->use(expressStatic("test/files", staticFilesPath, embeddedFiles));
 
   mem_session_t *memSession = malloc(sizeof(mem_session_t));
-  // TODO: dynamically allocate memory for memSession
   memSession->stores = malloc(sizeof(mem_store_t *) * 1000);
   memSession->count = 0;
   dispatch_queue_t memSessionQueue =

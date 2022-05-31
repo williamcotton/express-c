@@ -6,11 +6,11 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
   return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
     jansson_jsonapi_middleware_t *jsonapi =
-        req->malloc(sizeof(jansson_jsonapi_middleware_t));
+        expressReqMalloc(req, sizeof(jansson_jsonapi_middleware_t));
 
     jsonapi->endpointNamespace = endpointNamespace;
 
-    jsonapi->params = req->malloc(sizeof(jansson_jsonapi_params_t));
+    jsonapi->params = expressReqMalloc(req, sizeof(jansson_jsonapi_params_t));
     jsonapi->params->body = NULL;
     jsonapi->params->query = NULL;
 
@@ -33,7 +33,7 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
             if (startOfKey > 0 && keyDiff > 1) {
               keyDiff--;
             }
-            char *key = req->malloc(keyDiff + 1);
+            char *key = expressReqMalloc(req, keyDiff + 1);
             strncpy(key, decodedKey + startOfKey, keyDiff);
             key[keyDiff] = '\0';
             startOfKey = j + 1;
@@ -63,7 +63,7 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
         if (startOfKey > 0 && keyDiff > 1) {
           keyDiff--;
         }
-        char *key = req->malloc(keyDiff + 1);
+        char *key = expressReqMalloc(req, keyDiff + 1);
         strncpy(key, decodedKey + startOfKey, keyDiff);
         key[keyDiff] = '\0';
         json_object_set_new(nested, key, value);
@@ -75,13 +75,14 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
 
     req->mSet("jsonapi", jsonapi);
 
-    res->sSet("jsonapi", req->blockCopy(^(response_t *_res, void *value) {
-      json_t *json = value;
-      char *jsonString = json_dumps(json, 0);
-      _res->set("Content-Type", JSON_API_MIME_TYPE);
-      _res->send(jsonString);
-      free(jsonString);
-    }));
+    res->sSet("jsonapi",
+              expressReqBlockCopy(req, ^(response_t *_res, void *value) {
+                json_t *json = value;
+                char *jsonString = json_dumps(json, 0);
+                _res->set("Content-Type", JSON_API_MIME_TYPE);
+                _res->send(jsonString);
+                free(jsonString);
+              }));
 
     cleanup(Block_copy(^(request_t *finishedReq) {
       jansson_jsonapi_middleware_t *finishedJsonapi = finishedReq->m("jsonapi");

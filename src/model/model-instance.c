@@ -2,25 +2,26 @@
 
 model_instance_t *createModelInstance(model_t *model) {
   memory_manager_t *memoryManager = model->memoryManager;
-  model_instance_t *instance = memoryManager->malloc(sizeof(model_instance_t));
+  model_instance_t *instance =
+      mmMalloc(memoryManager, sizeof(model_instance_t));
   instance->attributesCount = 0;
-  instance->errors = memoryManager->malloc(sizeof(instance_errors_t));
+  instance->errors = mmMalloc(memoryManager, sizeof(instance_errors_t));
   instance->errors->count = 0;
   instance->id = NULL;
   instance->model = model;
 
   instance->addError =
-      memoryManager->blockCopy(^(char *attribute, char *message) {
+      mmBlockCopy(memoryManager, ^(char *attribute, char *message) {
         instance->errors->messages[instance->errors->count] = message;
         instance->errors->attributes[instance->errors->count] = attribute;
         instance->errors->count++;
       });
 
-  instance->isValid = memoryManager->blockCopy(^() {
+  instance->isValid = mmBlockCopy(memoryManager, ^() {
     return instance->errors->count == 0;
   });
 
-  instance->set = memoryManager->blockCopy(^(char *attribute, char *value) {
+  instance->set = mmBlockCopy(memoryManager, ^(char *attribute, char *value) {
     char *existing = instance->get(attribute);
     if (existing) {
       for (int i = 0; i < instance->attributesCount; i++) {
@@ -36,15 +37,15 @@ model_instance_t *createModelInstance(model_t *model) {
     }
   });
 
-  instance->initAttr = memoryManager->blockCopy(^(char *attribute, char *value,
-                                                  int isDirty) {
+  instance->initAttr = mmBlockCopy(memoryManager, ^(char *attribute,
+                                                    char *value, int isDirty) {
     class_attribute_t *classAttribute = model->getAttribute(attribute);
     if (classAttribute == NULL) {
       log_err("'%s' does not have attribute '%s'", model->tableName, attribute);
       return;
     }
     instance_attribute_t *instanceAttribute =
-        memoryManager->malloc(sizeof(instance_attribute_t));
+        mmMalloc(memoryManager, sizeof(instance_attribute_t));
     instanceAttribute->classAttribute = classAttribute;
     instanceAttribute->value = value;
     instanceAttribute->isDirty = isDirty;
@@ -52,7 +53,7 @@ model_instance_t *createModelInstance(model_t *model) {
     instance->attributesCount++;
   });
 
-  instance->get = memoryManager->blockCopy(^(char *attribute) {
+  instance->get = mmBlockCopy(memoryManager, ^(char *attribute) {
     if (strcmp(attribute, "id") == 0) {
       return instance->id;
     }
@@ -66,7 +67,7 @@ model_instance_t *createModelInstance(model_t *model) {
     return (char *)NULL;
   });
 
-  instance->r = memoryManager->blockCopy(^(const char *relationName) {
+  instance->r = mmBlockCopy(memoryManager, ^(const char *relationName) {
     model_t *relatedModel = model->lookup(relationName);
     if (relatedModel == NULL) {
       log_err("Could not find model '%s'", relationName);
@@ -84,8 +85,8 @@ model_instance_t *createModelInstance(model_t *model) {
       }
     }
     if (hasManyForeignKey) {
-      whereForeignKey = memoryManager->malloc(strlen(hasManyForeignKey) +
-                                              strlen(instance->id) + 5);
+      whereForeignKey = mmMalloc(memoryManager, strlen(hasManyForeignKey) +
+                                                    strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
       return relatedModel->query()->where(whereForeignKey);
     }
@@ -99,8 +100,8 @@ model_instance_t *createModelInstance(model_t *model) {
       }
     }
     if (hasOneForeignKey) {
-      whereForeignKey = memoryManager->malloc(strlen(hasOneForeignKey) +
-                                              strlen(instance->id) + 5);
+      whereForeignKey = mmMalloc(memoryManager, strlen(hasOneForeignKey) +
+                                                    strlen(instance->id) + 5);
       sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
       return relatedModel->query()->where(whereForeignKey)->limit(1);
     }
@@ -117,7 +118,7 @@ model_instance_t *createModelInstance(model_t *model) {
       debug("belongsToForeignKey: %s", belongsToForeignKey);
       char *foreignKey = instance->get(belongsToForeignKey);
       debug("foreignKey: %s", foreignKey);
-      whereForeignKey = memoryManager->malloc(strlen(foreignKey) + 6);
+      whereForeignKey = mmMalloc(memoryManager, strlen(foreignKey) + 6);
       sprintf(whereForeignKey, "id = %s", foreignKey);
       debug("whereForeignKey: %s", whereForeignKey);
       return relatedModel->query()->where(whereForeignKey);
@@ -128,7 +129,7 @@ model_instance_t *createModelInstance(model_t *model) {
     return (query_t *)NULL;
   });
 
-  instance->validate = memoryManager->blockCopy(^() {
+  instance->validate = mmBlockCopy(memoryManager, ^() {
     instance->errors->count = 0;
     for (int i = 0; i < model->validationsCount; i++) {
       validation_t *validation = model->validations[i];
@@ -144,7 +145,7 @@ model_instance_t *createModelInstance(model_t *model) {
     return instance->errors->count == 0;
   });
 
-  instance->save = memoryManager->blockCopy(^() {
+  instance->save = mmBlockCopy(memoryManager, ^() {
     int didSave = false;
 
     for (int i = 0; i < model->beforeSaveCallbacksCount; i++) {
@@ -201,10 +202,11 @@ model_instance_t *createModelInstance(model_t *model) {
         }
       }
 
-      saveQuery = memoryManager->malloc(
-          strlen("UPDATE  SET () = () WHERE id = ") + strlen(model->tableName) +
-          strlen(instance->id) + strlen(dirtyAttributeNamesString) +
-          strlen(dirtyAttributePlaceholdersString) + 1);
+      saveQuery = mmMalloc(memoryManager,
+                           strlen("UPDATE  SET () = () WHERE id = ") +
+                               strlen(model->tableName) + strlen(instance->id) +
+                               strlen(dirtyAttributeNamesString) +
+                               strlen(dirtyAttributePlaceholdersString) + 1);
       sprintf(saveQuery, "UPDATE %s SET (%s) = (%s) WHERE id = %s",
               model->tableName, dirtyAttributeNamesString,
               dirtyAttributePlaceholdersString, instance->id);
@@ -218,10 +220,11 @@ model_instance_t *createModelInstance(model_t *model) {
         }
       }
 
-      saveQuery = memoryManager->malloc(
-          strlen("INSERT INTO  () VALUES () RETURNING id;") +
-          strlen(model->tableName) + strlen(dirtyAttributeNamesString) +
-          strlen(dirtyAttributePlaceholdersString) + 1);
+      saveQuery = mmMalloc(memoryManager,
+                           strlen("INSERT INTO  () VALUES () RETURNING id;") +
+                               strlen(model->tableName) +
+                               strlen(dirtyAttributeNamesString) +
+                               strlen(dirtyAttributePlaceholdersString) + 1);
       sprintf(saveQuery, "INSERT INTO %s (%s) VALUES (%s) RETURNING id;",
               model->tableName, dirtyAttributeNamesString,
               dirtyAttributePlaceholdersString);
@@ -234,7 +237,7 @@ model_instance_t *createModelInstance(model_t *model) {
     if (!instance->id) {
       size_t idLen = strlen(PQgetvalue(pgres, 0, 0));
       if (idLen > 0) {
-        instance->id = memoryManager->malloc(idLen + 1);
+        instance->id = mmMalloc(memoryManager, idLen + 1);
         sprintf(instance->id, "%s", PQgetvalue(pgres, 0, 0));
 
         for (int i = 0; i < model->afterCreateCallbacksCount; i++) {
@@ -267,7 +270,7 @@ model_instance_t *createModelInstance(model_t *model) {
     return didSave;
   });
 
-  instance->destroy = memoryManager->blockCopy(^() {
+  instance->destroy = mmBlockCopy(memoryManager, ^() {
     int didDestroy = 0;
 
     for (int i = 0; i < model->beforeDestroyCallbacksCount; i++) {
@@ -278,9 +281,10 @@ model_instance_t *createModelInstance(model_t *model) {
     }
 
     if (instance->id) {
-      char *destroyQuery = memoryManager->malloc(
-          strlen("DELETE FROM  WHERE id = ") + strlen(model->tableName) +
-          strlen(instance->id) + 1);
+      char *destroyQuery =
+          mmMalloc(memoryManager, strlen("DELETE FROM  WHERE id = ") +
+                                      strlen(model->tableName) +
+                                      strlen(instance->id) + 1);
       sprintf(destroyQuery, "DELETE FROM %s WHERE id = %s", model->tableName,
               instance->id);
       PGresult *pgres = model->pg->exec(destroyQuery);

@@ -18,14 +18,14 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   memory_manager_t *memoryManager = resource->model->memoryManager;
 
   resource_instance_t *instance =
-      memoryManager->malloc(sizeof(resource_instance_t));
+      mmMalloc(memoryManager, sizeof(resource_instance_t));
 
   instance->modelInstance = modelInstance;
   instance->id = modelInstance->id;
   instance->type = resource->type;
   instance->includedResourceInstancesCount = 0;
 
-  instance->includedToJSONAPI = memoryManager->blockCopy(^json_t *() {
+  instance->includedToJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
     json_t *includedJSONAPI = json_array();
 
     for (int i = 0; i < instance->includedResourceInstancesCount; i++) {
@@ -45,7 +45,7 @@ resource_instance_t *createResourceInstance(resource_t *resource,
     return includedJSONAPI;
   });
 
-  instance->dataJSONAPI = memoryManager->blockCopy(^json_t *() {
+  instance->dataJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
     json_t *attributes = json_object();
 
     json_t *fields = json_object_get(params->query, "fields");
@@ -86,7 +86,7 @@ resource_instance_t *createResourceInstance(resource_t *resource,
         json_object_set(attributes, attribute->name, value);
       }
 
-      memoryManager->cleanup(memoryManager->blockCopy(^{
+      memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
         json_decref(value);
       }));
     }
@@ -141,7 +141,7 @@ resource_instance_t *createResourceInstance(resource_t *resource,
     return dataJSONAPI;
   });
 
-  instance->toJSONAPI = memoryManager->blockCopy(^json_t *() {
+  instance->toJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
     json_t *data = instance->dataJSONAPI();
 
     json_t *meta = json_object();
@@ -155,7 +155,7 @@ resource_instance_t *createResourceInstance(resource_t *resource,
       json_object_set_new(response, "included", included);
     }
 
-    memoryManager->cleanup(memoryManager->blockCopy(^{
+    memoryManager->cleanup(mmBlockCopy(memoryManager, ^{
       json_decref(response);
     }));
 
