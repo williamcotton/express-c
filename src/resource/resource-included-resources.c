@@ -5,23 +5,24 @@ void addRelatedToResource(resource_instance_t *resourceInstance,
                           resource_instance_collection_t *includedCollection) {
   resourceInstance->includedResourceInstances
       [resourceInstance->includedResourceInstancesCount++] =
-      includedCollection->filter(^(resource_instance_t *relatedInstance) {
-        char *relatedInstanceId =
-            relatedInstance->modelInstance->get(foreignKey);
-        char *resourceInstanceId = resourceInstance->id;
-        if (relatedInstanceId == NULL) {
-          relatedInstanceId = relatedInstance->id;
-          char *belongsToKey =
-              (char *)resourceInstance->modelInstance->model->getBelongsToKey(
-                  relatedInstance->type);
-          resourceInstanceId =
-              resourceInstance->modelInstance->get(belongsToKey);
-        }
-        if (relatedInstanceId == NULL || resourceInstanceId == NULL)
-          return 0;
+      resourceInstanceCollectionFilter(
+          includedCollection, ^(resource_instance_t *relatedInstance) {
+            char *relatedInstanceId =
+                relatedInstance->modelInstance->get(foreignKey);
+            char *resourceInstanceId = resourceInstance->id;
+            if (relatedInstanceId == NULL) {
+              relatedInstanceId = relatedInstance->id;
+              char *belongsToKey =
+                  (char *)resourceInstance->modelInstance->model
+                      ->getBelongsToKey(relatedInstance->type);
+              resourceInstanceId =
+                  resourceInstance->modelInstance->get(belongsToKey);
+            }
+            if (relatedInstanceId == NULL || resourceInstanceId == NULL)
+              return 0;
 
-        return strcmp(relatedInstanceId, resourceInstanceId) == 0;
-      });
+            return strcmp(relatedInstanceId, resourceInstanceId) == 0;
+          });
 }
 
 /* Check for nested resources to include */
@@ -148,16 +149,18 @@ void addIncludedResourcesToCollection(
   if (strcmp(includedParamsBuild->foreignKey, "id") == 0) {
     includedParamsBuild->foreignKey = (char *)resource->model->getBelongsToKey(
         includedParamsBuild->includedResource->model->tableName);
-    collection->each(^(resource_instance_t *resourceInstance) {
+    resourceInstanceCollectionEach(collection, ^(
+                                       resource_instance_t *resourceInstance) {
       json_array_append_new(includedParamsBuild->ids,
                             json_string(resourceInstance->modelInstance->get(
                                 includedParamsBuild->foreignKey)));
     });
   } else {
-    collection->each(^(resource_instance_t *resourceInstance) {
-      json_array_append_new(includedParamsBuild->ids,
-                            json_string(resourceInstance->id));
-    });
+    resourceInstanceCollectionEach(
+        collection, ^(resource_instance_t *resourceInstance) {
+          json_array_append_new(includedParamsBuild->ids,
+                                json_string(resourceInstance->id));
+        });
   }
 
   resource_instance_collection_t *includedCollection =

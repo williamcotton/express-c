@@ -2,27 +2,107 @@
 
 void nestedIncludes(json_t *includedJSONAPI,
                     resource_instance_collection_t *collection) {
-  // debug("collection->type: %p %s %d", collection, collection->type,
-  //       collection->includedResourceInstancesCount);
   for (int i = 0; i < collection->includedResourceInstancesCount; i++) {
-    // debug("nested include collection %s found in collection %s",
-    //       collection->includedResourceInstances[i]->type, collection->type);
-    collection->includedResourceInstances[i]->each(
-        ^(resource_instance_t *relatedInstance) {
-          json_t *relatedJSONAPI = relatedInstance->dataJSONAPI();
-          json_array_append_new(includedJSONAPI, relatedJSONAPI);
-        });
+    resourceInstanceCollectionEach(collection->includedResourceInstances[i], ^(
+                                       resource_instance_t *relatedInstance) {
+      json_t *relatedJSONAPI = resourceInstanceDataJSONAPI(relatedInstance);
+      json_array_append_new(includedJSONAPI, relatedJSONAPI);
+    });
     resource_instance_collection_t *nestedCollection =
         collection->includedResourceInstances[i];
     nestedIncludes(includedJSONAPI, nestedCollection);
   }
 };
 
+json_t *resourceInstanceCollectionIncludedToJSONAPI(
+    resource_instance_collection_t *collection) {
+  json_t *includedJSONAPI = json_array();
+
+  nestedIncludes(includedJSONAPI, collection);
+
+  if (json_array_size(includedJSONAPI) == 0) {
+    json_decref(includedJSONAPI);
+    return (json_t *)NULL;
+  }
+
+  return includedJSONAPI;
+}
+
+json_t *resourceInstanceCollectionToJSONAPI(
+    resource_instance_collection_t *collection) {
+  json_t *data = json_array();
+  resourceInstanceCollectionEach(collection, ^(resource_instance_t *instance) {
+    json_array_append_new(data, resourceInstanceDataJSONAPI(instance));
+  });
+
+  // TODO: add links
+  // TODO: add errors
+
+  json_t *meta = json_object();
+
+  /* Add stats to the meta object */
+  for (int i = 0; i < collection->statsArrayCount; i++) {
+    json_t *stat = json_object();
+    if (collection->statsArray[i] == NULL) {
+      continue;
+    }
+    if (collection->statsArray[i]->type == NULL) {
+      json_object_set_new(stat, collection->statsArray[i]->stat,
+                          json_string(collection->statsArray[i]->value));
+      json_object_set_new(meta, collection->statsArray[i]->attribute, stat);
+    } else {
+      json_t *type = json_object();
+      json_object_set_new(stat, collection->statsArray[i]->stat,
+                          json_string(collection->statsArray[i]->value));
+      json_object_set_new(type, collection->statsArray[i]->attribute, stat);
+      json_object_set_new(meta, collection->statsArray[i]->type, type);
+    }
+  }
+
+  json_t *response = json_pack("{s:o, s:o}", "data", data, "meta", meta);
+
+  json_t *included = resourceInstanceCollectionIncludedToJSONAPI(collection);
+
+  if (included) {
+    json_object_set_new(response, "included", included);
+  }
+
+  return response;
+}
+
+void resourceInstanceCollectionEach(resource_instance_collection_t *collection,
+                                    eachResourceInstanceCallback callback) {
+  for (size_t i = 0; i < collection->size; i++) {
+    callback(collection->arr[i]);
+  }
+};
+
+resource_instance_collection_t *
+resourceInstanceCollectionFilter(resource_instance_collection_t *collection,
+                                 filterResourceInstanceCallback callback) {
+  resource_instance_collection_t *filteredCollection =
+      createResourceInstanceCollection(collection->resource,
+                                       collection->modelCollection,
+                                       collection->params);
+  filteredCollection->size = 0;
+  filteredCollection->includedResourceInstancesCount =
+      collection->includedResourceInstancesCount;
+  for (int i = 0; i < filteredCollection->includedResourceInstancesCount; i++) {
+    filteredCollection->includedResourceInstances[i] =
+        collection->includedResourceInstances[i];
+  }
+  for (size_t i = 0; i < collection->size; i++) {
+    if (callback(collection->arr[i])) {
+      filteredCollection->arr[filteredCollection->size++] = collection->arr[i];
+    }
+  }
+  return filteredCollection;
+};
+
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,
                                  jsonapi_params_t *params) {
-  // debug("createResourceInstanceCollection %s", resource->type);
   /* Create a collection of resource instances from a collection of model
    * instances. */
   memory_manager_t *memoryManager = resource->model->memoryManager;
@@ -30,6 +110,10 @@ createResourceInstanceCollection(resource_t *resource,
   resource_instance_collection_t *collection =
       (resource_instance_collection_t *)mmMalloc(
           memoryManager, sizeof(resource_instance_collection_t));
+
+  collection->resource = resource;
+  collection->modelCollection = modelCollection;
+  collection->params = params;
 
   collection->type = resource->type;
   collection->arr = mmMalloc(memoryManager, sizeof(resource_instance_t *) *
@@ -48,139 +132,11 @@ createResourceInstanceCollection(resource_t *resource,
     collection->arr[i] = resourceInstance;
   }
 
-  collection->at = mmBlockCopy(memoryManager, ^(size_t index) {
-    if (index >= collection->size) {
-      return (resource_instance_t *)NULL;
-    }
-    return collection->arr[index];
-  });
-
-  collection->each =
-      mmBlockCopy(memoryManager, ^(eachResourceInstanceCallback callback) {
-        for (size_t i = 0; i < collection->size; i++) {
-          callback(collection->arr[i]);
-        }
-      });
-
-  collection->filter =
-      mmBlockCopy(memoryManager, ^(filterResourceInstanceCallback callback) {
-        resource_instance_collection_t *filteredCollection =
-            createResourceInstanceCollection(resource, modelCollection, params);
-        // debug("filteredCollection->type: %p %s %d", filteredCollection,
-        //       filteredCollection->type,
-        //       filteredCollection->includedResourceInstancesCount);
-        filteredCollection->size = 0;
-        filteredCollection->includedResourceInstancesCount =
-            collection->includedResourceInstancesCount;
-        for (int i = 0; i < filteredCollection->includedResourceInstancesCount;
-             i++) {
-          filteredCollection->includedResourceInstances[i] =
-              collection->includedResourceInstances[i];
-        }
-        for (size_t i = 0; i < collection->size; i++) {
-          if (callback(collection->arr[i])) {
-            filteredCollection->arr[filteredCollection->size++] =
-                collection->arr[i];
-          }
-        }
-        return filteredCollection;
-      });
-
-  collection->find =
-      mmBlockCopy(memoryManager, ^(findResourceInstanceCallback callback) {
-        for (size_t i = 0; i < collection->size; i++) {
-          if (callback(collection->arr[i])) {
-            return collection->arr[i];
-          }
-        }
-        return (resource_instance_t *)NULL;
-      });
-
-  collection->eachWithIndex = mmBlockCopy(
-      memoryManager, ^(eachResourceInstanceWithIndexCallback callback) {
-        for (size_t i = 0; i < collection->size; i++) {
-          callback(collection->arr[i], i);
-        }
-      });
-
-  collection->reduce =
-      mmBlockCopy(memoryManager, ^(void *accumulator,
-                                   reducerResourceInstanceCallback callback) {
-        for (size_t i = 0; i < collection->size; i++) {
-          accumulator = callback(accumulator, collection->arr[i]);
-        }
-        return accumulator;
-      });
-
-  collection->map =
-      mmBlockCopy(memoryManager, ^(mapResourceInstanceCallback callback) {
-        void **map =
-            (void **)mmMalloc(memoryManager, sizeof(void *) * collection->size);
-        for (size_t i = 0; i < collection->size; i++) {
-          map[i] = callback(collection->arr[i]);
-        }
-        return map;
-      });
-
-  collection->includedToJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
-    json_t *includedJSONAPI = json_array();
-
-    nestedIncludes(includedJSONAPI, collection);
-
-    if (json_array_size(includedJSONAPI) == 0) {
-      json_decref(includedJSONAPI);
-      return (json_t *)NULL;
-    }
-
-    return includedJSONAPI;
-  });
-
   collection->toJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
-    json_t *data = json_array();
-    collection->each(^(resource_instance_t *instance) {
-      // instance->includedToJSONAPI();
-      json_array_append_new(data, instance->dataJSONAPI());
-    });
-
-    // TODO: add links
-    // TODO: add included
-    // TODO: add errors
-
-    json_t *meta = json_object();
-
-    /* Add stats to the meta object */
-    for (int i = 0; i < collection->statsArrayCount; i++) {
-      json_t *stat = json_object();
-      if (collection->statsArray[i] == NULL) {
-        continue;
-      }
-      if (collection->statsArray[i]->type == NULL) {
-        json_object_set_new(stat, collection->statsArray[i]->stat,
-                            json_string(collection->statsArray[i]->value));
-        json_object_set_new(meta, collection->statsArray[i]->attribute, stat);
-      } else {
-        json_t *type = json_object();
-        json_object_set_new(stat, collection->statsArray[i]->stat,
-                            json_string(collection->statsArray[i]->value));
-        json_object_set_new(type, collection->statsArray[i]->attribute, stat);
-        json_object_set_new(meta, collection->statsArray[i]->type, type);
-      }
-    }
-
-    __block json_t *response =
-        json_pack("{s:o, s:o}", "data", data, "meta", meta);
-
-    json_t *included = collection->includedToJSONAPI();
-
-    if (included) {
-      json_object_set_new(response, "included", included);
-    }
-
+    json_t *response = resourceInstanceCollectionToJSONAPI(collection);
     mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
                 json_decref(response);
               }));
-
-    // debug("\n%s", json_dumps(response, JSON_INDENT(2)));
 
     return response;
   });

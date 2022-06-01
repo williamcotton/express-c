@@ -73,16 +73,14 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
       jsonapi->params->query = query;
     }
 
-    req->mSet("jsonapi", jsonapi);
+    expressReqMiddlewareSet(req, "jsonapi", jsonapi);
 
-    res->sSet("jsonapi",
-              expressReqBlockCopy(req, ^(response_t *_res, void *value) {
-                json_t *json = value;
-                char *jsonString = json_dumps(json, 0);
-                _res->set("Content-Type", JSON_API_MIME_TYPE);
-                _res->send(jsonString);
-                free(jsonString);
-              }));
+    expressResSetSender(res, "jsonapi", ^(response_t *_res, void *value) {
+      char *jsonString = json_dumps((json_t *)value, 0);
+      _res->set("Content-Type", JSON_API_MIME_TYPE);
+      _res->send(jsonString);
+      free(jsonString);
+    });
 
     cleanup(Block_copy(^(request_t *finishedReq) {
       jansson_jsonapi_middleware_t *finishedJsonapi = finishedReq->m("jsonapi");

@@ -52,6 +52,9 @@ typedef void * (^mapResourceInstanceCallback)(
     struct resource_instance_t *instance);
 
 typedef struct resource_instance_collection_t {
+  struct resource_t *resource;
+  model_instance_collection_t *modelCollection;
+  jsonapi_params_t *params;
   struct resource_instance_t **arr;
   size_t size;
   char *type;
@@ -59,18 +62,14 @@ typedef struct resource_instance_collection_t {
   int includedResourceInstancesCount;
   resource_stat_value_t *statsArray[100];
   int statsArrayCount;
-  struct resource_instance_t * (^at)(size_t index);
-  void (^each)(eachResourceInstanceCallback);
-  struct resource_instance_collection_t * (^filter)(
-      filterResourceInstanceCallback);
-  struct resource_instance_t * (^find)(findResourceInstanceCallback);
-  void (^eachWithIndex)(eachResourceInstanceWithIndexCallback);
-  void * (^reduce)(void *accumulator, reducerResourceInstanceCallback);
-  void ** (^map)(mapResourceInstanceCallback);
-  model_instance_collection_t *modelCollection;
   json_t * (^toJSONAPI)();
-  json_t * (^includedToJSONAPI)();
 } resource_instance_collection_t;
+
+resource_instance_collection_t *
+resourceInstanceCollectionFilter(resource_instance_collection_t *collection,
+                                 filterResourceInstanceCallback callback);
+void resourceInstanceCollectionEach(resource_instance_collection_t *collection,
+                                    eachResourceInstanceCallback callback);
 
 typedef struct resource_instance_t {
   char *id;
@@ -78,17 +77,18 @@ typedef struct resource_instance_t {
   void *context;
   instance_errors_t errors;
   model_instance_t *modelInstance;
+  struct resource_t *resource;
+  jsonapi_params_t *params;
+  memory_manager_t *memoryManager;
   resource_instance_collection_t *includedResourceInstances[100];
   int includedResourceInstancesCount;
   resource_stat_value_t *statsArray[100];
   int statsArrayCount;
-  instance_errors_t (^save)();              // TODO: implement save
-  instance_errors_t (^destroy)();           // TODO: implement destroy
-  instance_errors_t (^update_attributes)(); // TODO: implement update_attributes
   json_t * (^toJSONAPI)();
-  json_t * (^dataJSONAPI)();
-  json_t * (^includedToJSONAPI)();
 } resource_instance_t;
+
+json_t *resourceInstanceDataJSONAPI(resource_instance_t *instance);
+json_t *resourceInstanceToJSONAPI(resource_instance_t *instance);
 
 typedef query_t * (^filterCallback)(query_t *scope, const char **values,
                                     int count);

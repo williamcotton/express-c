@@ -379,8 +379,8 @@ static sendBlock resRedirectFactory(response_t *res) {
   });
 }
 
-void expressResSender(response_t *res, const char *key,
-                      responseSenderCallback callback) {
+void expressResSetSender(response_t *res, const char *key,
+                         responseSenderCallback callback) {
   response_sender_t *sender =
       expressReqMalloc(res->req, sizeof(response_sender_t));
   sender->key = key;
@@ -390,11 +390,11 @@ void expressResSender(response_t *res, const char *key,
 
 static setSenderBlock resSetSenderFactory(response_t *res) {
   return Block_copy(^(const char *key, responseSenderCallback callback) {
-    expressResSender(res, key, callback);
+    expressResSetSender(res, key, callback);
   });
 }
 
-void expressResSetSender(response_t *res, const char *key, void *value) {
+void expressResSender(response_t *res, const char *key, void *value) {
   for (int i = 0; i < res->sendersCount; i++) {
     if (strcmp(res->senders[i]->key, key) == 0) {
       res->senders[i]->callback(res, value);
@@ -406,7 +406,7 @@ void expressResSetSender(response_t *res, const char *key, void *value) {
 
 static senderBlock resSenderFactory(response_t *res) {
   return Block_copy(^(const char *key, void *value) {
-    expressResSetSender(res, key, value);
+    expressResSender(res, key, value);
   });
 }
 

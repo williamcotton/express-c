@@ -340,9 +340,9 @@ void expressResClearCookie(response_t *res, const char *key,
                            cookie_opts_t opts);
 void expressResLocation(response_t *res, const char *url);
 void expressResRedirect(response_t *res, const char *url);
-void expressResSender(response_t *res, const char *key,
-                      responseSenderCallback callback);
-void expressResSetSender(response_t *res, const char *key, void *value);
+void expressResSetSender(response_t *res, const char *key,
+                         responseSenderCallback callback);
+void expressResSender(response_t *res, const char *key, void *value);
 
 void expressResHelpers(response_t *res);
 
