@@ -426,6 +426,16 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   memset(req->rawRequest, 0, sizeof(req->rawRequest));
   req->rawRequestSize = 0;
 
+  req->get = NULL;
+  req->query = NULL;
+  req->params = NULL;
+  req->body = NULL;
+  req->cookie = NULL;
+  req->m = NULL;
+  req->mSet = NULL;
+  req->malloc = NULL;
+  req->blockCopy = NULL;
+
   req->memoryManager = createMemoryManager();
 
   char *method, *originalUrl;
@@ -502,16 +512,6 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   size_t pathLen = strlen(path) + 1;
   req->path = malloc(sizeof(char) * pathLen);
   snprintf((char *)req->path, pathLen, "%s", path);
-
-  req->get = NULL;
-  req->query = NULL;
-  req->params = NULL;
-  req->body = NULL;
-  req->cookie = NULL;
-  req->m = NULL;
-  req->mSet = NULL;
-  req->malloc = NULL;
-  req->blockCopy = NULL;
 
   initReqParams(req, baseRouter);
   initReqBody(req);
