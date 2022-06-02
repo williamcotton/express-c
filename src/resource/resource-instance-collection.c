@@ -99,6 +99,13 @@ resourceInstanceCollectionFilter(resource_instance_collection_t *collection,
   return filteredCollection;
 };
 
+void collectionHelpers(resource_instance_collection_t *collection) {
+  collection->toJSONAPI =
+      mmBlockCopy(collection->resource->model->memoryManager, ^json_t *() {
+        return resourceInstanceCollectionToJSONAPI(collection);
+      });
+}
+
 resource_instance_collection_t *
 createResourceInstanceCollection(resource_t *resource,
                                  model_instance_collection_t *modelCollection,
@@ -131,6 +138,8 @@ createResourceInstanceCollection(resource_t *resource,
         createResourceInstance(resource, modelInstance, params);
     collection->arr[i] = resourceInstance;
   }
+
+  collectionHelpers(collection); // TODO: make optional
 
   return collection;
 };

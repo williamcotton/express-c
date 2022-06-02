@@ -62,6 +62,7 @@ typedef struct resource_instance_collection_t {
   int includedResourceInstancesCount;
   resource_stat_value_t *statsArray[100];
   int statsArrayCount;
+  json_t * (^toJSONAPI)();
 } resource_instance_collection_t;
 
 resource_instance_collection_t *
@@ -85,6 +86,7 @@ typedef struct resource_instance_t {
   int includedResourceInstancesCount;
   resource_stat_value_t *statsArray[100];
   int statsArrayCount;
+  json_t * (^toJSONAPI)();
 } resource_instance_t;
 
 json_t *resourceInstanceDataJSONAPI(resource_instance_t *instance);

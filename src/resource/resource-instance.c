@@ -149,6 +149,12 @@ json_t *resourceInstanceToJSONAPI(resource_instance_t *instance) {
   return response;
 }
 
+void instanceHelpers(resource_instance_t *instance) {
+  instance->toJSONAPI = mmBlockCopy(instance->memoryManager, ^json_t *() {
+    return resourceInstanceToJSONAPI(instance);
+  });
+}
+
 resource_instance_t *createResourceInstance(resource_t *resource,
                                             model_instance_t *modelInstance,
                                             jsonapi_params_t *params) {
@@ -164,6 +170,8 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->id = modelInstance->id;
   instance->type = resource->type;
   instance->includedResourceInstancesCount = 0;
+
+  instanceHelpers(instance); // TODO: make optional
 
   return instance;
 };
