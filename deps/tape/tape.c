@@ -321,7 +321,8 @@ int __wrap_listen(int sockfd, int backlog) {
 #endif
 
 typedef int (^testHandler)(char *name, void (^block)(tape_t *));
-testHandler testHandlerFactory(tape_t *root, int level) {
+testHandler testHandlerFactory(tape_t *root, int level, int ignore,
+                               int feature) {
   return Block_copy(^(char *name, void (^block)(tape_t *)) {
     printf("\n%s\n", name);
 
@@ -440,10 +441,14 @@ testHandler testHandlerFactory(tape_t *root, int level) {
           return response;
         };
 
-    t->test = testHandlerFactory(root, level + 1);
+    t->test = testHandlerFactory(root, level + 1, ignore, feature);
+    // t->xtest = testHandlerFactory(root, level + 1, 1, feature);
+    // t->ftest = testHandlerFactory(root, level + 1, ignore, 1);
 
     /* Call nested tests */
-    block(t);
+    if (!ignore) {
+      block(t);
+    }
 
     /* Final report */
     if (level == 0) {
@@ -460,6 +465,8 @@ testHandler testHandlerFactory(tape_t *root, int level) {
     }
     Block_release(t->trash);
     Block_release(t->test);
+    // Block_release(t->xtest);
+    // Block_release(t->ftest);
     free(t);
 
     return root->failed > 0;
@@ -471,7 +478,7 @@ tape_t *tape() {
   tape->count = 0;
   tape->failed = 0;
 
-  tape->test = testHandlerFactory(tape, 0);
+  tape->test = testHandlerFactory(tape, 0, 0, 0);
 
   tape->ok = ^(UNUSED char *name, UNUSED int okBool) {
     return 1;

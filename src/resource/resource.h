@@ -62,7 +62,6 @@ typedef struct resource_instance_collection_t {
   int includedResourceInstancesCount;
   resource_stat_value_t *statsArray[100];
   int statsArrayCount;
-  json_t * (^toJSONAPI)();
 } resource_instance_collection_t;
 
 resource_instance_collection_t *
@@ -70,6 +69,8 @@ resourceInstanceCollectionFilter(resource_instance_collection_t *collection,
                                  filterResourceInstanceCallback callback);
 void resourceInstanceCollectionEach(resource_instance_collection_t *collection,
                                     eachResourceInstanceCallback callback);
+json_t *
+resourceInstanceCollectionToJSONAPI(resource_instance_collection_t *collection);
 
 typedef struct resource_instance_t {
   char *id;
@@ -84,7 +85,6 @@ typedef struct resource_instance_t {
   int includedResourceInstancesCount;
   resource_stat_value_t *statsArray[100];
   int statsArrayCount;
-  json_t * (^toJSONAPI)();
 } resource_instance_t;
 
 json_t *resourceInstanceDataJSONAPI(resource_instance_t *instance);

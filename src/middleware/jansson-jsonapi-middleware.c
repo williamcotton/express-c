@@ -3,7 +3,7 @@
 #define JSON_API_MIME_TYPE "application/vnd.api+json"
 
 middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
-  return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),
+  return Block_copy(^(request_t *req, response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
     jansson_jsonapi_middleware_t *jsonapi =
         expressReqMalloc(req, sizeof(jansson_jsonapi_middleware_t));
@@ -80,19 +80,20 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
       _res->set("Content-Type", JSON_API_MIME_TYPE);
       _res->send(jsonString);
       free(jsonString);
+      json_decref((json_t *)value); // CONFLICT
     });
 
-    cleanup(Block_copy(^(request_t *finishedReq) {
+    cleanup(^(request_t *finishedReq) {
       jansson_jsonapi_middleware_t *finishedJsonapi = finishedReq->m("jsonapi");
       if (finishedJsonapi != NULL) {
         if (finishedJsonapi->params->body != NULL) {
           json_decref(finishedJsonapi->params->body);
         }
         if (finishedJsonapi->params->query != NULL) {
-          json_decref(finishedJsonapi->params->query);
+          json_decref(finishedJsonapi->params->query); // CONFLICT
         }
       }
-    }));
+    });
 
     next();
   });

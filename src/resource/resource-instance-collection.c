@@ -132,14 +132,5 @@ createResourceInstanceCollection(resource_t *resource,
     collection->arr[i] = resourceInstance;
   }
 
-  collection->toJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
-    json_t *response = resourceInstanceCollectionToJSONAPI(collection);
-    mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
-                json_decref(response);
-              }));
-
-    return response;
-  });
-
   return collection;
 };

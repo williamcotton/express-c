@@ -44,6 +44,8 @@ typedef struct tape_t {
   int failed;
   string_t * (^string)(char *);
   int (^test)(char *, void (^)(struct tape_t *));
+  // int (^xtest)(char *, void (^)(struct tape_t *));
+  // int (^ftest)(char *, void (^)(struct tape_t *));
   void (^clearState)();
   void (^randomString)(char *, size_t);
   int (^ok)(char *, int);

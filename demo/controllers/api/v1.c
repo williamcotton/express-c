@@ -38,7 +38,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_instance_collection_t *departments =
         Department->all(jsonapi->params);
 
-    res->s("jsonapi", departments->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(departments));
   });
 
   router->get("departments/:id", ^(request_t *req, response_t *res) {
@@ -50,7 +50,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(department, "Department not found");
 
-    res->s("jsonapi", department->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(department));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -61,7 +61,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Employee = req->m("Employee");
     resource_instance_collection_t *employees = Employee->all(jsonapi->params);
 
-    res->s("jsonapi", employees->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(employees));
   });
 
   router->get("/employees/:id", ^(request_t *req, response_t *res) {
@@ -73,7 +73,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(employee, "Employee not found");
 
-    res->s("jsonapi", employee->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(employee));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -85,7 +85,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_instance_collection_t *milestones =
         Milestone->all(jsonapi->params);
 
-    res->s("jsonapi", milestones->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(milestones));
   });
 
   router->get("/milestones/:id", ^(request_t *req, response_t *res) {
@@ -97,7 +97,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(milestone, "Milestone not found");
 
-    res->s("jsonapi", milestone->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(milestone));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -108,7 +108,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Note = req->m("Note");
     resource_instance_collection_t *notes = Note->all(jsonapi->params);
 
-    res->s("jsonapi", notes->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(notes));
   });
 
   router->get("/notes/:id", ^(request_t *req, response_t *res) {
@@ -119,7 +119,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(note, "Note not found");
 
-    res->s("jsonapi", note->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(note));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -130,7 +130,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Position = req->m("Position");
     resource_instance_collection_t *positions = Position->all(jsonapi->params);
 
-    res->s("jsonapi", positions->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(positions));
   });
 
   router->get("/positions/:id", ^(request_t *req, response_t *res) {
@@ -142,7 +142,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(position, "Position not found");
 
-    res->s("jsonapi", position->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(position));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -153,7 +153,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Task = req->m("Task");
     resource_instance_collection_t *tasks = Task->all(jsonapi->params);
 
-    res->s("jsonapi", tasks->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(tasks));
   });
 
   router->get("/tasks/:id", ^(request_t *req, response_t *res) {
@@ -164,7 +164,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(task, "Task not found");
 
-    res->s("jsonapi", task->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(task));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -176,7 +176,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_instance_collection_t *teamMemberships =
         TeamMembership->all(jsonapi->params);
 
-    res->s("jsonapi", teamMemberships->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(teamMemberships));
   });
 
   router->get("/team-memberships/:id", ^(request_t *req, response_t *res) {
@@ -188,7 +188,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(teamMembership, "TeamMembership not found");
 
-    res->s("jsonapi", teamMembership->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(teamMembership));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -199,7 +199,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Team = req->m("Team");
     resource_instance_collection_t *teams = Team->all(jsonapi->params);
 
-    res->s("jsonapi", teams->toJSONAPI());
+    res->s("jsonapi", resourceInstanceCollectionToJSONAPI(teams));
   });
 
   router->get("/teams/:id", ^(request_t *req, response_t *res) {
@@ -210,7 +210,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(team, "Team not found");
 
-    res->s("jsonapi", team->toJSONAPI());
+    res->s("jsonapi", resourceInstanceToJSONAPI(team));
   error:
     res->send("404"); // TODO: jsonapi error
   });

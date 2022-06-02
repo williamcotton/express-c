@@ -165,14 +165,5 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->type = resource->type;
   instance->includedResourceInstancesCount = 0;
 
-  instance->toJSONAPI = mmBlockCopy(memoryManager, ^json_t *() {
-    json_t *response = resourceInstanceToJSONAPI(instance);
-    mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
-                json_decref(response);
-              }));
-
-    return response;
-  });
-
   return instance;
 };

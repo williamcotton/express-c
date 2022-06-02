@@ -20,7 +20,8 @@ router_t *janssonJsonapiRouter() {
     jsonapi_t *jsonapi = req->m("jsonapi");
     check(jsonapi != NULL, "jsonapi middleware not found");
     check(jsonapi->params->query != NULL, "query not found");
-    return res->s("jsonapi", jsonapi->params->query);
+    json_t *query = json_deep_copy(jsonapi->params->query);
+    return res->s("jsonapi", query);
   error:
     res->send("not ok");
   });
