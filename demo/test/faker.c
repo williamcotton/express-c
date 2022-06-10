@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __linux__
+#include <bsd/stdlib.h>
+#endif
+
 char *firstNames =
     "Alexis,Ari,Armani,Avery,Azariah,Baylor,Bellamy,Blake,Briar,"
     "Brooklyn,Cameron,Campbell,Casey,Charlie,Corey,Dakota,Dallas,"

@@ -28,8 +28,10 @@ SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c)
 TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
 BUILD_DIR = build
 SQLITE_SRC = deps/sqlite/sqlite3.c
+TAPE_SRC = deps/tape/tape.c
 
 SRC_WITHOUT_SQLITE = $(filter-out $(SQLITE_SRC),$(SRC))
+SRC_WITHOUT_TAPE = $(filter-out $(TAPE_SRC),$(SRC))
 
 ifeq ($(BUILD_ENV),development)
 	TEST_CFLAGS += -DDEV_ENV
@@ -123,7 +125,7 @@ manual-test-trace: build-test-trace
 .PHONY: $(BUILD_DIR)/libexpress.so
 $(BUILD_DIR)/libexpress.so:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(PROD_CFLAGS) -fPIC
+	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
 # TODO: copy express.supp, debug.plist to /usr/local/share
 
@@ -145,7 +147,7 @@ endif
 .PHONY: $(BUILD_DIR)/libexpress-trace.so
 $(BUILD_DIR)/libexpress-trace.so:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(TEST_CFLAGS) -g -O0 -fPIC
+	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(TEST_CFLAGS) -g -O0 -fPIC
 
 # TODO: copy express.supp, debug.plist to /usr/local/share
 
@@ -167,7 +169,7 @@ endif
 .PHONY: $(BUILD_DIR)/libexpress-debug.so
 $(BUILD_DIR)/libexpress-debug.so:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -shared -o $@ $(EXPRESS_SRC) $(wildcard deps/*/*.c) $(CFLAGS) $(DEV_CFLAGS) -fPIC
+	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(DEV_CFLAGS) -fPIC
 
 # TODO: copy express.supp, debug.plist to /usr/local/share
 
