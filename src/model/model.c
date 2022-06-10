@@ -17,8 +17,8 @@ model_store_t *createModelStore(memory_manager_t *memoryManager) {
   return store;
 }
 
-model_t *CreateModel(char *tableName, memory_manager_t *memoryManager, pg_t *pg,
-                     model_store_t *modelStore) {
+model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
+                     database_pool_t *db, model_store_t *modelStore) {
 
   model_t *model = mmMalloc(memoryManager, sizeof(model_t));
 
@@ -26,7 +26,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager, pg_t *pg,
 
   model->tableName = tableName;
   model->memoryManager = memoryManager;
-  model->pg = pg;
+  model->db = db;
   model->attributesCount = 0;
   model->validationsCount = 0;
   model->hasManyCount = 0;
@@ -46,7 +46,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager, pg_t *pg,
 
   model->query = mmBlockCopy(memoryManager, ^() {
     query_t * (^baseQuery)(const char *) =
-        getPostgresQuery(model->memoryManager, model->pg);
+        getPostgresDBQuery(model->memoryManager, model->db);
     __block query_t *modelQuery = baseQuery(model->tableName);
     void * (^originalAll)(void) = modelQuery->all;
     void * (^originalFind)(char *) = modelQuery->find;

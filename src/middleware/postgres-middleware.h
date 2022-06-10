@@ -23,6 +23,7 @@
 #ifndef POSTGRES_MIDDLEWARE_H
 #define POSTGRES_MIDDLEWARE_H
 
+#include <db/adapter.h>
 #include <express.h>
 #include <libpq-fe.h>
 
@@ -94,6 +95,8 @@ postgres_connection_t *initPostgressConnection(const char *pgUri, int poolSize);
 middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres);
 getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
                                        pg_t *pg);
+getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
+                                         database_pool_t *db);
 pg_t *initPg(const char *pgUri);
 
 #endif // POSTGRES_MIDDLEWARE_H

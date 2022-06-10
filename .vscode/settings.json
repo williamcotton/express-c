@@ -99,7 +99,8 @@
     "compare": "c",
     "resources.h": "c",
     "models.h": "c",
-    "faker.h": "c"
+    "faker.h": "c",
+    "resource-middleware.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

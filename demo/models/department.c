@@ -1,9 +1,9 @@
 #include "models.h"
 
-model_t *DepartmentModel(memory_manager_t *memoryManager, pg_t *pg,
+model_t *DepartmentModel(memory_manager_t *memoryManager, database_pool_t *db,
                          model_store_t *modelStore) {
   model_t *Department =
-      CreateModel("departments", memoryManager, pg, modelStore);
+      CreateModel("departments", memoryManager, db, modelStore);
 
   Department->attribute("name", "varchar(255)", NULL);
   Department->attribute("created_at", "timestamp", NULL);

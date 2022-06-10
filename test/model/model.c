@@ -1,6 +1,7 @@
 #include "employee.h"
 #include "island.h"
 #include "team.h"
+#include <db/adapter.h>
 #include <tape/tape.h>
 
 #pragma clang diagnostic push
@@ -8,67 +9,70 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wunused-variable"
 
-void setupTest(pg_t *pg) {
-  PQclear(pg->exec("SET TIMEZONE='America/Chicago';"));
-  PQclear(pg->exec("DROP TABLE IF EXISTS teams"));
-  PQclear(pg->exec("CREATE TABLE teams (id SERIAL PRIMARY KEY, name TEXT)"));
-  PQclear(pg->exec("INSERT INTO teams (name) VALUES ('design')"));
-  PQclear(pg->exec("INSERT INTO teams (name) VALUES ('product')"));
-  PQclear(pg->exec("INSERT INTO teams (name) VALUES ('engineering')"));
+void setupTest(database_pool_t *db) {
+  PQclear(db->exec("SET TIMEZONE='America/Chicago';"));
+  PQclear(db->exec("DROP TABLE IF EXISTS teams"));
+  PQclear(db->exec("CREATE TABLE teams (id SERIAL PRIMARY KEY, name TEXT)"));
+  PQclear(db->exec("INSERT INTO teams (name) VALUES ('design')"));
+  PQclear(db->exec("INSERT INTO teams (name) VALUES ('product')"));
+  PQclear(db->exec("INSERT INTO teams (name) VALUES ('engineering')"));
 
-  PQclear(pg->exec("DROP TABLE IF EXISTS employees"));
-  PQclear(pg->exec(
+  PQclear(db->exec("DROP TABLE IF EXISTS employees"));
+  PQclear(db->exec(
       "CREATE TABLE employees (id SERIAL PRIMARY KEY, team_id INTEGER, "
       "name TEXT, email TEXT)"));
-  PQclear(pg->exec("INSERT INTO employees (team_id, name, email) VALUES (2, "
+  PQclear(db->exec("INSERT INTO employees (team_id, name, email) VALUES (2, "
                    "'Alice', 'alice@email.com')"));
-  PQclear(pg->exec("INSERT INTO employees (team_id, name, email) VALUES (2, "
+  PQclear(db->exec("INSERT INTO employees (team_id, name, email) VALUES (2, "
                    "'Bob', 'bob@email.com')"));
 
-  PQclear(pg->exec("DROP TABLE IF EXISTS meetings"));
+  PQclear(db->exec("DROP TABLE IF EXISTS meetings"));
   PQclear(
-      pg->exec("CREATE TABLE meetings (id serial PRIMARY KEY, team_id INTEGER, "
+      db->exec("CREATE TABLE meetings (id serial PRIMARY KEY, team_id INTEGER, "
                "max_size INTEGER, date DATE, timestamp TIMESTAMP WITH TIME "
                "ZONE, max_temp REAL, budget DECIMAL, open BOOLEAN)"));
-  PQclear(pg->exec("INSERT INTO meetings (team_id, max_size, date, timestamp, "
+  PQclear(db->exec("INSERT INTO meetings (team_id, max_size, date, timestamp, "
                    "max_temp, budget, open) VALUES (3, "
                    "10, '2018-06-18', '2018-06-18 05:00:00-06', 72.295618, "
                    "85000.25, true)"));
-  PQclear(pg->exec("INSERT INTO meetings (team_id, max_size, date, timestamp, "
+  PQclear(db->exec("INSERT INTO meetings (team_id, max_size, date, timestamp, "
                    "max_temp, budget, open) VALUES (2, "
                    "5, '2021-03-08', '2021-03-08 10:00:00-06', 71.3235838, "
                    "45000.20, false)"));
 
-  PQclear(pg->exec("DROP TABLE IF EXISTS notes"));
-  PQclear(pg->exec(
+  PQclear(db->exec("DROP TABLE IF EXISTS notes"));
+  PQclear(db->exec(
       "CREATE TABLE notes (id serial PRIMARY KEY, employee_id INTEGER, "
       "title TEXT, date DATE)"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+  PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
                    "'a', '2022-03-08')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
+  PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'b', '2022-03-08')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+  PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
                    "'c', '2022-03-08')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
+  PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'a', '2022-03-09')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
+  PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (1, "
                    "'b', '2022-03-09')"));
-  PQclear(pg->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
+  PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'c', '2022-03-09')"));
 };
 
 void modelTests(tape_t *t, const char *databaseUrl,
                 memory_manager_t *memoryManager) {
+
+  database_pool_t *db = createPostgresPool(databaseUrl, 10);
+
   pg_t *pg = initPg(databaseUrl);
-  pg->query = getPostgresQuery(memoryManager, pg);
+  pg->query = getPostgresDBQuery(memoryManager, db);
 
   model_store_t *modelStore = createModelStore(memoryManager);
 
-  setupTest(pg);
+  setupTest(db);
 
-  Team_t *Team = TeamModel(memoryManager, pg, modelStore);
-  Employee_t *Employee = EmployeeModel(memoryManager, pg, modelStore);
-  Island_t *Island = IslandModel(memoryManager, pg, modelStore);
+  Team_t *Team = TeamModel(memoryManager, db, modelStore);
+  Employee_t *Employee = EmployeeModel(memoryManager, db, modelStore);
+  Island_t *Island = IslandModel(memoryManager, db, modelStore);
 
   t->test("model", ^(tape_t *t) {
     t->test("find existing", ^(tape_t *t) {

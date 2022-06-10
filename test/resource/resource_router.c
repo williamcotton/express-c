@@ -15,9 +15,7 @@
 router_t *resourceRouter(const char *pgUri, int poolSize) {
   router_t *router = expressRouter();
 
-  /* postgres middleware */
-  postgres_connection_t *postgres = initPostgressConnection(pgUri, poolSize);
-  router->use(postgresMiddlewareFactory(postgres));
+  database_pool_t *db = createPostgresPool(pgUri, poolSize);
 
   /* jsonapi middleware */
   router->use(janssonJsonapiMiddleware("/api/v1"));
@@ -29,7 +27,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
   resourceLibrary->add("Employee", EmployeeModel, EmployeeResource);
   resourceLibrary->add("Meeting", MeetingModel, MeetingResource);
   resourceLibrary->add("Note", NoteModel, NoteResource);
-  router->use(resourceMiddleware(resourceLibrary));
+  router->use(resourceMiddleware(resourceLibrary, db));
 
   router->get("/teams", ^(request_t *req, response_t *res) {
     jsonapi_t *jsonapi = req->m("jsonapi");
@@ -74,10 +72,6 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     res->s("jsonapi", notes->toJSONAPI());
   });
-
-  router->cleanup(Block_copy(^{
-    postgres->free();
-  }));
 
   return router;
 }

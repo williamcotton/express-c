@@ -230,7 +230,7 @@ model_instance_t *createModelInstance(model_t *model) {
               dirtyAttributePlaceholdersString);
     }
 
-    PGresult *pgres = model->pg->execParams(
+    PGresult *pgres = model->db->execParams(
         saveQuery, dirtyAttributesCount, NULL,
         (const char *const *)dirtyAttributeValues, NULL, NULL, 0);
 
@@ -287,7 +287,7 @@ model_instance_t *createModelInstance(model_t *model) {
                                       strlen(instance->id) + 1);
       sprintf(destroyQuery, "DELETE FROM %s WHERE id = %s", model->tableName,
               instance->id);
-      PGresult *pgres = model->pg->exec(destroyQuery);
+      PGresult *pgres = model->db->exec(destroyQuery);
       if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
         log_err("%s", PQresultErrorMessage(pgres));
       } else {

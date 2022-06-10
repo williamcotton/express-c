@@ -1,8 +1,8 @@
 #include "note.h"
 
-model_t *NoteModel(memory_manager_t *memoryManager, pg_t *pg,
+model_t *NoteModel(memory_manager_t *memoryManager, database_pool_t *db,
                    model_store_t *modelStore) {
-  model_t *Note = CreateModel("notes", memoryManager, pg, modelStore);
+  model_t *Note = CreateModel("notes", memoryManager, db, modelStore);
 
   Note->attribute("title", "text", NULL);
   Note->attribute("body", "text", NULL);

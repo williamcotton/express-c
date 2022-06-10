@@ -10,8 +10,10 @@ int main() {
 
   memory_manager_t *memoryManager = createMemoryManager();
 
+  database_pool_t *db = createPostgresPool(databaseUrl, 10);
+
   pg_t *pg = initPg(databaseUrl);
-  pg->query = getPostgresQuery(memoryManager, pg);
+  pg->query = getPostgresDBQuery(memoryManager, db);
 
   model_store_t *modelStore = createModelStore(memoryManager);
 

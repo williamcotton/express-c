@@ -20,14 +20,34 @@
   THE SOFTWARE.
 */
 
-#ifndef RESOURCE_MIDDLEWARE_H
-#define RESOURCE_MIDDLEWARE_H
+#ifndef DB_ADAPTER_H
+#define DB_ADAPTER_H
 
 #include <express.h>
-#include <model/model.h>
-#include <resource/resource.h>
+#include <libpq-fe.h>
 
-middlewareHandler resourceMiddleware(resource_library_t *resourceLibrary,
-                                     database_pool_t *db);
+typedef struct query_result_t {
+  char *sql;
+  char *result;
+  int resultCount;
+} query_result_t;
 
-#endif // RESOURCE_MIDDLEWARE_H
+typedef struct database_connection_t {
+  struct database_connection_t *next;
+  void *connection;
+} database_connection_t;
+
+typedef struct database_pool_t {
+  const char *uri;
+  int size;
+  database_connection_t *head;
+  dispatch_semaphore_t semaphore;
+  dispatch_queue_t queue;
+  PGresult * (^exec)(const char *, ...);
+  PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
+                           const int *, const int *, int);
+} database_pool_t;
+
+database_pool_t *createPostgresPool(const char *uri, int size);
+
+#endif // DB_ADAPTER_H

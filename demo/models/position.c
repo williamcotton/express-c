@@ -1,8 +1,8 @@
 #include "models.h"
 
-model_t *PositionModel(memory_manager_t *memoryManager, pg_t *pg,
+model_t *PositionModel(memory_manager_t *memoryManager, database_pool_t *db,
                        model_store_t *modelStore) {
-  model_t *Position = CreateModel("positions", memoryManager, pg, modelStore);
+  model_t *Position = CreateModel("positions", memoryManager, db, modelStore);
 
   Position->attribute("title", "varchar(255)", NULL);
   Position->attribute("historical_index", "integer", NULL);

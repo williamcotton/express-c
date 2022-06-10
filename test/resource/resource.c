@@ -9,16 +9,17 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wunused-variable"
 
-void setupTest(pg_t *pg);
+void setupTest(database_pool_t *db);
 
 void resourceTests(tape_t *t, const char *databaseUrl) {
+  database_pool_t *db = createPostgresPool(databaseUrl, 10);
   pg_t *pg = initPg(databaseUrl);
   memory_manager_t *memoryManager = createMemoryManager();
-  pg->query = getPostgresQuery(memoryManager, pg);
+  pg->query = getPostgresDBQuery(memoryManager, db);
   request_t *req = mmMalloc(memoryManager, sizeof(request_t));
   req->memoryManager = memoryManager;
 
-  setupTest(pg);
+  setupTest(db);
 
   string_collection_t *headers = stringCollection(0, NULL);
   string_t *contentType = string("Content-Type: application/vnd.api+json");

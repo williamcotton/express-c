@@ -209,7 +209,7 @@ typedef struct resource_t {
   struct resource_t * (^lookup)(const char *);
 } __attribute__((packed)) resource_t;
 
-typedef model_t *(*ModelFunction)(memory_manager_t *, pg_t *pg,
+typedef model_t *(*ModelFunction)(memory_manager_t *, database_pool_t *db,
                                   model_store_t *);
 
 typedef struct resource_store_t {

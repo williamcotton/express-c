@@ -1,8 +1,8 @@
 #include "team.h"
 
-model_t *TeamModel(memory_manager_t *memoryManager, pg_t *pg,
+model_t *TeamModel(memory_manager_t *memoryManager, database_pool_t *db,
                    model_store_t *modelStore) {
-  model_t *Team = CreateModel("teams", memoryManager, pg, modelStore);
+  model_t *Team = CreateModel("teams", memoryManager, db, modelStore);
 
   Team->attribute("name", "text", NULL);
 
