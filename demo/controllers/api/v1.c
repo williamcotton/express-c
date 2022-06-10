@@ -16,7 +16,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
   /* resource middleware */
   resource_library_t *resourceLibrary =
-      initResourceLibrary(router->memoryManager);
+      initResourceLibrary(router->memoryManager, db);
   resourceLibrary->add("Department", DepartmentModel, DepartmentResource);
   resourceLibrary->add("Employee", EmployeeModel, EmployeeResource);
   resourceLibrary->add("Milestone", MilestoneModel, MilestoneResource);
@@ -215,6 +215,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
   router->cleanup(Block_copy(^{
     debug("cleanup");
+    db->free();
     // postgres->free();
   }));
 

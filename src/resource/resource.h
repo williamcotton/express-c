@@ -225,10 +225,14 @@ typedef struct resource_library_item_t {
   const char *name;
   ModelFunction ModelFunction;
   ResourceFunction ResourceFunction;
+  model_t *model;
+  resource_t *resource;
 } resource_library_item_t;
 
 typedef struct resource_library_t {
   resource_library_item_t *items[100];
+  model_store_t *modelStore;
+  resource_store_t *resourceStore;
   int count;
   void (^add)(const char *name, ModelFunction, ResourceFunction);
 } resource_library_t;
@@ -300,7 +304,8 @@ resource_instance_t *createResourceInstance(resource_t *resource,
                                             jsonapi_params_t *params);
 resource_t *CreateResource(char *type, model_t *model,
                            resource_store_t *resourceStore);
-resource_library_t *initResourceLibrary();
+resource_library_t *initResourceLibrary(memory_manager_t *memoryManager,
+                                        database_pool_t *db);
 resource_store_t *createResourceStore(memory_manager_t *memoryManager);
 
 #endif // RESOURCE_H

@@ -28,6 +28,25 @@ database_pool_t *createPostgresPool(const char *uri, int size) {
     c = c->next;
   }
   pool->head = connection;
+
+  pool->borrow = Block_copy(^() {
+    __block database_connection_t *current = NULL;
+    dispatch_semaphore_wait(pool->semaphore, DISPATCH_TIME_FOREVER);
+    dispatch_sync(pool->queue, ^{
+      current = pool->head;
+      pool->head = current->next;
+    });
+    return current;
+  });
+
+  pool->release = Block_copy(^(database_connection_t *current) {
+    dispatch_sync(pool->queue, ^{
+      current->next = pool->head;
+      pool->head = current;
+    });
+    dispatch_semaphore_signal(pool->semaphore);
+  });
+
   pool->exec = Block_copy(^(const char *sql, ...) {
     int nParams = pgParamCount(sql);
     va_list args;
@@ -44,22 +63,14 @@ database_pool_t *createPostgresPool(const char *uri, int size) {
     }
     va_end(args);
 
-    __block database_connection_t *current = NULL;
-    dispatch_semaphore_wait(pool->semaphore, DISPATCH_TIME_FOREVER);
-    dispatch_sync(pool->queue, ^{
-      current = pool->head;
-      pool->head = current->next;
-    });
+    database_connection_t *current = pool->borrow();
 
     PGresult *pgres = PQexecParams(current->connection, sql, nParams, NULL,
                                    paramValues, NULL, NULL, 0);
-    free(paramValues);
 
-    dispatch_sync(pool->queue, ^{
-      current->next = pool->head;
-      pool->head = current;
-    });
-    dispatch_semaphore_signal(pool->semaphore);
+    pool->release(current);
+
+    free(paramValues);
 
     return pgres;
   });
@@ -68,24 +79,34 @@ database_pool_t *createPostgresPool(const char *uri, int size) {
       Block_copy(^(const char *sql, int nParams, const Oid *paramTypes,
                    const char *const *paramValues, const int *paramLengths,
                    const int *paramFormats, int resultFormat) {
-        __block database_connection_t *current = NULL;
-        dispatch_semaphore_wait(pool->semaphore, DISPATCH_TIME_FOREVER);
-        dispatch_sync(pool->queue, ^{
-          current = pool->head;
-          pool->head = current->next;
-        });
+        database_connection_t *current = pool->borrow();
 
         PGresult *pgres =
             PQexecParams(current->connection, sql, nParams, paramTypes,
                          paramValues, paramLengths, paramFormats, resultFormat);
 
-        dispatch_sync(pool->queue, ^{
-          current->next = pool->head;
-          pool->head = current;
-        });
-        dispatch_semaphore_signal(pool->semaphore);
+        pool->release(current);
         return pgres;
       });
+
+  pool->free = Block_copy(^() {
+    database_connection_t *current = pool->head;
+    database_connection_t *last;
+    while (current != NULL) {
+      PQfinish(current->connection);
+      last = current;
+      current = current->next;
+      free(last);
+    }
+    Block_release(pool->exec);
+    Block_release(pool->execParams);
+    Block_release(pool->borrow);
+    Block_release(pool->release);
+    dispatch_async(dispatch_get_main_queue(), ^() {
+      Block_release(pool->free);
+      free(pool);
+    });
+  });
 
   return pool;
 }

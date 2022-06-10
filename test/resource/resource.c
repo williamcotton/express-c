@@ -13,9 +13,7 @@ void setupTest(database_pool_t *db);
 
 void resourceTests(tape_t *t, const char *databaseUrl) {
   database_pool_t *db = createPostgresPool(databaseUrl, 10);
-  pg_t *pg = initPg(databaseUrl);
   memory_manager_t *memoryManager = createMemoryManager();
-  pg->query = getPostgresDBQuery(memoryManager, db);
   request_t *req = mmMalloc(memoryManager, sizeof(request_t));
   req->memoryManager = memoryManager;
 
@@ -28,6 +26,14 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
 
   t->test("resource", ^(tape_t *t) {
     t->test("all", ^(tape_t *t) {
+      t->strEqual("island", t->fetch("/api/v1/islands", "GET", headers, NULL),
+                  "{\"data\": [{\"type\": \"islands\", \"id\": \"1\", "
+                  "\"attributes\": {\"name\": \"Cuba\"}, \"relationships\": "
+                  "{}}, {\"type\": \"islands\", \"id\": \"2\", \"attributes\": "
+                  "{\"name\": \"Hawaii\"}, \"relationships\": {}}, {\"type\": "
+                  "\"islands\", \"id\": \"3\", \"attributes\": {\"name\": "
+                  "\"Japan\"}, \"relationships\": {}}], \"meta\": {}}");
+
       t->strEqual(
           "no filters", t->fetch("/api/v1/teams", "GET", headers, NULL),
           "{\"data\": [{\"type\": \"teams\", \"id\": \"1\", \"attributes\": "
@@ -1512,7 +1518,7 @@ void resourceTests(tape_t *t, const char *databaseUrl) {
 
   headers->free();
   mmFree(memoryManager);
-  pg->free();
+  db->free();
 }
 
 #pragma clang diagnostic pop

@@ -1,6 +1,6 @@
 #include "resource-middleware.h"
 
-middlewareHandler resourceMiddleware(UNUSED resource_library_t *resourceLibrary,
+middlewareHandler resourceMiddleware(resource_library_t *resourceLibrary,
                                      database_pool_t *db) {
 
   return Block_copy(^(request_t *req, UNUSED response_t *res, void (^next)(),

@@ -31,4 +31,6 @@ int main() {
   }
 
   mmFree(memoryManager);
+
+  db->free();
 };

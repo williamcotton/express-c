@@ -46,6 +46,9 @@ typedef struct database_pool_t {
   PGresult * (^exec)(const char *, ...);
   PGresult * (^execParams)(const char *, int, const Oid *, const char *const *,
                            const int *, const int *, int);
+  void (^free)();
+  database_connection_t * (^borrow)();
+  void (^release)(database_connection_t *);
 } database_pool_t;
 
 database_pool_t *createPostgresPool(const char *uri, int size);

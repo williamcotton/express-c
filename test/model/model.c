@@ -56,15 +56,17 @@ void setupTest(database_pool_t *db) {
                    "'b', '2022-03-09')"));
   PQclear(db->exec("INSERT INTO notes (employee_id, title, date) VALUES (2, "
                    "'c', '2022-03-09')"));
+  PQclear(db->exec("DROP TABLE IF EXISTS islands"));
+  PQclear(db->exec("CREATE TABLE islands (id SERIAL PRIMARY KEY, name TEXT)"));
+  PQclear(db->exec("INSERT INTO islands (name) VALUES ('Cuba')"));
+  PQclear(db->exec("INSERT INTO islands (name) VALUES ('Hawaii')"));
+  PQclear(db->exec("INSERT INTO islands (name) VALUES ('Japan')"));
 };
 
 void modelTests(tape_t *t, const char *databaseUrl,
                 memory_manager_t *memoryManager) {
 
   database_pool_t *db = createPostgresPool(databaseUrl, 10);
-
-  pg_t *pg = initPg(databaseUrl);
-  pg->query = getPostgresDBQuery(memoryManager, db);
 
   model_store_t *modelStore = createModelStore(memoryManager);
 
@@ -412,7 +414,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
     });
   });
 
-  pg->free();
+  db->free();
 }
 
 #pragma clang diagnostic pop
