@@ -1,4 +1,16 @@
 #include "express.h"
+#include <sys/time.h>
+
+double time_diff(struct timeval x, struct timeval y) {
+  double x_ms, y_ms, diff;
+
+  x_ms = (double)x.tv_sec + (double)x.tv_usec;
+  y_ms = (double)y.tv_sec + (double)y.tv_usec;
+
+  diff = (double)y_ms - (double)x_ms;
+
+  return diff;
+}
 
 void buildResponse(client_t client, request_t *req, response_t *res);
 void buildRequest(request_t *req, client_t client, router_t *baseRouter);
@@ -79,8 +91,13 @@ void *clientAcceptEventHandler(void *args) {
     check(server->socket >= 0, "server->socket is not valid");
 
     for (int n = 0; n < nfds; ++n) {
+      clock_t begin;
+      struct timeval before, after;
       if (events[n].data.fd == server->socket) {
         while (1) {
+          begin = clock();
+          gettimeofday(&before, NULL);
+
           client_t client = acceptClientConnection(server);
 
           if (client.socket < 0) {
@@ -148,6 +165,11 @@ void *clientAcceptEventHandler(void *args) {
           buildResponse(client, req, res);
 
           baseRouter->handler(req, res);
+
+          gettimeofday(&after, NULL);
+          clock_t end = clock();
+          double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+          printf("%f (%.0lf us)\n", time_spent, time_diff(before, after));
 
           status->reqStatus = ENDED;
 
@@ -225,6 +247,10 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
     const unsigned long numPendingConnections =
         dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++) {
+      clock_t begin = clock();
+      __block struct timeval before, after;
+      gettimeofday(&before, NULL);
+
       client_t client = acceptClientConnection(server);
       if (client.socket < 0)
         continue;
@@ -265,6 +291,11 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
         buildResponse(client, req, res);
 
         baseRouter->handler(req, res);
+
+        gettimeofday(&after, NULL);
+        clock_t end = clock();
+        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        printf("%f (%.0lf us)\n", time_spent, time_diff(before, after));
 
         closeClientConnection(client);
         freeResponse(res);
