@@ -91,14 +91,17 @@ void *clientAcceptEventHandler(void *args) {
     check(server->socket >= 0, "server->socket is not valid");
 
     for (int n = 0; n < nfds; ++n) {
+#ifdef REQUEST_TIMING
       clock_t begin = clock();
-      ;
       struct timeval before, after;
       gettimeofday(&before, NULL);
+#endif // REQUEST_TIMING
       if (events[n].data.fd == server->socket) {
         while (1) {
+#ifdef REQUEST_TIMING
           begin = clock();
           gettimeofday(&before, NULL);
+#endif // REQUEST_TIMING
 
           client_t client = acceptClientConnection(server);
 
@@ -168,10 +171,12 @@ void *clientAcceptEventHandler(void *args) {
 
           baseRouter->handler(req, res);
 
+#ifdef REQUEST_TIMING
           gettimeofday(&after, NULL);
           clock_t end = clock();
           double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
           printf("%f (%.0lf us)\n", time_spent, time_diff(before, after));
+#endif // REQUEST_TIMING
 
           status->reqStatus = ENDED;
 
@@ -249,9 +254,11 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
     const unsigned long numPendingConnections =
         dispatch_source_get_data(acceptSource);
     for (unsigned long i = 0; i < numPendingConnections; i++) {
+#ifdef REQUEST_TIMING
       clock_t begin = clock();
       __block struct timeval before, after;
       gettimeofday(&before, NULL);
+#endif // REQUEST_TIMING
 
       client_t client = acceptClientConnection(server);
       if (client.socket < 0)
@@ -294,10 +301,12 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
 
         baseRouter->handler(req, res);
 
+#ifdef REQUEST_TIMING
         gettimeofday(&after, NULL);
         clock_t end = clock();
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
         printf("%f (%.0lf us)\n", time_spent, time_diff(before, after));
+#endif // REQUEST_TIMING
 
         closeClientConnection(client);
         freeResponse(res);
