@@ -91,8 +91,10 @@ void *clientAcceptEventHandler(void *args) {
     check(server->socket >= 0, "server->socket is not valid");
 
     for (int n = 0; n < nfds; ++n) {
-      clock_t begin;
+      clock_t begin = clock();
+      ;
       struct timeval before, after;
+      gettimeofday(&before, NULL);
       if (events[n].data.fd == server->socket) {
         while (1) {
           begin = clock();
