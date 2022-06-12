@@ -41,7 +41,6 @@ A multi-threaded implementation of the client handler that uses epoll().
 
 */
 
-#define THREAD_NUM 4
 #define MAX_EVENTS 64
 
 typedef enum req_status_t { READING, ENDED } req_status_t;
@@ -176,7 +175,7 @@ error:
 
 int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
 
-  pthread_t threads[THREAD_NUM];
+  pthread_t threads[server->threadCount];
 
   int epollFd = epoll_create1(0);
   check(epollFd >= 0, "epoll_create1() failed");
@@ -193,7 +192,7 @@ int initClientAcceptEventHandler(server_t *server, router_t *baseRouter) {
   check(epoll_ctl(epollFd, EPOLL_CTL_ADD, server->socket, &epollEvent) >= 0,
         "epoll_ctl() failed");
 
-  for (int i = 0; i < THREAD_NUM; ++i) {
+  for (int i = 0; i < server->threadCount; ++i) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, 1);

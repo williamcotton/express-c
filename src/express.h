@@ -191,6 +191,7 @@ typedef struct error_t {
 typedef struct server_t {
   int socket;
   int port;
+  int threadCount;
   dispatch_queue_t serverQueue;
   void (^close)();
   int (^listen)(int port);

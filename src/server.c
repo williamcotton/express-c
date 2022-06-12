@@ -7,6 +7,8 @@ server_t *expressServer() {
   server->serverQueue =
       dispatch_queue_create("serverQueue", DISPATCH_QUEUE_CONCURRENT);
 
+  server->threadCount = 32;
+
   server->close = Block_copy(^() {
     close(server->socket);
     server->socket = -1;
