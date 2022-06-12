@@ -2,8 +2,8 @@
 
 # TODO: make public and view dirs arguments
 
-ls public/* | xargs -I % xxd -i % > $1
-ls views/* | xargs -I % xxd -i % >> $1
+ls $2 | xargs -I % xxd -i % > $1
+ls $3 | xargs -I % xxd -i % >> $1
 
 cat $1 | grep 'unsigned char' | awk '{print $3}' | sed 's/[\[\]]*//g' | awk '{printf("%s, ", $1)}' | sed 's/, $//' | awk '{
   print "unsigned char *embeddedFilesData[] = {" $0 "};"

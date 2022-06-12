@@ -153,5 +153,5 @@ TodoMVC-analyze:
 
 .PHONY: embeddedFiles.h
 embeddedFiles.h:
-	embed.sh $@ >> $@
+	embed.sh $@ public/* views/* >> $@
 
