@@ -936,6 +936,10 @@ middlewareHandler postgresMiddlewareFactory(postgres_connection_t *postgres) {
       }
     });
 
+    if (PQstatus(pg->connection) != CONNECTION_OK) {
+      PQreset(pg->connection);
+    }
+
     pg->query = getPostgresQuery(req->memoryManager, pg);
 
     req->mSet("pg", pg);

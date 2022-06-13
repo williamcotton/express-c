@@ -36,6 +36,9 @@ database_pool_t *createPostgresPool(const char *uri, int size) {
       current = pool->head;
       pool->head = current->next;
     });
+    if (PQstatus(current->connection) != CONNECTION_OK) {
+      PQreset(current->connection);
+    }
     return current;
   });
 
