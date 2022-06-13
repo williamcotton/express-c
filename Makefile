@@ -122,23 +122,29 @@ test-threads:
 manual-test-trace: build-test-trace
 	SLEEP_TIME=5 RUN_X_TIMES=10 $(BUILD_DIR)/test
 
+.PHONY: $(BUILD_DIR)/libtape.so
+$(BUILD_DIR)/libtape.so:
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(TAPE_SRC) src/string/string.c $(CFLAGS) $(DEV_CFLAGS) -fPIC
+
 .PHONY: $(BUILD_DIR)/libexpress.so
 $(BUILD_DIR)/libexpress.so:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(PROD_CFLAGS) -fPIC
 
-# TODO: copy express.supp, debug.plist to /usr/local/share
-
-install: $(BUILD_DIR)/libexpress.so
+install: $(BUILD_DIR)/libexpress.so $(BUILD_DIR)/libtape.so
 	mkdir -p /usr/local/include
 	mkdir -p /usr/local/lib
 	mkdir -p /usr/local/bin
 	mkdir -p /usr/local/share
 	rm -f /usr/local/lib/libexpress.so
+	rm -f /usr/local/lib/libtape.so
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress.so
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libtape.so
 endif
 	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
+	cp $(BUILD_DIR)/libtape.so /usr/local/lib/libtape.so
 	cp -Rp src/* /usr/local/include
 	cp -Rp deps/* /usr/local/include
 	cp -Rp scripts/* /usr/local/bin
@@ -148,8 +154,6 @@ endif
 $(BUILD_DIR)/libexpress-trace.so:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(TEST_CFLAGS) -g -O0 -fPIC
-
-# TODO: copy express.supp, debug.plist to /usr/local/share
 
 install-trace: $(BUILD_DIR)/libexpress-trace.so
 	mkdir -p /usr/local/include
@@ -170,8 +174,6 @@ endif
 $(BUILD_DIR)/libexpress-debug.so:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(DEV_CFLAGS) -fPIC
-
-# TODO: copy express.supp, debug.plist to /usr/local/share
 
 install-debug: $(BUILD_DIR)/libexpress-debug.so
 	mkdir -p /usr/local/include
