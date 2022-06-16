@@ -116,7 +116,8 @@ void modelTests(tape_t *t, const char *databaseUrl,
 
       t->ok("has a result", teams->size == 1);
 
-      string_t *nameValue = string(teams->at(0)->get("name"));
+      string_t *nameValue =
+          string(modelInstanceCollectionAt(teams, 0)->get("name"));
       t->strEqual("name", nameValue, "design");
 
       nameValue->free();
@@ -135,7 +136,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
 
       t->ok("employees count", employees->size == 2);
 
-      employee_t *employeeAlice = employees->at(0);
+      employee_t *employeeAlice = modelInstanceCollectionAt(employees, 0);
 
       string_t *employeeAliceName = string(employeeAlice->get("name"));
       t->strEqual("Alice's name", employeeAliceName, "Alice");
@@ -143,7 +144,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
       string_t *employeeAliceEmail = string(employeeAlice->get("email"));
       t->strEqual("Alice's email", employeeAliceEmail, "alice@email.com");
 
-      employee_t *employeeBob = employees->at(1);
+      employee_t *employeeBob = modelInstanceCollectionAt(employees, 1);
 
       string_t *employeeBobName = string(employeeBob->get("name"));
       t->strEqual("Bob's name", employeeBobName, "Bob");
@@ -151,7 +152,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
       string_t *employeeBobEmail = string(employeeBob->get("email"));
       t->strEqual("Bob's email", employeeBobEmail, "bob@email.com");
 
-      employee_t *employeeBogus = employees->at(2);
+      employee_t *employeeBogus = modelInstanceCollectionAt(employees, 2);
       t->ok("bogus", employeeBogus == NULL);
 
       employeeAliceName->free();
@@ -168,7 +169,7 @@ void modelTests(tape_t *t, const char *databaseUrl,
       employee_t *employee = Employee->find("1");
       team_collection_t *teams = employee->r("teams")->all();
 
-      team_t *team = teams->at(0);
+      team_t *team = modelInstanceCollectionAt(teams, 0);
 
       string_t *teamName = string(team->get("name"));
       t->strEqual("team name", teamName, "product");
@@ -302,116 +303,116 @@ void modelTests(tape_t *t, const char *databaseUrl,
                 // TODO: test callbacks
             });
 
-    t->test("collection", ^(tape_t *t) {
-      employee_collection_t *employees = Employee->all();
+    // t->test("collection", ^(tape_t *t) {
+    //   employee_collection_t *employees = Employee->all();
 
-      t->test("each", ^(tape_t *t) {
-        __block int i = 0;
-        employees->each(^(employee_t *employee) {
-          if (i == 0) {
-            string_t *name = string(employee->get("name"));
+    //   t->test("each", ^(tape_t *t) {
+    //     __block int i = 0;
+    //     employees->each(^(employee_t *employee) {
+    //       if (i == 0) {
+    //         string_t *name = string(employee->get("name"));
 
-            t->strEqual("first name", name, "Alice");
+    //         t->strEqual("first name", name, "Alice");
 
-            name->free();
-          } else if (i == 1) {
-            string_t *name = string(employee->get("name"));
+    //         name->free();
+    //       } else if (i == 1) {
+    //         string_t *name = string(employee->get("name"));
 
-            t->strEqual("second name", name, "Robert");
+    //         t->strEqual("second name", name, "Robert");
 
-            name->free();
-          } else {
-            t->ok("too many", false);
-          }
-          i++;
-        });
-      });
+    //         name->free();
+    //       } else {
+    //         t->ok("too many", false);
+    //       }
+    //       i++;
+    //     });
+    //   });
 
-      t->test("eachWithIndex", ^(tape_t *t) {
-        employees->eachWithIndex(^(employee_t *employee, int i) {
-          if (i == 0) {
-            string_t *name = string(employee->get("name"));
+    //   t->test("eachWithIndex", ^(tape_t *t) {
+    //     employees->eachWithIndex(^(employee_t *employee, int i) {
+    //       if (i == 0) {
+    //         string_t *name = string(employee->get("name"));
 
-            t->strEqual("first name", name, "Alice");
+    //         t->strEqual("first name", name, "Alice");
 
-            name->free();
-          } else if (i == 1) {
-            string_t *name = string(employee->get("name"));
+    //         name->free();
+    //       } else if (i == 1) {
+    //         string_t *name = string(employee->get("name"));
 
-            t->strEqual("second name", name, "Robert");
+    //         t->strEqual("second name", name, "Robert");
 
-            name->free();
-          } else {
-            t->ok("too many", false);
-          }
-        });
-      });
+    //         name->free();
+    //       } else {
+    //         t->ok("too many", false);
+    //       }
+    //     });
+    //   });
 
-      // t->test("map", ^(tape_t *t) {
-      //   char **names = (char **)employees->map(^(employee_t *employee) {
-      //     return (void *)employee->get("name");
-      //   });
+    //   t->test("map", ^(tape_t *t) {
+    //     char **names = (char **)employees->map(^(employee_t *employee) {
+    //       return (void *)employee->get("name");
+    //     });
 
-      //   string_t *firstName = string(names[0]);
-      //   string_t *secondName = string(names[1]);
+    //     string_t *firstName = string(names[0]);
+    //     string_t *secondName = string(names[1]);
 
-      //   t->strEqual("first name", firstName, "Alice");
-      //   t->strEqual("second name", secondName, "Robert");
+    //     t->strEqual("first name", firstName, "Alice");
+    //     t->strEqual("second name", secondName, "Robert");
 
-      //   firstName->free();
-      //   secondName->free();
-      // });
+    //     firstName->free();
+    //     secondName->free();
+    //   });
 
-      // t->test("reduce", ^(tape_t *t) {
-      //   string_t *names = string("");
+    //   t->test("reduce", ^(tape_t *t) {
+    //     string_t *names = string("");
 
-      //   employees->reduce((void *)names, ^(void *accum, employee_t *e) {
-      //     string_t *acc = (string_t *)accum;
-      //     acc->concat(e->get("name"))->concat("+");
-      //     return (void *)acc;
-      //   });
+    //     employees->reduce((void *)names, ^(void *accum, employee_t *e) {
+    //       string_t *acc = (string_t *)accum;
+    //       acc->concat(e->get("name"))->concat("+");
+    //       return (void *)acc;
+    //     });
 
-      //   t->strEqual("names", names, "Alice+Robert+");
+    //     t->strEqual("names", names, "Alice+Robert+");
 
-      //   names->free();
-      // });
+    //     names->free();
+    //   });
 
-      t->test("filter", ^(tape_t *t) {
-        team_t *employee = Employee->new ();
-        employee->set("name", "Charlie");
-        employee->set("email", "charlie@email.com");
-        employee->set("team_id", "1");
-        employee->save();
+    //   t->test("filter", ^(tape_t *t) {
+    //     team_t *employee = Employee->new ();
+    //     employee->set("name", "Charlie");
+    //     employee->set("email", "charlie@email.com");
+    //     employee->set("team_id", "1");
+    //     employee->save();
 
-        employee_collection_t *employees = Employee->all();
-        employee_collection_t *filtered =
-            employees->filter(^(employee_t *employee) {
-              return strlen(employee->get("name")) > 5;
-            });
+    //     employee_collection_t *employees = Employee->all();
+    //     employee_collection_t *filtered =
+    //         employees->filter(^(employee_t *employee) {
+    //           return strlen(employee->get("name")) > 5;
+    //         });
 
-        string_t *firstName = string(filtered->at(0)->get("name"));
-        string_t *secondName = string(filtered->at(1)->get("name"));
+    //     string_t *firstName = string(filtered->at(0)->get("name"));
+    //     string_t *secondName = string(filtered->at(1)->get("name"));
 
-        t->strEqual("first name", firstName, "Robert");
-        t->strEqual("second name", secondName, "Charlie");
+    //     t->strEqual("first name", firstName, "Robert");
+    //     t->strEqual("second name", secondName, "Charlie");
 
-        firstName->free();
-        secondName->free();
-      });
+    //     firstName->free();
+    //     secondName->free();
+    //   });
 
-      t->test("find", ^(tape_t *t) {
-        employee_collection_t *employees = Employee->all();
-        employee_t *employee = employees->find(^(employee_t *employee) {
-          return strcmp(employee->get("team_id"), "1") == 0;
-        });
+    //   t->test("find", ^(tape_t *t) {
+    //     employee_collection_t *employees = Employee->all();
+    //     employee_t *employee = employees->find(^(employee_t *employee) {
+    //       return strcmp(employee->get("team_id"), "1") == 0;
+    //     });
 
-        string_t *name = string(employee->get("name"));
+    //     string_t *name = string(employee->get("name"));
 
-        t->strEqual("name", name, "Charlie");
+    //     t->strEqual("name", name, "Charlie");
 
-        name->free();
-      });
-    });
+    //     name->free();
+    //   });
+    // });
   });
 
   db->free();
