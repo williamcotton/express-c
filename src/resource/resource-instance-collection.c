@@ -139,7 +139,5 @@ createResourceInstanceCollection(resource_t *resource,
     collection->arr[i] = resourceInstance;
   }
 
-  collectionHelpers(collection); // TODO: make optional
-
   return collection;
 };

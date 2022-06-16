@@ -45,7 +45,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Team = req->m("Team");
     resource_instance_collection_t *teams = Team->all(jsonapi->params);
 
-    res->s("jsonapi", teams->toJSONAPI());
+    res->s("jsonapi", toJSONAPI(teams));
   });
 
   router->get("/teams/:id", ^(request_t *req, response_t *res) {
@@ -56,7 +56,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     check(team, "Team not found");
 
-    res->s("jsonapi", team->toJSONAPI());
+    res->s("jsonapi", toJSONAPI(team));
   error:
     res->send("404"); // TODO: jsonapi error
   });
@@ -71,7 +71,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Meeting = req->m("Meeting");
     resource_instance_collection_t *meetings = Meeting->all(jsonapi->params);
 
-    res->s("jsonapi", meetings->toJSONAPI());
+    res->s("jsonapi", toJSONAPI(meetings));
   });
 
   router->get("/notes", ^(request_t *req, response_t *res) {
@@ -80,7 +80,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
     resource_t *Note = req->m("Note");
     resource_instance_collection_t *notes = Note->all(jsonapi->params);
 
-    res->s("jsonapi", notes->toJSONAPI());
+    res->s("jsonapi", toJSONAPI(notes));
   });
 
   router->get("/islands", ^(request_t *req, response_t *res) {
@@ -90,7 +90,7 @@ router_t *resourceRouter(const char *pgUri, int poolSize) {
 
     resource_instance_collection_t *islands = Island->all(jsonapi->params);
 
-    res->s("jsonapi", islands->toJSONAPI());
+    res->s("jsonapi", toJSONAPI(islands));
   });
 
   router->cleanup(Block_copy(^{

@@ -92,6 +92,11 @@ typedef struct resource_instance_t {
 json_t *resourceInstanceDataJSONAPI(resource_instance_t *instance);
 json_t *resourceInstanceToJSONAPI(resource_instance_t *instance);
 
+#define toJSONAPI(resource)                                                    \
+  _Generic((resource), resource_instance_t *                                   \
+           : resourceInstanceToJSONAPI, resource_instance_collection_t *       \
+           : resourceInstanceCollectionToJSONAPI)(resource)
+
 typedef query_t * (^filterCallback)(query_t *scope, const char **values,
                                     int count);
 typedef query_t * (^sortCallback)(query_t *scope, const char *direction);

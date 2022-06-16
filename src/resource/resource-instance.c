@@ -171,7 +171,5 @@ resource_instance_t *createResourceInstance(resource_t *resource,
   instance->type = resource->type;
   instance->includedResourceInstancesCount = 0;
 
-  instanceHelpers(instance); // TODO: make optional
-
   return instance;
 };
