@@ -73,7 +73,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
             size_t valueLen = strlen(pgValue) + 1;
             char *value = mmMalloc(model->memoryManager, valueLen);
             strlcpy(value, pgValue, valueLen);
-            collection->arr[i]->initAttr(name, value, 0);
+            modelInstanceInitAttr(collection->arr[i], name, value, 0);
           }
         }
       }
@@ -102,7 +102,7 @@ model_t *CreateModel(char *tableName, memory_manager_t *memoryManager,
           size_t valueLen = strlen(pgValue) + 1;
           char *value = mmMalloc(model->memoryManager, valueLen);
           strlcpy(value, pgValue, valueLen);
-          instance->initAttr(name, value, 0);
+          modelInstanceInitAttr(instance, name, value, 0);
         }
       }
       PQclear(result);

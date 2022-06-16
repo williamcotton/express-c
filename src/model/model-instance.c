@@ -1,5 +1,22 @@
 #include "model.h"
 
+void modelInstanceInitAttr(model_instance_t *instance, char *attribute,
+                           char *value, int isDirty) {
+  class_attribute_t *classAttribute = instance->model->getAttribute(attribute);
+  if (classAttribute == NULL) {
+    log_err("'%s' does not have attribute '%s'", instance->model->tableName,
+            attribute);
+    return;
+  }
+  instance_attribute_t *instanceAttribute =
+      mmMalloc(instance->model->memoryManager, sizeof(instance_attribute_t));
+  instanceAttribute->classAttribute = classAttribute;
+  instanceAttribute->value = value;
+  instanceAttribute->isDirty = isDirty;
+  instance->attributes[instance->attributesCount] = instanceAttribute;
+  instance->attributesCount++;
+}
+
 model_instance_t *createModelInstance(model_t *model) {
   memory_manager_t *memoryManager = model->memoryManager;
   model_instance_t *instance =
@@ -33,24 +50,8 @@ model_instance_t *createModelInstance(model_t *model) {
         }
       }
     } else {
-      instance->initAttr(attribute, value, 1);
+      modelInstanceInitAttr(instance, attribute, value, 1);
     }
-  });
-
-  instance->initAttr = mmBlockCopy(memoryManager, ^(char *attribute,
-                                                    char *value, int isDirty) {
-    class_attribute_t *classAttribute = model->getAttribute(attribute);
-    if (classAttribute == NULL) {
-      log_err("'%s' does not have attribute '%s'", model->tableName, attribute);
-      return;
-    }
-    instance_attribute_t *instanceAttribute =
-        mmMalloc(memoryManager, sizeof(instance_attribute_t));
-    instanceAttribute->classAttribute = classAttribute;
-    instanceAttribute->value = value;
-    instanceAttribute->isDirty = isDirty;
-    instance->attributes[instance->attributesCount] = instanceAttribute;
-    instance->attributesCount++;
   });
 
   instance->get = mmBlockCopy(memoryManager, ^(char *attribute) {

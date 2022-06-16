@@ -36,21 +36,22 @@ model_instance_collection_t *createModelInstanceCollection(model_t *model) {
         }
       });
 
-  collection->reduce = mmBlockCopy(
-      memoryManager, ^(void *accumulator, reducerInstanceCallback reducer) {
-        for (size_t i = 0; i < collection->size; i++) {
-          accumulator = reducer(accumulator, collection->arr[i]);
-        }
-        return accumulator;
-      });
+  // collection->reduce = mmBlockCopy(
+  //     memoryManager, ^(void *accumulator, reducerInstanceCallback reducer) {
+  //       for (size_t i = 0; i < collection->size; i++) {
+  //         accumulator = reducer(accumulator, collection->arr[i]);
+  //       }
+  //       return accumulator;
+  //     });
 
-  collection->map = mmBlockCopy(memoryManager, ^(mapInstanceCallback callback) {
-    void **arr = mmMalloc(memoryManager, sizeof(void *) * collection->size);
-    for (size_t i = 0; i < collection->size; i++) {
-      arr[i] = callback(collection->arr[i]);
-    }
-    return arr;
-  });
+  // collection->map = mmBlockCopy(memoryManager, ^(mapInstanceCallback
+  // callback) {
+  //   void **arr = mmMalloc(memoryManager, sizeof(void *) * collection->size);
+  //   for (size_t i = 0; i < collection->size; i++) {
+  //     arr[i] = callback(collection->arr[i]);
+  //   }
+  //   return arr;
+  // });
 
   collection->filter = mmBlockCopy(memoryManager, ^(
                                        filterInstanceCallback callback) {

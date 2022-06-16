@@ -347,34 +347,34 @@ void modelTests(tape_t *t, const char *databaseUrl,
         });
       });
 
-      t->test("map", ^(tape_t *t) {
-        char **names = (char **)employees->map(^(employee_t *employee) {
-          return (void *)employee->get("name");
-        });
+      // t->test("map", ^(tape_t *t) {
+      //   char **names = (char **)employees->map(^(employee_t *employee) {
+      //     return (void *)employee->get("name");
+      //   });
 
-        string_t *firstName = string(names[0]);
-        string_t *secondName = string(names[1]);
+      //   string_t *firstName = string(names[0]);
+      //   string_t *secondName = string(names[1]);
 
-        t->strEqual("first name", firstName, "Alice");
-        t->strEqual("second name", secondName, "Robert");
+      //   t->strEqual("first name", firstName, "Alice");
+      //   t->strEqual("second name", secondName, "Robert");
 
-        firstName->free();
-        secondName->free();
-      });
+      //   firstName->free();
+      //   secondName->free();
+      // });
 
-      t->test("reduce", ^(tape_t *t) {
-        string_t *names = string("");
+      // t->test("reduce", ^(tape_t *t) {
+      //   string_t *names = string("");
 
-        employees->reduce((void *)names, ^(void *accum, employee_t *e) {
-          string_t *acc = (string_t *)accum;
-          acc->concat(e->get("name"))->concat("+");
-          return (void *)acc;
-        });
+      //   employees->reduce((void *)names, ^(void *accum, employee_t *e) {
+      //     string_t *acc = (string_t *)accum;
+      //     acc->concat(e->get("name"))->concat("+");
+      //     return (void *)acc;
+      //   });
 
-        t->strEqual("names", names, "Alice+Robert+");
+      //   t->strEqual("names", names, "Alice+Robert+");
 
-        names->free();
-      });
+      //   names->free();
+      // });
 
       t->test("filter", ^(tape_t *t) {
         team_t *employee = Employee->new ();

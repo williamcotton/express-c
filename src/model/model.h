@@ -65,8 +65,8 @@ typedef struct model_instance_collection_t {
   struct model_instance_collection_t * (^filter)(filterInstanceCallback);
   struct model_instance_t * (^find)(findInstanceCallback);
   void (^eachWithIndex)(eachInstanceWithIndexCallback);
-  void * (^reduce)(void *accumulator, reducerInstanceCallback);
-  void ** (^map)(mapInstanceCallback);
+  // void * (^reduce)(void *accumulator, reducerInstanceCallback);
+  // void ** (^map)(mapInstanceCallback);
 } model_instance_collection_t;
 
 typedef struct model_instance_t {
@@ -80,12 +80,14 @@ typedef struct model_instance_t {
   void (^addError)(char *attribute, char *message);
   char * (^get)(char *attribute);
   void (^set)(char *attribute, char *value);
-  void (^initAttr)(char *attribute, char *value, int isDirty);
   query_t * (^r)(const char *relationName);
   int (^save)();
   int (^validate)();
   int (^destroy)();
 } model_instance_t;
+
+void modelInstanceInitAttr(model_instance_t *instance, char *attribute,
+                           char *value, int isDirty);
 
 typedef void * (^copyBlock)(void *);
 typedef void (^instanceCallback)(model_instance_t *instance);
