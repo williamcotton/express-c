@@ -8,8 +8,9 @@ model_t *TeamModel(memory_manager_t *memoryManager, database_pool_t *db,
 
   Team->validatesAttribute("name", "presence", NULL);
   Team->validates(^(team_t *team) {
-    if (team->get("name") && strlen(team->get("name")) < 3) {
-      team->addError("name", "must be at least 3 characters long");
+    if (modelInstanceGet(team, "name") &&
+        strlen(modelInstanceGet(team, "name")) < 3) {
+      modelInstanceAddError(team, "name", "must be at least 3 characters long");
     }
   });
 

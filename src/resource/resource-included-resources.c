@@ -8,15 +8,15 @@ void addRelatedToResource(resource_instance_t *resourceInstance,
       resourceInstanceCollectionFilter(
           includedCollection, ^(resource_instance_t *relatedInstance) {
             char *relatedInstanceId =
-                relatedInstance->modelInstance->get(foreignKey);
+                modelInstanceGet(relatedInstance->modelInstance, foreignKey);
             char *resourceInstanceId = resourceInstance->id;
             if (relatedInstanceId == NULL) {
               relatedInstanceId = relatedInstance->id;
               char *belongsToKey =
                   (char *)resourceInstance->modelInstance->model
                       ->getBelongsToKey(relatedInstance->type);
-              resourceInstanceId =
-                  resourceInstance->modelInstance->get(belongsToKey);
+              resourceInstanceId = modelInstanceGet(
+                  resourceInstance->modelInstance, belongsToKey);
             }
             if (relatedInstanceId == NULL || resourceInstanceId == NULL)
               return 0;
@@ -149,12 +149,13 @@ void addIncludedResourcesToCollection(
   if (strcmp(includedParamsBuild->foreignKey, "id") == 0) {
     includedParamsBuild->foreignKey = (char *)resource->model->getBelongsToKey(
         includedParamsBuild->includedResource->model->tableName);
-    resourceInstanceCollectionEach(collection, ^(
-                                       resource_instance_t *resourceInstance) {
-      json_array_append_new(includedParamsBuild->ids,
-                            json_string(resourceInstance->modelInstance->get(
-                                includedParamsBuild->foreignKey)));
-    });
+    resourceInstanceCollectionEach(
+        collection, ^(resource_instance_t *resourceInstance) {
+          json_array_append_new(
+              includedParamsBuild->ids,
+              json_string(modelInstanceGet(resourceInstance->modelInstance,
+                                           includedParamsBuild->foreignKey)));
+        });
   } else {
     resourceInstanceCollectionEach(
         collection, ^(resource_instance_t *resourceInstance) {

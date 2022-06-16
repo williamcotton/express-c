@@ -100,6 +100,13 @@ typedef struct model_instance_t {
 void modelInstanceInitAttr(model_instance_t *instance, char *attribute,
                            char *value, int isDirty);
 
+void modelInstanceAddError(model_instance_t *instance, char *attribute,
+                           char *message);
+
+char *modelInstanceGet(model_instance_t *instance, char *attribute);
+
+model_instance_t *modelInstanceHelpers(model_instance_t *instance);
+
 typedef void * (^copyBlock)(void *);
 typedef void (^instanceCallback)(model_instance_t *instance);
 typedef int (^beforeCallback)(model_instance_t *instance);

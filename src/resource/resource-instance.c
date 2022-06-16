@@ -47,25 +47,28 @@ json_t *resourceInstanceDataJSONAPI(resource_instance_t *instance) {
     json_t *value = NULL;
     char *attributeType = attribute->type;
 
-    if (instance->modelInstance->get(attribute->name) == NULL) {
+    if (modelInstanceGet(instance->modelInstance, attribute->name) == NULL) {
       continue;
     }
 
     if (strcmp(attributeType, "integer") == 0 ||
         strcmp(attributeType, "integer_id") == 0) {
-      value =
-          json_integer(atoll(instance->modelInstance->get(attribute->name)));
+      value = json_integer(
+          atoll(modelInstanceGet(instance->modelInstance, attribute->name)));
     } else if (strcmp(attributeType, "big_decimal") == 0 ||
                strcmp(attributeType, "float") == 0) {
       char *eptr;
-      value = json_real(
-          strtod(instance->modelInstance->get(attribute->name), &eptr));
+      value = json_real(strtod(
+          modelInstanceGet(instance->modelInstance, attribute->name), &eptr));
     } else if (strcmp(attributeType, "boolean") == 0) {
       value = json_boolean(
-          strcmp(instance->modelInstance->get(attribute->name), "t") == 0 ||
-          strcmp(instance->modelInstance->get(attribute->name), "true") == 0);
+          strcmp(modelInstanceGet(instance->modelInstance, attribute->name),
+                 "t") == 0 ||
+          strcmp(modelInstanceGet(instance->modelInstance, attribute->name),
+                 "true") == 0);
     } else {
-      value = json_string(instance->modelInstance->get(attribute->name));
+      value = json_string(
+          modelInstanceGet(instance->modelInstance, attribute->name));
     }
 
     if (resourceFields) {
