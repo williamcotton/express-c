@@ -60,14 +60,14 @@ typedef struct model_instance_collection_t {
   size_t size;
   struct model_t *model;
   struct model_instance_collection_t *includedModelInstanceCollections[100];
-  // query_t * (^r)(const char *relationName);
-  // struct model_instance_t * (^at)(size_t index);
-  // void (^each)(eachInstanceCallback);
-  // struct model_instance_collection_t * (^filter)(filterInstanceCallback);
-  // struct model_instance_t * (^find)(findInstanceCallback);
-  // void (^eachWithIndex)(eachInstanceWithIndexCallback);
-  // void * (^reduce)(void *accumulator, reducerInstanceCallback);
-  // void ** (^map)(mapInstanceCallback);
+  query_t * (^r)(const char *relationName);
+  struct model_instance_t * (^at)(size_t index);
+  void (^each)(eachInstanceCallback);
+  struct model_instance_collection_t * (^filter)(filterInstanceCallback);
+  struct model_instance_t * (^find)(findInstanceCallback);
+  void (^eachWithIndex)(eachInstanceWithIndexCallback);
+  void * (^reduce)(void *accumulator, reducerInstanceCallback);
+  void ** (^map)(mapInstanceCallback);
 } model_instance_collection_t;
 
 void modelInstanceCollectionEachWithIndex(
@@ -77,6 +77,8 @@ void modelInstanceCollectionEachWithIndex(
 struct model_instance_t *
 modelInstanceCollectionAt(model_instance_collection_t *collection,
                           size_t index);
+
+void modelInstanceCollectionHelpers(model_instance_collection_t *collection);
 
 typedef struct model_instance_t {
   char *id;
