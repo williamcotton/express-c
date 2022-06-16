@@ -53,8 +53,6 @@ A multi-threaded implementation of the client handler that uses epoll().
 
 */
 
-#define MAX_EVENTS 64
-
 typedef enum req_status_t { READING, ENDED } req_status_t;
 
 typedef struct http_status_t {
@@ -76,12 +74,13 @@ void *clientAcceptEventHandler(void *args) {
   server_t *server = clientThreadArgs->server;
   router_t *baseRouter = clientThreadArgs->baseRouter;
 
-  struct epoll_event *events = malloc(sizeof(struct epoll_event) * MAX_EVENTS);
+  struct epoll_event *events =
+      malloc(sizeof(struct epoll_event) * server->maxEvents);
   struct epoll_event ev;
   int nfds;
 
   while (1) {
-    nfds = epoll_wait(epollFd, events, MAX_EVENTS, -1);
+    nfds = epoll_wait(epollFd, events, server->maxEvents, -1);
 
     if (nfds <= 0) {
       log_err("epoll_wait() failed");

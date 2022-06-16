@@ -192,6 +192,7 @@ typedef struct server_t {
   int socket;
   int port;
   int threadCount;
+  int maxEvents;
   dispatch_queue_t serverQueue;
   void (^close)();
   int (^listen)(int port);
