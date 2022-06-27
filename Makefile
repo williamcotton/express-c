@@ -112,7 +112,7 @@ else ifeq ($(PLATFORM),DARWIN)
 endif
 
 test-analyze:
-	clang --analyze $(SRC_WITHOUT_SQLITE) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+	clang --analyze $(SRC_WITHOUT_SQLITE) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling -Xanalyzer -analyzer-config -Xanalyzer crosscheck-with-z3=true
 
 test-threads:
 	mkdir -p $(BUILD_DIR)

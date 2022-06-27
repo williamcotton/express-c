@@ -1,0 +1,584 @@
+make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+# GNU Make 3.81
+# Copyright (C) 2006  Free Software Foundation, Inc.
+# This is free software; see the source for copying conditions.
+# There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.
+
+# This program built for i386-apple-darwin11.3.0
+ 
+make: *** No rule to make target `all'.  Stop.
+
+
+# Make data base, printed on Thu Jun 30 16:14:52 2022
+
+# Variables
+
+# automatic
+<D = $(patsubst %/,%,$(dir $<))
+# automatic
+?F = $(notdir $?)
+# makefile (from `Makefile', line 33)
+SRC_WITHOUT_SQLITE = $(filter-out $(SQLITE_SRC),$(SRC))
+# makefile (from `Makefile', line 17)
+COV = $(shell brew --prefix llvm)/bin/llvm-cov
+# makefile (from `Makefile', line 27)
+SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c)
+# environment
+VSCODE_LOG_NATIVE = false
+# automatic
+?D = $(patsubst %/,%,$(dir $?))
+# automatic
+@D = $(patsubst %/,%,$(dir $@))
+# automatic
+@F = $(notdir $@)
+# makefile
+CURDIR := /Users/williamcotton/Projects/express-c
+# makefile
+SHELL = /bin/sh
+# environment
+MANPAGER = less -X
+# environment
+VSCODE_NLS_CONFIG = {"locale":"en-us","availableLanguages":{},"_languagePackSupport":true}
+# environment
+_ = /usr/bin/make
+# makefile (from `Makefile', line 23)
+CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ') -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq libjwt jansson) -I$(shell pg_config --includedir) -ljansson -ljwt
+# environment
+project_design_dir = design_assets
+# makefile (from `.env', line 2)
+TEST_DATABASE_URL = postgresql://postgres:postgres@localhost:5432/express-test?sslmode=disable
+# makefile (from `.env', line 1)
+MAKEFILE_LIST :=  Makefile .env
+# environment
+HISTCONTROL = ignoredups:erasedups
+# environment
+git_env_char = e
+# makefile (from `Makefile', line 26)
+EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)
+# environment
+VSCODE_VERBOSE_LOGGING = true
+# environment
+__CFBundleIdentifier = com.microsoft.VSCode
+# environment
+INFOPATH = /opt/homebrew/share/info:
+# default
+MAKEFILEPATH := /Applications/Xcode.app/Contents/Developer/Makefiles
+# environment
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/8s/nt4vj0c91wggkd329wbvqfq00000gn/T/vscode-ipc-8d723bbe-be4b-4fd5-9b7f-8155a6735159.sock
+# environment
+VSCODE_CWD = /
+# makefile (from `Makefile', line 18)
+TIDY = $(shell brew --prefix llvm)/bin/clang-tidy
+# makefile (from `Makefile', line 28)
+TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
+# environment
+PATH = /Users/williamcotton/.cargo/bin:/Users/williamcotton/miniforge3/bin:/Users/williamcotton/miniforge3/condabin:/Users/williamcotton/.asdf/shims:/Users/williamcotton/.asdf/bin:/usr/local/bin:/usr/local/sbin:/usr/local/share/npm/bin:~/bin:/Users/williamcotton/bin:/Library/Frameworks/Python.framework/Versions/3.9/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
+# environment
+LSCOLORS = Bxgxfxfxcxdxdxhbadbxbx
+# makefile (from `Makefile', line 45)
+DEV_CFLAGS = -g -O0 -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability
+# makefile (from `Makefile', line 37)
+TEST_CFLAGS = -Werror -DDEV_ENV
+# environment
+CONDA_PREFIX = /Users/williamcotton/miniforge3
+# environment
+VSCODE_LOG_STACK = false
+# environment
+GIT_REPOS = 
+# environment
+ELECTRON_RUN_AS_NODE = 1
+# environment
+design_base_dirs = Documents Flowcharts Images Backgrounds Logos Icons Mockups Screenshots
+# default
+.FEATURES := target-specific order-only second-expansion else-if archives jobserver check-symlink
+# environment
+SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.pPLzsLwnpF/Listeners
+# environment
+scmbDir = /Users/williamcotton/.scm_breeze
+# automatic
+%F = $(notdir $%)
+# makefile (from `Makefile', line 46)
+PROD_CFLAGS = -Ofast
+# environment
+CONDA_EXE = /Users/williamcotton/miniforge3/bin/conda
+# environment
+HISTFILESIZE = 32768
+# environment
+VSCODE_PIPE_LOGGING = true
+# environment
+PWD = /Users/williamcotton/Projects/express-c
+# makefile (from `Makefile', line 19)
+FORMAT = $(shell brew --prefix llvm)/bin/clang-format
+# environment
+git_setup_aliases = yes
+# environment
+HOMEBREW_CELLAR = /opt/homebrew/Cellar
+# environment
+ORIGINAL_XDG_CURRENT_DESKTOP = undefined
+# environment
+MANPATH = /opt/homebrew/share/man::
+# environment
+VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
+# environment
+HOME = /Users/williamcotton
+# environment
+GIT_REPO_DIR = /Users/williamcotton/code
+# environment
+VSCODE_CODE_CACHE_PATH = /Users/williamcotton/Library/Application Support/Code/CachedData/30d9c6cd9483b2cc586687151bcbcd635f373630
+# makefile (from `Makefile', line 31)
+TAPE_SRC = deps/tape/tape.c
+# environment
+LOGNAME = williamcotton
+# environment
+GIT_BINARY = /opt/homebrew/bin/git
+# environment
+CONDA_PROMPT_MODIFIER = (base) 
+# environment
+ZSH = /Users/williamcotton/.oh-my-zsh
+# environment
+design_ext_dirs = Fonts IconSets
+# environment
+VSCODE_HANDLES_UNCAUGHT_ERRORS = true
+# automatic
+^D = $(patsubst %/,%,$(dir $^))
+# environment
+LESS_TERMCAP_md = 
+# environment
+CONDA_DEFAULT_ENV = base
+# environment
+XPC_FLAGS = 0x0
+# environment
+_git_cmd = /opt/homebrew/bin/git
+# default
+MAKE = $(MAKE_COMMAND)
+# default
+MAKECMDGOALS := all
+# environment
+SHLVL = 0
+# makefile (from `Makefile', line 15)
+CC = $(shell brew --prefix llvm)/bin/clang
+# makefile (from `Makefile', line 29)
+BUILD_DIR = build
+# default
+MAKE_VERSION := 3.81
+# environment
+USER = williamcotton
+# environment
+LS_OPTIONS = --color=auto
+# makefile
+.DEFAULT_GOAL := test
+# environment
+LESS = -R
+# automatic
+%D = $(patsubst %/,%,$(dir $%))
+# environment
+CONDA_SHLVL = 1
+# default
+MAKE_COMMAND := /Applications/Xcode.app/Contents/Developer/usr/bin/make
+# makefile (from `.env', line 1)
+BUILD_ENV = development
+# environment
+OLDPWD = /Users/williamcotton/Projects/express-c
+# environment
+design_av_dirs = Animations Videos Flash Music Samples
+# default
+.VARIABLES := 
+# environment
+TMPDIR = /var/folders/8s/nt4vj0c91wggkd329wbvqfq00000gn/T/
+# automatic
+*F = $(notdir $*)
+# environment
+VSCODE_IPC_HOOK = /Users/williamcotton/Library/Application Support/Code/1.68.1-main.sock
+# makefile (from `Makefile', line 30)
+SQLITE_SRC = deps/sqlite/sqlite3.c
+# makefile
+MAKEFLAGS = Rrqp
+# makefile (from `Makefile', line 16)
+PROFDATA = $(shell brew --prefix llvm)/bin/profdata
+# environment
+MFLAGS = -Rrqp
+# automatic
+*D = $(patsubst %/,%,$(dir $*))
+# environment
+XPC_SERVICE_NAME = application.com.microsoft.VSCode.79063071.79063077
+# environment
+git_status_command = git_status_shortcuts
+# environment
+HOMEBREW_PREFIX = /opt/homebrew
+# automatic
++D = $(patsubst %/,%,$(dir $+))
+# environment
+HISTORY_IGNORE = (ls|cd|pwd|exit|cd ..)
+# makefile (from `Makefile', line 34)
+SRC_WITHOUT_TAPE = $(filter-out $(TAPE_SRC),$(SRC))
+# environment
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+# automatic
++F = $(notdir $+)
+# environment
+root_design_dir = /Users/williamcotton/Dropbox/Design
+# environment
+HOMEBREW_REPOSITORY = /opt/homebrew
+# environment
+__CF_USER_TEXT_ENCODING = 0x1F5:0x0:0x0
+# environment
+COMMAND_MODE = unix2003
+# makefile (from `Makefile', line 6)
+PLATFORM := DARWIN
+# default
+MAKEFILES := 
+# automatic
+<F = $(notdir $<)
+# environment
+gs_max_changes = 150
+# environment
+EDITOR = /usr/local/bin/code -a -w
+# environment
+PAGER = less
+# environment
+LC_ALL = C
+# environment
+CONDA_PYTHON_EXE = /Users/williamcotton/miniforge3/bin/python
+# automatic
+^F = $(notdir $^)
+# environment
+HISTSIZE = 32768
+# default
+SUFFIXES := 
+# environment
+ga_auto_remove = yes
+# environment
+ASDF_DIR = /Users/williamcotton/.asdf
+# environment
+_CE_M = 
+# default
+.INCLUDE_DIRS = /usr/local/include
+# environment
+HISTIGNORE = ls:ls *:cd:cd -:pwd;exit:date:* --help
+# environment
+MAKELEVEL := 0
+# environment
+CLICOLOR = Yes
+# environment
+LANG = C
+# environment
+VSCODE_PID = 97590
+# environment
+NPM_TOKEN = b0a6fba7-3398-4736-9bed-4fced8ba42f4
+# environment
+_CE_CONDA = 
+# variable set hash-table stats:
+# Load=127/1024=12%, Rehash=0, Collisions=10/190=5%
+
+# Pattern-specific Variable Values
+
+# No pattern-specific variable values.
+
+# Directories
+
+# . (device 16777233, inode 44084747): 29 files, no impossibilities.
+
+# 29 files, no impossibilities in 1 directories.
+
+# Implicit Rules
+
+# No implicit rules.
+
+# Files
+
+test-coverage-output:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 59):
+	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/coverage
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+ 
+	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
+	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
+	
+
+# Not a target:
+all:
+#  Command-line target.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has not been updated.
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/0=0%
+
+manual-test-trace: build-test-trace
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 123):
+	SLEEP_TIME=5 RUN_X_TIMES=10 $(BUILD_DIR)/test
+	
+
+test-coverage-html:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 67):
+	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/coverage
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
+	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
+	$(COV) show $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/" -format=html > $(BUILD_DIR)/code-coverage.html
+	
+
+.PHONY: test build/libtape.so build/libexpress.so build/libexpress-trace.so build/libexpress-debug.so
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/libexpress-debug.so:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 175):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(DEV_CFLAGS) -fPIC
+	
+
+install-trace: build/libexpress-trace.so
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 159):
+	mkdir -p /usr/local/include
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share
+	rm -f /usr/local/lib/libexpress-trace.so
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress-trace.so
+	cp $(BUILD_DIR)/libexpress-trace.so /usr/local/lib/libexpress-trace.so
+	cp -Rp src/* /usr/local/include
+	cp -Rp deps/* /usr/local/include
+	cp -Rp scripts/* /usr/local/bin
+	cp express.supp /usr/local/share
+	
+
+build/libexpress.so:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 132):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(PROD_CFLAGS) -fPIC
+	
+
+test-coverage:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 75):
+	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/coverage
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS) -fprofile-instr-generate -fcoverage-mapping
+	LLVM_PROFILE_FILE="build/test.profraw" $(BUILD_DIR)/$@
+	$(PROFDATA) merge -sparse build/test.profraw -o build/test.profdata
+	$(COV) report $(BUILD_DIR)/$@ -instr-profile=$(BUILD_DIR)/test.profdata -ignore-filename-regex="/deps|demo|test/"
+	
+
+# Not a target:
+.SUFFIXES:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+format:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 90):
+	$(FORMAT) --dry-run --Werror $(SRC)
+	
+
+# Not a target:
+Makefile:
+#  Implicit rule search has been done.
+#  Last modified 2022-06-30 10:14:46
+#  File has been updated.
+#  Successfully updated.
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/0=0%
+
+test: test-database-create
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 51):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) $(DEV_CFLAGS)
+	$(BUILD_DIR)/$@
+	
+
+test-watch:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 97):
+	make --no-print-directory test || :
+	fswatch --event Updated -o test/*.c test/*.h src/ | xargs -n1 -I{} make --no-print-directory test
+	
+
+test-analyze:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 115):
+	clang --analyze $(SRC_WITHOUT_SQLITE) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling -Xanalyzer -analyzer-config -Xanalyzer crosscheck-with-z3=true
+	
+
+# Not a target:
+.env:
+#  Implicit rule search has been done.
+#  Last modified 2022-03-06 08:09:52
+#  File has been updated.
+#  Successfully updated.
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/0=0%
+
+build/libexpress-trace.so:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 155):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(SRC_WITHOUT_TAPE) $(CFLAGS) $(TEST_CFLAGS) -g -O0 -fPIC
+	
+
+build/libtape.so:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 127):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -shared -o $@ $(TAPE_SRC) src/string/string.c $(CFLAGS) $(DEV_CFLAGS) -fPIC
+	
+
+test-threads:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 118):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/$@ $(TEST_SRC) $(SRC) $(CFLAGS) $(TEST_CFLAGS) -fsanitize=thread
+	$(BUILD_DIR)/$@
+	
+
+build-test-trace:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 101):
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/test $(TEST_SRC) $(SRC) $(TEST_CFLAGS) $(CFLAGS) -g -O0
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/test
+	
+
+test-database-create:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 56):
+	-dbmate -e TEST_DATABASE_URL create
+	
+
+# Not a target:
+.DEFAULT:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+clean:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 93):
+	rm -rf $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
+	
+
+test-leaks: build-test-trace test-database-create
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 111):
+	leaks --atExit -- $(BUILD_DIR)/test
+	
+
+lint:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 86):
+	$(TIDY) -warnings-as-errors=* src/express.c
+	
+
+install-debug: build/libexpress-debug.so
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 179):
+	mkdir -p /usr/local/include
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share
+	rm -f /usr/local/lib/libexpress-debug.so
+ 
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress-debug.so
+	cp $(BUILD_DIR)/libexpress-debug.so /usr/local/lib/libexpress-debug.so
+	cp -Rp src/* /usr/local/include
+	cp -Rp deps/* /usr/local/include
+	cp -Rp scripts/* /usr/local/bin
+	cp express.supp /usr/local/share
+	
+
+install: build/libexpress.so build/libtape.so
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 136):
+	mkdir -p /usr/local/include
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share
+	rm -f /usr/local/lib/libexpress.so
+	rm -f /usr/local/lib/libtape.so
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libexpress.so
+	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/libtape.so
+	cp $(BUILD_DIR)/libexpress.so /usr/local/lib/libexpress.so
+	cp $(BUILD_DIR)/libtape.so /usr/local/lib/libtape.so
+	cp -Rp src/* /usr/local/include
+	cp -Rp deps/* /usr/local/include
+	cp -Rp scripts/* /usr/local/bin
+	cp express.supp /usr/local/share
+	
+
+# files hash-table stats:
+# Load=27/1024=3%, Rehash=0, Collisions=0/57=0%
+# VPATH Search Paths
+
+# No `vpath' search paths.
+
+# No general (`VPATH' variable) search path.
+
+# # of strings in strcache: 2
+# # of strcache buffers: 1
+# strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
+# strcache free: total = 4082 / max = 4082 / min = 4082 / avg = 4082
+
+# Finished Make data base on Thu Jun 30 16:14:52 2022
+
+ 

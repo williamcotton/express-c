@@ -1,7 +1,7 @@
 CC = clang
 BUILD_DIR = build
 
-CFLAGS = -lexpress
+CFLAGS = -lexpress -Ofast
 
 string-baseline:
 	mkdir -p $(BUILD_DIR)
@@ -17,6 +17,21 @@ string-block-no-free:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -o $(BUILD_DIR)/string-block-no-free blocks/string-block-no-free.c $(CFLAGS)
 	time $(BUILD_DIR)/string-block-no-free
+
+string-block-reset-reuse:
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/string-block-reset-reuse blocks/string-block-reset-reuse.c $(CFLAGS)
+	time $(BUILD_DIR)/string-block-reset-reuse
+
+string-block-pool:
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/string-block-pool blocks/string-block-pool.c $(CFLAGS)
+	time $(BUILD_DIR)/string-block-pool
+
+string-block-threaded:
+	mkdir -p $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/string-block-threaded blocks/string-block-threaded.c $(CFLAGS)
+	time $(BUILD_DIR)/string-block-threaded
 
 req-block-helpers:
 	mkdir -p $(BUILD_DIR)
