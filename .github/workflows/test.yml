@@ -37,8 +37,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: brew install jansson libjwt
-      # - run: make format
-      - run: make lint
       - run: make test-leaks
-      - run: make test
-      - run: make test-analyze
