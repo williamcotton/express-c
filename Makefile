@@ -11,14 +11,6 @@ COV = llvm-cov
 TIDY = clang-tidy
 FORMAT = clang-format
 
-ifeq ($(PLATFORM),DARWIN)
-	CC = $(shell brew --prefix llvm)/bin/clang
-	PROFDATA = $(shell brew --prefix llvm)/bin/profdata
-	COV = $(shell brew --prefix llvm)/bin/llvm-cov
-	TIDY = $(shell brew --prefix llvm)/bin/clang-tidy
-	FORMAT = $(shell brew --prefix llvm)/bin/clang-format
-endif
-
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq libjwt jansson) -I$(shell pg_config --includedir) -ljansson -ljwt
 DEV_CFLAGS = -g -O0
