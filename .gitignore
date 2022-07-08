@@ -9,3 +9,4 @@ test/test-cookies.txt
 audit/slowhttp.*
 server.pid
 demo/embeddedFiles.h
+*.log
