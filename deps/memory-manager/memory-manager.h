@@ -23,6 +23,8 @@
 #ifndef MEMORY_MANAGER_H
 #define MEMORY_MANAGER_H
 
+#define HEAP_SIZE (10 * 1024 * 1024)
+
 #include <Block.h>
 #include <dispatch/dispatch.h>
 #include <stdlib.h>
@@ -38,9 +40,9 @@ typedef struct memory_manager_block_copy_t {
 typedef void (^memoryManagerCleanupHandler)();
 
 typedef struct memory_manager_t {
-  int mallocCount;
-  int maxMallocCount;
-  memory_manager_malloc_t *mallocs;
+  void *freePtr;
+  void *startPtr;
+  void *endPtr;
   int blockCopyCount;
   int maxBlockCopyCount;
   memory_manager_block_copy_t *blockCopies;

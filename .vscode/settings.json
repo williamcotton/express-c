@@ -101,7 +101,11 @@
     "models.h": "c",
     "faker.h": "c",
     "resource-middleware.h": "c",
-    "variant": "c"
+    "variant": "c",
+    "mman.h": "c",
+    "sysctl.h": "c",
+    "wb_alloc.h": "c",
+    "__config": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled",
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,

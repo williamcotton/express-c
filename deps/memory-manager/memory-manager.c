@@ -22,31 +22,23 @@
 
 #include "memory-manager.h"
 #include <stdio.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+unsigned int roundTo8(unsigned int value) { return (value + 7) & ~7; }
 
 void *mmMalloc(memory_manager_t *memoryManager, size_t size) {
-  if (memoryManager->mallocCount >= memoryManager->maxMallocCount) {
-    memoryManager->maxMallocCount *= 2;
-    memoryManager->mallocs =
-        realloc(memoryManager->mallocs, sizeof(memory_manager_malloc_t) *
-                                            memoryManager->maxMallocCount);
-  }
-  void *ptr = malloc(size);
-  if (ptr == NULL) {
+  void *ptr = memoryManager->freePtr;
+  memoryManager->freePtr += roundTo8(size);
+  if (memoryManager->freePtr > memoryManager->endPtr) {
     return NULL;
   }
-  memoryManager->mallocs[memoryManager->mallocCount++] =
-      (memory_manager_malloc_t){.ptr = ptr};
   return ptr;
 }
 
 void *mmRealloc(memory_manager_t *memoryManager, void *ptr, size_t size) {
-  void *newPtr = realloc(ptr, size);
-  for (int i = 0; i < memoryManager->mallocCount; i++) {
-    if (memoryManager->mallocs[i].ptr == ptr) {
-      memoryManager->mallocs[i].ptr = newPtr;
-      break;
-    }
-  }
+  void *newPtr = mmMalloc(memoryManager, size);
+  memmove(newPtr, ptr, size);
   return newPtr;
 }
 
@@ -85,15 +77,12 @@ void mmFree(memory_manager_t *memoryManager) {
     memoryManager->cleanupHandlers[i]();
   }
 
-  for (int i = 0; i < memoryManager->mallocCount; i++) {
-    free(memoryManager->mallocs[i].ptr);
-  }
-
   for (int i = 0; i < memoryManager->blockCopyCount; i++) {
     Block_release(memoryManager->blockCopies[i].ptr);
   }
 
-  free(memoryManager->mallocs);
+  munmap(memoryManager->startPtr, HEAP_SIZE);
+
   free(memoryManager->blockCopies);
   free(memoryManager->cleanupHandlers);
 
@@ -104,15 +93,17 @@ void mmFree(memory_manager_t *memoryManager) {
 
 memory_manager_t *createMemoryManager() {
   memory_manager_t *memoryManager = malloc(sizeof(memory_manager_t));
-  memoryManager->mallocCount = 0;
-  memoryManager->maxMallocCount = 1024;
+
+  memoryManager->freePtr = mmap(NULL, HEAP_SIZE, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  memoryManager->startPtr = memoryManager->freePtr;
+  memoryManager->endPtr = memoryManager->startPtr + HEAP_SIZE;
+
   memoryManager->blockCopyCount = 0;
   memoryManager->maxBlockCopyCount = 8192;
   memoryManager->cleanupHandlersCount = 0;
   memoryManager->maxCleanupHandlersCount = 1024;
 
-  memoryManager->mallocs =
-      malloc(sizeof(memory_manager_malloc_t) * memoryManager->maxMallocCount);
   memoryManager->blockCopies = malloc(sizeof(memory_manager_block_copy_t) *
                                       memoryManager->maxBlockCopyCount);
   memoryManager->cleanupHandlers =
