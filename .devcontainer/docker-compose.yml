@@ -2,11 +2,7 @@ version: '3'
 
 services:
   app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VARIANT: hirsute
+    image: ghcr.io/williamcotton/express-c:master
 
     volumes:
       - ..:/workspace:cached

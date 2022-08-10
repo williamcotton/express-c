@@ -38,6 +38,9 @@ else ifeq ($(PLATFORM),DARWIN)
 	PROD_CFLAGS = -Ofast
 endif
 
+.env:
+	cp default.env .env
+
 .PHONY: test
 test: test-database-create
 	mkdir -p $(BUILD_DIR)
@@ -91,7 +94,7 @@ test-watch:
 
 build-test-trace:
 	mkdir -p $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/test $(TEST_SRC) $(SRC) $(TEST_CFLAGS) $(CFLAGS) -g -O0
+	$(CC) -o $(BUILD_DIR)/test $(TEST_SRC) $(SRC) $(TEST_CFLAGS) $(CFLAGS) -g -O0 -gdwarf-4
 ifeq ($(PLATFORM),DARWIN)
 	codesign -s - -v -f --entitlements debug.plist $(BUILD_DIR)/test
 endif
@@ -104,7 +107,7 @@ else ifeq ($(PLATFORM),DARWIN)
 endif
 
 test-analyze:
-	clang --analyze $(SRC_WITHOUT_SQLITE) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling -Xanalyzer -analyzer-config -Xanalyzer crosscheck-with-z3=true
+	clang --analyze $(SRC_WITHOUT_SQLITE) $(shell cat compile_flags.txt | tr '\n' ' ') -I$(shell pg_config --includedir) -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-checker=core,deadcode,nullability,optin,osx,security,unix,valist -Xanalyzer -analyzer-disable-checker -Xanalyzer security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 test-threads:
 	mkdir -p $(BUILD_DIR)
