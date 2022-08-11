@@ -5,6 +5,8 @@
 middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
   return Block_copy(^(request_t *req, response_t *res, void (^next)(),
                       void (^cleanup)(cleanupHandler)) {
+    json_set_alloc_funcs(req->threadLocalMalloc, req->threadLocalFree);
+
     jansson_jsonapi_middleware_t *jsonapi =
         expressReqMalloc(req, sizeof(jansson_jsonapi_middleware_t));
 
@@ -42,7 +44,6 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
               nestedKey = json_object();
               json_object_set_new(nested, key, nestedKey);
             } else if (!json_is_object(nestedKey)) {
-              json_decref(nestedKey);
               nestedKey = json_object();
               json_object_set_new(nested, key, nestedKey);
             }
@@ -79,20 +80,9 @@ middlewareHandler janssonJsonapiMiddleware(const char *endpointNamespace) {
       char *jsonString = json_dumps((json_t *)value, 0);
       _res->set("Content-Type", JSON_API_MIME_TYPE);
       _res->send(jsonString);
-      free(jsonString);
-      json_decref((json_t *)value); // CONFLICT
     });
 
-    cleanup(^(request_t *finishedReq) {
-      jansson_jsonapi_middleware_t *finishedJsonapi = finishedReq->m("jsonapi");
-      if (finishedJsonapi != NULL) {
-        if (finishedJsonapi->params->body != NULL) {
-          json_decref(finishedJsonapi->params->body);
-        }
-        if (finishedJsonapi->params->query != NULL) {
-          json_decref(finishedJsonapi->params->query); // CONFLICT
-        }
-      }
+    cleanup(^(UNUSED request_t *finishedReq){
     });
 
     next();

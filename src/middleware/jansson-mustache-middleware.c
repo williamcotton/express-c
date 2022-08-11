@@ -133,6 +133,8 @@ janssonMustacheMiddleware(char *viewsPath,
 
   return Block_copy(^(UNUSED request_t *req, response_t *res, void (^next)(),
                       UNUSED void (^cleanup)(cleanupHandler)) {
+    json_set_alloc_funcs(req->threadLocalMalloc, req->threadLocalFree);
+
     res->render = ^(void *templateName, void *data) {
       json_t *json = data;
       char *templateFile;
@@ -163,7 +165,6 @@ janssonMustacheMiddleware(char *viewsPath,
       }
       free(templateFile);
       free(template);
-      json_decref(json);
     };
     cleanup(Block_copy(^(UNUSED request_t *finishedReq){
     }));

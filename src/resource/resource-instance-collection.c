@@ -21,7 +21,6 @@ json_t *resourceInstanceCollectionIncludedToJSONAPI(
   nestedIncludes(includedJSONAPI, collection);
 
   if (json_array_size(includedJSONAPI) == 0) {
-    json_decref(includedJSONAPI);
     return (json_t *)NULL;
   }
 

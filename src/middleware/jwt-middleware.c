@@ -12,6 +12,7 @@ middlewareHandler jwtMiddleware(const unsigned char *privateKey,
     jwt_middleware_t *jwtmw = malloc(sizeof(jwt_middleware_t));
 
     jwtmw->sign = Block_copy(^(char *jsonPayload) {
+      json_set_alloc_funcs(malloc, free);
       jwt_t *jwt = NULL;
       jwt_new(&jwt);
       jwt_add_grants_json(jwt, jsonPayload);
@@ -26,6 +27,7 @@ middlewareHandler jwtMiddleware(const unsigned char *privateKey,
     });
 
     jwtmw->verify = Block_copy(^(char *token) {
+      json_set_alloc_funcs(malloc, free);
       jwt_t *jwt = NULL;
       jwt_decode(&jwt, token, privateKey, sizeof(privateKey));
       char *jwtDecoded = jwt_get_grants_json(jwt, NULL);

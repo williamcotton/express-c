@@ -268,6 +268,8 @@ typedef struct request_t {
   void * (^m)(const char *middlewareKey);
   void (^mSet)(const char *middlewareKey, void *middleware);
   void * (^malloc)(size_t size);
+  void *(*threadLocalMalloc)(size_t size);
+  void (*threadLocalFree)(void *ptr);
   void * (^blockCopy)(void *);
 } request_t;
 

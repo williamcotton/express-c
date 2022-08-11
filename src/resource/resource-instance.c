@@ -26,7 +26,6 @@ json_t *resourceInstanceIncludeToJSONAPI(resource_instance_t *instance) {
   }
 
   if (json_array_size(includedJSONAPI) == 0) {
-    json_decref(includedJSONAPI);
     return (json_t *)NULL;
   }
 
@@ -78,10 +77,6 @@ json_t *resourceInstanceDataJSONAPI(resource_instance_t *instance) {
     } else {
       json_object_set(attributes, attribute->name, value);
     }
-
-    mmCleanup(instance->memoryManager, mmBlockCopy(instance->memoryManager, ^{
-                json_decref(value);
-              }));
   }
 
   json_t *relationships = json_object();

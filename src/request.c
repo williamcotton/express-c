@@ -1,5 +1,13 @@
 #include "express.h"
 
+static _Thread_local memory_manager_t *threadLocalMemoryManager = NULL;
+
+static void threadLocalFree(UNUSED void *ptr) {}
+
+static void *threadLocalMalloc(size_t size) {
+  return mmMalloc(threadLocalMemoryManager, size);
+}
+
 static void removeWhitespace(char *str) {
   char *p = str;
   char *q = str;
@@ -437,6 +445,10 @@ void buildRequest(request_t *req, client_t client, router_t *baseRouter) {
   req->blockCopy = NULL;
 
   req->memoryManager = createMemoryManager();
+
+  threadLocalMemoryManager = req->memoryManager;
+  req->threadLocalMalloc = threadLocalMalloc;
+  req->threadLocalFree = threadLocalFree;
 
   char *method, *originalUrl;
   int parseBytes = 0, minorVersion;
