@@ -136,6 +136,7 @@ janssonMustacheMiddleware(char *viewsPath,
     json_set_alloc_funcs(req->threadLocalMalloc, req->threadLocalFree);
 
     res->render = ^(void *templateName, void *data) {
+      json_set_alloc_funcs(req->threadLocalMalloc, req->threadLocalFree);
       json_t *json = data;
       char *templateFile;
       if (strstr(templateName, ".mustache")) {
@@ -166,8 +167,8 @@ janssonMustacheMiddleware(char *viewsPath,
       free(templateFile);
       free(template);
     };
-    cleanup(Block_copy(^(UNUSED request_t *finishedReq){
-    }));
+    cleanup(^(UNUSED request_t *finishedReq){
+    });
     next();
   });
 }
