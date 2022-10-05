@@ -21,11 +21,11 @@ endif
 
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 
-# CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq libjwt jansson) -I$(shell pg_config --includedir) -ljansson -ljwt
+# CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs --cflags libjwt jansson) -I$(shell pg_config --includedir) -L$(shell pg_config --libdir) -lpq
 # EXPRESS_SRC = $(wildcard ../src/*/*.c) $(wildcard ../src/*.c) $(wildcard ../deps/*/*.c) $(wildcard ../deps/*.c)
 # SRC = $(EXPRESS_SRC) $(wildcard */*.c) $(wildcard */*/*.c)
 
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq) -I$(shell pg_config --includedir) -I/usr/local/include -L/usr/local/lib -lexpress
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs --cflags jansson) -I$(shell pg_config --includedir) -L$(shell pg_config --libdir) -lpq -I/usr/local/include -L/usr/local/lib -lexpress
 SRC = $(wildcard */*.c) $(wildcard */*/*.c)
 
 DEV_CFLAGS = -g -O0

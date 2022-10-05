@@ -12,7 +12,7 @@ TIDY = clang-tidy
 FORMAT = clang-format
 
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
-CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs libpq libjwt jansson) -I$(shell pg_config --includedir) -ljansson -ljwt
+CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs --cflags libjwt jansson) -I$(shell pg_config --includedir) -L$(shell pg_config --libdir) -lpq
 DEV_CFLAGS = -g -O0
 TEST_CFLAGS = -Werror
 EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)
