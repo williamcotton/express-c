@@ -8,15 +8,13 @@ static char *matchFilepath(request_t *req, const char *path) {
   size_t nmatch = 2;
   regmatch_t pmatch[2];
   size_t patternLen = strlen(path) + strlen("//(.*)") + 1;
-  char *pattern = malloc(sizeof(char) * patternLen);
+  char *pattern = req->malloc(sizeof(char) * patternLen);
   snprintf(pattern, patternLen, "/%s/(.*)", path);
   size_t pathLen = strlen(req->path) + 1;
-  char *buffer = malloc(sizeof(char) * pathLen);
+  char *buffer = req->malloc(sizeof(char) * pathLen);
   strncpy(buffer, req->path, pathLen);
   reti = regcomp(&regex, pattern, REG_EXTENDED);
   if (reti) {
-    free(pattern);
-    free(buffer);
     log_err("regcomp() failed");
     return NULL;
   }
@@ -25,16 +23,12 @@ static char *matchFilepath(request_t *req, const char *path) {
     char *fileName = buffer + pmatch[1].rm_so;
     fileName[pmatch[1].rm_eo - pmatch[1].rm_so] = 0;
     size_t filePathLen = strlen(fileName) + strlen(".//") + strlen(path) + 1;
-    char *filePath = malloc(sizeof(char) * filePathLen);
+    char *filePath = req->malloc(sizeof(char) * filePathLen);
     snprintf(filePath, filePathLen, "./%s/%s", path, fileName);
     regfree(&regex);
-    free(buffer);
-    free(pattern);
     return filePath;
   }
   regfree(&regex);
-  free(buffer);
-  free(pattern);
   return NULL;
 }
 
@@ -70,8 +64,6 @@ middlewareHandler expressStatic(const char *path, const char *fullPath,
       free(rPath);
 
     if (isTraversal) {
-      if (filePath != NULL)
-        free(filePath);
       error_t *err = error404(req);
       res->error(err);
       return;
@@ -79,7 +71,6 @@ middlewareHandler expressStatic(const char *path, const char *fullPath,
 
     if (filePath != NULL) {
       res->sendFile(filePath);
-      free(filePath);
       if (res->err)
         next();
     } else {
