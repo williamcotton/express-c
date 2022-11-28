@@ -14,7 +14,7 @@ FORMAT = clang-format
 CFLAGS = $(shell cat compile_flags.txt | tr '\n' ' ')
 CFLAGS += -DBUILD_ENV=$(BUILD_ENV) -lcurl $(shell pkg-config --libs --cflags libjwt jansson) -I$(shell pg_config --includedir) -L$(shell pg_config --libdir) -lpq
 DEV_CFLAGS = -g -O0
-TEST_CFLAGS = -Werror
+# TEST_CFLAGS = -Werror
 EXPRESS_SRC = $(wildcard src/*/*.c) $(wildcard src/*.c)
 SRC = $(EXPRESS_SRC) $(wildcard deps/*/*.c)
 TEST_SRC = $(wildcard test/*.c) $(wildcard test/*/*.c)
@@ -34,7 +34,7 @@ ifeq ($(PLATFORM),LINUX)
 	TEST_CFLAGS += -Wl,--wrap=stat -Wl,--wrap=regcomp -Wl,--wrap=accept -Wl,--wrap=socket -Wl,--wrap=epoll_ctl -Wl,--wrap=listen
 	PROD_CFLAGS = -Ofast
 else ifeq ($(PLATFORM),DARWIN)
-	DEV_CFLAGS += -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability
+	DEV_CFLAGS += -fsanitize=address,undefined,implicit-conversion,float-divide-by-zero,local-bounds,nullability,integer,function
 	PROD_CFLAGS = -Ofast
 endif
 
