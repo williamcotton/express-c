@@ -154,7 +154,7 @@ static string_t *curlGet(char *url) {
       "curl -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt"
       " -o ./test/test-response.html http://127.0.0.1:3032";
   char cmd[1024];
-  sprintf(cmd, "%s%s", curlCmd, url);
+  snprintf(cmd, 1024, "%s%s", curlCmd, url);
   return curl(cmd);
 }
 
@@ -165,14 +165,14 @@ static string_t *curlGetHeaders(char *url) {
       " -H \"Host: one.two.three.test.com\""
       " -o ./test/test-response.html http://127.0.0.1:3032";
   char cmd[1024];
-  sprintf(cmd, "%s%s", curlCmd, url);
+  snprintf(cmd, 1024, "%s%s", curlCmd, url);
   return curl(cmd);
 }
 
 static string_t *curlDelete(char *url) {
   char cmd[1024];
-  sprintf(
-      cmd, "%s%s",
+  snprintf(
+      cmd, 1024, "%s%s",
       "curl -X DELETE -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt "
       "-o ./test/test-response.html http://127.0.0.1:3032",
       url);
@@ -181,8 +181,8 @@ static string_t *curlDelete(char *url) {
 
 static string_t *curlPost(char *url, char *data) {
   char cmd[1024];
-  sprintf(
-      cmd,
+  snprintf(
+      cmd, 1024,
       "curl -X POST -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt "
       "-o ./test/test-response.html -H \"Content-Type: "
       "application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s",
@@ -192,8 +192,8 @@ static string_t *curlPost(char *url, char *data) {
 
 static string_t *curlPatch(char *url, char *data) {
   char cmd[1024];
-  sprintf(
-      cmd,
+  snprintf(
+      cmd, 1024,
       "curl -X PATCH -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt "
       "-o ./test/test-response.html -H \"Content-Type: "
       "application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s",
@@ -203,8 +203,8 @@ static string_t *curlPatch(char *url, char *data) {
 
 static string_t *curlPut(char *url, char *data) {
   char cmd[1024];
-  sprintf(
-      cmd,
+  snprintf(
+      cmd, 1024,
       "curl -X PUT -s -c ./test/test-cookies.txt -b ./test/test-cookies.txt -o "
       "./test/test-response.html -H \"Content-Type: "
       "application/x-www-form-urlencoded\" -d \"%s\" http://127.0.0.1:3032%s",

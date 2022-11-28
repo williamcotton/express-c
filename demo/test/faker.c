@@ -94,8 +94,9 @@ faker_t *createFaker(void) {
   faker->randomInteger = Block_copy(^(int min, int max) {
     // random number between min and max as a string
     int randomNumber = min + arc4random() % (max - min);
-    char *randomNumberString = malloc(sizeof(char) * 10);
-    sprintf(randomNumberString, "%d", randomNumber);
+    int sizeOfNumber = sizeof(char) * 10;
+    char *randomNumberString = malloc(sizeOfNumber);
+    snprintf(randomNumberString, sizeOfNumber, "%d", randomNumber);
     return randomNumberString;
   });
 
