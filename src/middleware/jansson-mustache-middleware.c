@@ -63,8 +63,10 @@ janssonMustacheMiddleware(char *viewsPath,
                           embedded_files_data_t embeddedFiles) {
   char * (^loadTemplate)(char *) = ^(char *templateFile) {
     char *template = NULL;
-    char *templatePath = malloc(strlen(viewsPath) + strlen(templateFile) + 3);
-    sprintf(templatePath, "%s/%s", viewsPath, (char *)templateFile);
+    size_t templatePathSize = strlen(viewsPath) + strlen(templateFile) + 3;
+    char *templatePath = malloc(templatePathSize);
+    snprintf(templatePath, templatePathSize, "%s/%s", viewsPath,
+             (char *)templateFile);
     if (embeddedFiles.count > 0) {
       template = matchEmbeddedFile(templatePath, embeddedFiles);
       free(templatePath);
@@ -142,8 +144,11 @@ janssonMustacheMiddleware(char *viewsPath,
       if (strstr(templateName, ".mustache")) {
         templateFile = templateName;
       } else {
-        templateFile = malloc(strlen(templateName) + strlen(".mustache") + 1);
-        sprintf(templateFile, "%s.mustache", (char *)templateName);
+        size_t templateFileSize =
+            strlen(templateName) + strlen(".mustache") + 1;
+        templateFile = malloc(templateFileSize);
+        snprintf(templateFile, templateFileSize, "%s.mustache",
+                 (char *)templateName);
       }
       char *template = loadTemplate(templateFile);
       if (template) {
