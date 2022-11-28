@@ -47,8 +47,8 @@ static param_match_t *paramMatch(const char *basePath, const char *route) {
 
       if (g == 0) {
         offset = groupArray[g].rm_eo;
-        sprintf(regexRoute + strlen(regexRoute), "%.*s([^\\/\\s]*)",
-                (int)groupArray[g].rm_so, cursorCopy);
+        snprintf(regexRoute + strlen(regexRoute), 4096 - strlen(regexRoute),
+                 "%.*s([^\\/\\s]*)", (int)groupArray[g].rm_so, cursorCopy);
       } else {
         pm->keys = realloc(pm->keys, sizeof(char *) * (m + 1));
         pm->count++;
@@ -62,7 +62,8 @@ static param_match_t *paramMatch(const char *basePath, const char *route) {
     cursor += offset;
   }
 
-  sprintf(regexRoute + strlen(regexRoute), "%s", cursor);
+  snprintf(regexRoute + strlen(regexRoute), 4096 - strlen(regexRoute), "%s",
+           cursor);
 
   regfree(&regexCompiled);
 
