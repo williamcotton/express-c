@@ -183,8 +183,8 @@ char *expressReqGet(request_t *req, const char *headerKey) {
         0) {
       char *value =
           expressReqMalloc(req, sizeof(char) * (req->headers[i].value_len + 1));
-      sprintf(value, "%.*s", (int)req->headers[i].value_len,
-              req->headers[i].value);
+      snprintf(value, req->headers[i].value_len + 1, "%.*s",
+               (int)req->headers[i].value_len, req->headers[i].value);
       return value;
     }
   }

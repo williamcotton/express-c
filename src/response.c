@@ -68,15 +68,17 @@ static char *buildResponseString(const char *body, response_t *res) {
   if (expressResGet(res, "Content-Type") == NULL)
     expressResSet(res, "Content-Type", "text/html; charset=utf-8");
 
-  char *contentLength = malloc(sizeof(char) * 20);
-  sprintf(contentLength, "%zu", strlen(body));
+  size_t contentSize = sizeof(char) * 20;
+  char *contentLength = malloc(contentSize);
+  snprintf(contentLength, contentSize, "%zu", strlen(body));
   expressResSet(res, "Content-Length", contentLength);
 
   expressResSet(res, "Connection", "close");
 
   char *statusMessage = getStatusMessage(res->status);
-  char *status = malloc(sizeof(char) * (strlen(statusMessage) + 5));
-  sprintf(status, "%d %s", res->status, statusMessage);
+  size_t statusSize = sizeof(char) * (strlen(statusMessage) + 5);
+  char *status = malloc(statusSize);
+  snprintf(status, statusSize, "%d %s", res->status, statusMessage);
 
   size_t headersLength = 0;
   char headers[4096];
@@ -87,16 +89,18 @@ static char *buildResponseString(const char *body, response_t *res) {
         res->headersKeyValues[i].keyLen + res->headersKeyValues[i].valueLen + 4;
     if (headersLength + headerLength > 4096)
       break;
-    sprintf(headers + headersLength, "%s: %s\r\n", res->headersKeyValues[i].key,
-            res->headersKeyValues[i].value);
+    snprintf(headers + headersLength, 4096, "%s: %s\r\n",
+             res->headersKeyValues[i].key, res->headersKeyValues[i].value);
     headersLength += headerLength;
   }
 
-  char *allHeaders =
-      malloc(sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) +
-                             headersLength + res->cookieHeadersLength + 1));
-  sprintf(allHeaders, "HTTP/1.1 %s\r\n%s%s\r\n", status, headers,
-          res->cookieHeaders);
+  size_t allHeaderSize =
+      sizeof(char) * (strlen("HTTP/1.1 \r\n\r\n") + strlen(status) +
+                      headersLength + res->cookieHeadersLength + 1);
+
+  char *allHeaders = malloc(allHeaderSize);
+  snprintf(allHeaders, allHeaderSize, "HTTP/1.1 %s\r\n%s%s\r\n", status,
+           headers, res->cookieHeaders);
 
   size_t allHeadersLen = strlen(allHeaders) + 1;
   size_t bodyLen = strlen(body);
@@ -171,10 +175,10 @@ void expressResSendFile(response_t *res, const char *path) {
               20));
   // TODO: use res.set() and refactor header building
   size_t fileSize = getFileSize(path);
-  sprintf(response,
-          "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: "
-          "%s\r\nContent-Length: %zu\r\n\r\n",
-          mimetype, fileSize);
+  snprintf(response, 4096,
+           "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: "
+           "%s\r\nContent-Length: %zu\r\n\r\n",
+           mimetype, fileSize);
   res->didSend = 1;
   write(res->client.socket, response, strlen(response));
   // TODO: use sendfile
@@ -234,13 +238,14 @@ void expressResDownload(response_t *res, const char *filePath,
   if (fileName == NULL)
     fileName = (char *)getFileName(filePath);
 
-  char *contentDisposition = expressReqMalloc(
-      res->req,
+  size_t contentDispositionSize =
       sizeof(char) *
-          (strlen("Content-Disposition: attachment; filename=\"\"\r\n") +
-           strlen(fileName) + 1));
-  sprintf(contentDisposition,
-          "Content-Disposition: attachment; filename=\"%s\"\r\n", fileName);
+      (strlen("Content-Disposition: attachment; filename=\"\"\r\n") +
+       strlen(fileName) + 1);
+
+  char *contentDisposition = expressReqMalloc(res->req, contentDispositionSize);
+  snprintf(contentDisposition, contentDispositionSize,
+           "Content-Disposition: attachment; filename=\"%s\"\r\n", fileName);
 
   expressResSet(res, "Content-Disposition", contentDisposition);
   expressResSendFile(res, filePath);
@@ -267,7 +272,7 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts) {
   if (opts.maxAge != 0) {
     size_t maxAgeLen = strlen("; Max-Age=") + 20;
     char *maxAgeValue = malloc(sizeof(char) * maxAgeLen);
-    sprintf(maxAgeValue, "; Max-Age=%d", opts.maxAge);
+    snprintf(maxAgeValue, maxAgeLen, "; Max-Age=%d", opts.maxAge);
     strncpy(cookieOptsString + i, maxAgeValue, maxAgeLen);
     i += strlen(maxAgeValue);
     free(maxAgeValue);
@@ -275,7 +280,7 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts) {
   if (opts.expires != NULL) {
     size_t expiresLen = strlen("; Expires=") + 20;
     char *expiresValue = malloc(sizeof(char) * expiresLen);
-    sprintf(expiresValue, "; Expires=%s", opts.expires);
+    snprintf(expiresValue, expiresLen, "; Expires=%s", opts.expires);
     strncpy(cookieOptsString + i, expiresValue, expiresLen);
     i += strlen(expiresValue);
     free(expiresValue);
@@ -283,7 +288,7 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts) {
   if (opts.domain != NULL) {
     size_t domainLen = strlen("; Domain=") + strlen(opts.domain) + 1;
     char *domainValue = malloc(sizeof(char) * domainLen);
-    sprintf(domainValue, "; Domain=%s", opts.domain);
+    snprintf(domainValue, domainLen, "; Domain=%s", opts.domain);
     strncpy(cookieOptsString + i, domainValue, domainLen);
     i += strlen(domainValue);
     free(domainValue);
@@ -291,7 +296,7 @@ static char *cookieOptsStringFromOpts(cookie_opts_t opts) {
   if (opts.path != NULL) {
     size_t pathLen = strlen("; Path=") + strlen(opts.path) + 1;
     char *pathValue = malloc(sizeof(char) * pathLen);
-    sprintf(pathValue, "; Path=%s", opts.path);
+    snprintf(pathValue, pathLen, "; Path=%s", opts.path);
     strncpy(cookieOptsString + i, pathValue, pathLen);
     free(pathValue);
   }
@@ -355,9 +360,10 @@ void expressResLocation(response_t *res, const char *url) {
     }
     return;
   }
-  char *location = expressReqMalloc(
-      res->req, sizeof(char) * (strlen(res->req->path) + strlen(url) + 2));
-  sprintf(location, "%s%s", res->req->path, url);
+  size_t locationSize =
+      sizeof(char) * (strlen(res->req->path) + strlen(url) + 2);
+  char *location = expressReqMalloc(res->req, locationSize);
+  snprintf(location, locationSize, "%s%s", res->req->path, url);
   expressResSet(res, "Location", location);
 }
 
