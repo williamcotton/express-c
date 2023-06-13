@@ -15,7 +15,7 @@ RUN ldd /app/build/TodoMVC | tr -s '[:blank:]' '\n' | grep '^/' | \
   xargs -I % sh -c 'mkdir -p $(dirname sdeps%); cp % sdeps%;'
 
 # Grab a fresh copy of our linux image
-FROM ubuntu:hirsute AS deploystage
+FROM ubuntu:jammy AS deploystage
 
 WORKDIR /app
 
