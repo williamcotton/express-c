@@ -33,16 +33,22 @@ void *mmMalloc(memory_manager_t *memoryManager, size_t size) {
   if (memoryManager->freePtr > memoryManager->endPtr) {
     return NULL;
   }
+  memset(ptr, 0, size);
   return ptr;
 }
 
 void *mmRealloc(memory_manager_t *memoryManager, void *ptr, size_t size) {
   void *newPtr = mmMalloc(memoryManager, size);
-  memmove(newPtr, ptr, size);
+  if (newPtr) {
+    memmove(newPtr, ptr, size);
+  }
   return newPtr;
 }
 
 void *mmBlockCopy(memory_manager_t *memoryManager, void *block) {
+  if (!block) {
+    return NULL;
+  }
   if (memoryManager->blockCopyCount >= memoryManager->maxBlockCopyCount) {
     memoryManager->maxBlockCopyCount *= 2;
     memoryManager->blockCopies = realloc(memoryManager->blockCopies,
@@ -74,7 +80,9 @@ void mmCleanup(memory_manager_t *memoryManager,
 
 void mmFree(memory_manager_t *memoryManager) {
   for (int i = 0; i < memoryManager->cleanupHandlersCount; i++) {
-    memoryManager->cleanupHandlers[i]();
+    if (memoryManager->cleanupHandlers[i]) {
+      memoryManager->cleanupHandlers[i]();
+    }
   }
 
   for (int i = 0; i < memoryManager->blockCopyCount; i++) {
