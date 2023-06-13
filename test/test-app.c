@@ -6,10 +6,10 @@ router_t *postgresRouter(const char *pgUri, int poolSize);
 router_t *sqliteRouter(sqlite3 *db);
 router_t *cJSONMustacheRouter();
 router_t *janssonMustacheRouter();
-router_t *janssonJsonapiRouter();
+router_t *janssonJsonapiRouter(char *);
 router_t *cookieSessionRouter();
 router_t *jwtRouter();
-router_t *resourceRouter();
+router_t *resourceRouter(char *, int);
 
 app_t *testApp() {
 
@@ -43,7 +43,7 @@ app_t *testApp() {
 
   app->useRouter("/cjson-mustache", cJSONMustacheRouter());
   app->useRouter("/jansson-mustache", janssonMustacheRouter());
-  app->useRouter("/jansson-jsonapi", janssonJsonapiRouter());
+  app->useRouter("/jansson-jsonapi", janssonJsonapiRouter(""));
   app->useRouter("/cookie-session", cookieSessionRouter());
   app->useRouter("/jwt", jwtRouter());
   app->useRouter("/api/v1", resourceRouter(TEST_DATABASE_URL, poolSize));

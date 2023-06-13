@@ -40,6 +40,6 @@ typedef struct jansson_jsonapi_middleware_t {
 
 typedef jansson_jsonapi_middleware_t jsonapi_t;
 
-middlewareHandler janssonJsonapiMiddleware();
+middlewareHandler janssonJsonapiMiddleware(const char *);
 
 #endif // JANSSON_JSONAPI_MIDDLEWARE_H

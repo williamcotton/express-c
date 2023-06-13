@@ -141,7 +141,9 @@ query_t *applyResourceAttributeToScope(query_t *scope, resource_t *resource,
   char *selectCondition = mmMalloc(resource->model->memoryManager,
                                    strlen(resource->type) + strlen(".") +
                                        strlen(attributeName) + 1);
-  sprintf(selectCondition, "%s.%s", resource->type, attributeName);
+  snprintf(selectCondition,
+           strlen(resource->type) + strlen(".") + strlen(attributeName) + 1,
+           "%s.%s", resource->type, attributeName);
   scope = scope->select(selectCondition);
   return scope;
 }
@@ -228,14 +230,15 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
       int count = scope->count();
       statValue->value =
           mmMalloc(resource->model->memoryManager, sizeof(int) * 2);
-      sprintf(statValue->value, "%d", count);
+      snprintf(statValue->value, sizeof(int) * 2, "%d", count);
     } else if (resource->hasAttribute(attribute)) {
       statValue->attribute = attribute;
       statValue->stat = stat;
       query_stat_result_t *result = scope->stat(attribute, stat);
       statValue->value =
           mmMalloc(resource->model->memoryManager, strlen(result->value) + 1);
-      sprintf(statValue->value, "%s", result->value);
+      snprintf(statValue->value, strlen(result->value) + 1, "%s",
+               result->value);
       free(result->value);
     }
   }

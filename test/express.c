@@ -102,7 +102,7 @@ void expressTests(tape_t *t) {
     t->test("File", ^(tape_t *t) {
       t->strEqual("file", t->get("/file"), "hello, world!\n");
       char error[1024];
-      sprintf(error, errorHTML, "Cannot GET /test/test3.txt");
+      snprintf(error, 1024, errorHTML, "Cannot GET /test/test3.txt");
       t->strEqual("file not found", t->get("/test/test3.txt"), error);
       t->strEqual("download", t->get("/download"), "hello, world!\n");
       // char *missingFile = t->get("/download_missing");
@@ -152,7 +152,7 @@ void expressTests(tape_t *t) {
 
     t->test("Error", ^(tape_t *t) {
       char error[1024];
-      sprintf(error, errorHTML, "Cannot GET /error");
+      snprintf(error, 1024, errorHTML, "Cannot GET /error");
       t->strEqual("error", t->get("/error"), error);
       t->strEqual("custom error handler", t->get("/base/error"), "fubar");
     });

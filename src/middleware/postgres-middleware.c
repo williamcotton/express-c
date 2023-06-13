@@ -70,7 +70,7 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
       int nParams = pgParamCount(conditions);
 
       char varNum[10];
-      sprintf(varNum, "$%d", query->paramValueCount + 1);
+      snprintf(varNum, 10, "$%d", query->paramValueCount + 1);
 
       // TODO: replace with basic char * functions
       string_t *whereConditions = string(conditions);
@@ -108,7 +108,7 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
             whereConditionsString->concat(" NOT IN (");
           }
           for (int i = 0; i < nValues; i++) {
-            sprintf(varNum, "$%d", query->paramValueCount + 1);
+            snprintf(varNum, 10, "$%d", query->paramValueCount + 1);
             whereConditionsString->concat(varNum);
             if (i != nValues - 1) {
               whereConditionsString->concat(",");
@@ -124,14 +124,14 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
 
     query->limit = mmBlockCopy(memoryManager, ^(int limit) {
       char *limitStr = mmMalloc(memoryManager, sizeof(char) * 10);
-      sprintf(limitStr, "%d", limit);
+      snprintf(limitStr, 10, "%d", limit);
       query->limitCondition = limitStr;
       return query;
     });
 
     query->offset = mmBlockCopy(memoryManager, ^(int offset) {
       char *offsetStr = mmMalloc(memoryManager, sizeof(char) * 10);
-      sprintf(offsetStr, "%d", offset);
+      snprintf(offsetStr, 10, "%d", offset);
       query->offsetCondition = offsetStr;
       return query;
     });
@@ -146,7 +146,8 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
 
           char *orderCondition =
               mmMalloc(memoryManager, strlen(column) + strlen(direction) + 2);
-          sprintf(orderCondition, "%s %s", column, direction);
+          snprintf(orderCondition, strlen(column) + strlen(direction) + 2,
+                   "%s %s", column, direction);
           query->orderConditions[query->orderConditionsCount++] =
               (char *)orderCondition;
           return query;
@@ -166,7 +167,7 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
       int nParams = pgParamCount(conditions);
 
       char varNum[10];
-      sprintf(varNum, "$%d", query->paramValueCount + 1);
+      snprintf(varNum, 10, "$%d", query->paramValueCount + 1);
 
       // TODO: replace with basic char * functions
       string_t *havingConditions = string(conditions);
@@ -219,24 +220,28 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
       if (query->distinctCondition) {
         select = mmMalloc(memoryManager, strlen(selectConditions) +
                                              strlen("SELECT DISTINCT") + 2);
-        sprintf(select, "SELECT DISTINCT %s", selectConditions);
+        snprintf(select,
+                 strlen(selectConditions) + strlen("SELECT DISTINCT") + 2,
+                 "SELECT DISTINCT %s", selectConditions);
       } else {
         select = mmMalloc(memoryManager,
                           strlen(selectConditions) + strlen("SELECT ") + 1);
-        sprintf(select, "SELECT %s", selectConditions);
+        snprintf(select, strlen(selectConditions) + strlen("SELECT ") + 1,
+                 "SELECT %s", selectConditions);
       }
 
       // FROM
       char *from =
           mmMalloc(memoryManager, strlen(tableName) + strlen("FROM ") + 2);
-      sprintf(from, " FROM %s", tableName);
+      snprintf(from, strlen(tableName) + strlen("FROM ") + 2, "FROM %s",
+               tableName);
 
       // JOINS
       char *joins = NULL;
       size_t joinsLen = strlen(query->joinsConditions);
       if (joinsLen > 0) {
         joins = mmMalloc(memoryManager, joinsLen + 2);
-        sprintf(joins, " %s", query->joinsConditions);
+        snprintf(joins, joinsLen + 2, " %s", query->joinsConditions);
       } else {
         joins = "";
       }
@@ -247,12 +252,17 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
         if (where == NULL) {
           where = mmMalloc(memoryManager, strlen(query->whereConditions[i]) +
                                               strlen(" WHERE ") + 2);
-          sprintf(where, " WHERE %s", query->whereConditions[i]);
+          snprintf(where,
+                   strlen(query->whereConditions[i]) + strlen(" WHERE ") + 2,
+                   " WHERE %s", query->whereConditions[i]);
         } else {
           char *tmp = mmMalloc(memoryManager,
                                strlen(where) + strlen(" AND ") +
                                    strlen(query->whereConditions[i]) + 1);
-          sprintf(tmp, "%s AND %s", where, query->whereConditions[i]);
+          snprintf(tmp,
+                   strlen(where) + strlen(" AND ") +
+                       strlen(query->whereConditions[i]) + 1,
+                   "%s AND %s", where, query->whereConditions[i]);
           where = tmp;
         }
       }
@@ -264,7 +274,12 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
       if (strlen(query->groupConditions) > 0) {
         group = mmMalloc(memoryManager, strlen(query->groupConditions) +
                                             strlen(" GROUP BY ") + 2);
-        sprintf(group, " GROUP BY %s", query->groupConditions);
+        snprintf(group,
+                 strlen(query->groupConditions) + strlen(" GROUP BY ") + 2,
+                 " GROUP BY %s", query->groupConditions);
+        snprintf(group,
+                 strlen(query->groupConditions) + strlen(" GROUP BY ") + 2,
+                 " GROUP BY %s", query->groupConditions);
       }
       if (group == NULL)
         group = "";
@@ -275,12 +290,25 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
         if (having == NULL) {
           having = mmMalloc(memoryManager, strlen(query->havingConditions[i]) +
                                                strlen(" HAVING ") + 2);
-          sprintf(having, " HAVING %s", query->havingConditions[i]);
+          snprintf(having,
+                   strlen(query->havingConditions[i]) + strlen(" HAVING ") + 2,
+                   " HAVING %s", query->havingConditions[i]);
         } else {
           char *tmp = mmMalloc(memoryManager,
                                strlen(having) + strlen(" AND ") +
                                    strlen(query->havingConditions[i]) + 1);
-          sprintf(tmp, "%s AND %s", having, query->havingConditions[i]);
+          snprintf(tmp,
+                   strlen(having) + strlen(" AND ") +
+                       strlen(query->havingConditions[i]) + 1,
+                   "%s AND %s", having, query->havingConditions[i]);
+          snprintf(tmp,
+                   strlen(having) + strlen(" AND ") +
+                       strlen(query->havingConditions[i]) + 1,
+                   "%s AND %s", having, query->havingConditions[i]);
+          snprintf(tmp,
+                   strlen(having) + strlen(" AND ") +
+                       strlen(query->havingConditions[i]) + 1,
+                   "%s AND %s", having, query->havingConditions[i]);
           having = tmp;
         }
       }
@@ -292,7 +320,8 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
       if (strlen(query->limitCondition) > 0) {
         limit = mmMalloc(memoryManager,
                          strlen(query->limitCondition) + strlen(" LIMIT ") + 2);
-        sprintf(limit, " LIMIT %s", query->limitCondition);
+        snprintf(limit, strlen(query->limitCondition) + strlen(" LIMIT ") + 2,
+                 " LIMIT %s", query->limitCondition);
       }
       if (limit == NULL)
         limit = "";
@@ -302,7 +331,9 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
       if (strlen(query->offsetCondition) > 0) {
         offset = mmMalloc(memoryManager, strlen(query->offsetCondition) +
                                              strlen(" OFFSET ") + 2);
-        sprintf(offset, " OFFSET %s", query->offsetCondition);
+        snprintf(offset,
+                 strlen(query->offsetCondition) + strlen(" OFFSET ") + 2,
+                 " OFFSET %s", query->offsetCondition);
       }
       if (offset == NULL)
         offset = "";
@@ -313,12 +344,17 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
         if (order == NULL) {
           order = mmMalloc(memoryManager, strlen(query->orderConditions[i]) +
                                               strlen(" ORDER BY ") + 2);
-          sprintf(order, " ORDER BY %s", query->orderConditions[i]);
+          snprintf(order,
+                   strlen(query->orderConditions[i]) + strlen(" ORDER BY ") + 2,
+                   " ORDER BY %s", query->orderConditions[i]);
         } else {
           char *tmp = mmMalloc(memoryManager,
                                strlen(order) + strlen(", ") +
                                    strlen(query->orderConditions[i]) + 1);
-          sprintf(tmp, "%s, %s", order, query->orderConditions[i]);
+          snprintf(tmp,
+                   strlen(order) + strlen(", ") +
+                       strlen(query->orderConditions[i]) + 1,
+                   "%s, %s", order, query->orderConditions[i]);
           order = tmp;
         }
       }
@@ -330,8 +366,12 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
                    strlen(select) + strlen(from) + strlen(joins) +
                        strlen(where) + strlen(limit) + strlen(offset) +
                        strlen(order) + strlen(group) + strlen(having) + 2);
-      sprintf(sql, "%s%s%s%s%s%s%s%s%s", select, from, joins, where, group,
-              having, limit, offset, order);
+      snprintf(sql,
+               strlen(select) + strlen(from) + strlen(joins) + strlen(where) +
+                   strlen(limit) + strlen(offset) + strlen(order) +
+                   strlen(group) + strlen(having) + 2,
+               "%s%s%s%s%s%s%s%s%s", select, from, joins, where, group, having,
+               limit, offset, order);
 
       mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
                   for (int i = 0; i < query->whereConditionsCount; i++) {
@@ -388,28 +428,35 @@ getPostgresQueryBlock getPostgresDBQuery(memory_manager_t *memoryManager,
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("min(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "min(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("min(") + strlen(attribute) + strlen(")") + 1,
+                 "min(%s)", attribute);
         query->selectConditionsCount = 1;
       }
       if (strcmp(stat, "max") == 0) {
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("max(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "max(%s)", attribute);
-        query->selectConditionsCount = 1;
+        snprintf((char *)query->selectConditions[0],
+                 strlen("max(") + strlen(attribute) + strlen(")") + 1,
+                 "max(%s)", attribute);
       }
       if (strcmp(stat, "average") == 0) {
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("avg(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "avg(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("avg(") + strlen(attribute) + strlen(")") + 1,
+                 "avg(%s)", attribute);
         query->selectConditionsCount = 1;
       }
       if (strcmp(stat, "sum") == 0) {
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("sum(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "sum(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("sum(") + strlen(attribute) + strlen(")") + 1,
+                 "sum(%s)", attribute);
         query->selectConditionsCount = 1;
       }
 
@@ -457,7 +504,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       int nParams = pgParamCount(conditions);
 
       char varNum[10];
-      sprintf(varNum, "$%d", query->paramValueCount + 1);
+      snprintf(varNum, 10, "$%d", query->paramValueCount + 1);
 
       // TODO: replace with basic char * functions
       string_t *whereConditions = string(conditions);
@@ -495,7 +542,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
             whereConditionsString->concat(" NOT IN (");
           }
           for (int i = 0; i < nValues; i++) {
-            sprintf(varNum, "$%d", query->paramValueCount + 1);
+            snprintf(varNum, 10, "$%d", query->paramValueCount + 1);
             whereConditionsString->concat(varNum);
             if (i != nValues - 1) {
               whereConditionsString->concat(",");
@@ -511,14 +558,14 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
     query->limit = mmBlockCopy(memoryManager, ^(int limit) {
       char *limitStr = mmMalloc(memoryManager, sizeof(char) * 10);
-      sprintf(limitStr, "%d", limit);
+      snprintf(limitStr, 10, "%d", limit);
       query->limitCondition = limitStr;
       return query;
     });
 
     query->offset = mmBlockCopy(memoryManager, ^(int offset) {
       char *offsetStr = mmMalloc(memoryManager, sizeof(char) * 10);
-      sprintf(offsetStr, "%d", offset);
+      snprintf(offsetStr, 10, "%d", offset);
       query->offsetCondition = offsetStr;
       return query;
     });
@@ -533,7 +580,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
 
           char *orderCondition =
               mmMalloc(memoryManager, strlen(column) + strlen(direction) + 2);
-          sprintf(orderCondition, "%s %s", column, direction);
+          snprintf(orderCondition, strlen(column) + strlen(direction) + 2,
+                   "%s %s", column, direction);
           query->orderConditions[query->orderConditionsCount++] =
               (char *)orderCondition;
           return query;
@@ -553,7 +601,7 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       int nParams = pgParamCount(conditions);
 
       char varNum[10];
-      sprintf(varNum, "$%d", query->paramValueCount + 1);
+      snprintf(varNum, 10, "$%d", query->paramValueCount + 1);
 
       // TODO: replace with basic char * functions
       string_t *havingConditions = string(conditions);
@@ -606,24 +654,29 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       if (query->distinctCondition) {
         select = mmMalloc(memoryManager, strlen(selectConditions) +
                                              strlen("SELECT DISTINCT") + 2);
-        sprintf(select, "SELECT DISTINCT %s", selectConditions);
+        snprintf(select,
+                 strlen(selectConditions) + strlen("SELECT DISTINCT") + 2,
+                 "SELECT DISTINCT %s", selectConditions);
       } else {
         select = mmMalloc(memoryManager,
                           strlen(selectConditions) + strlen("SELECT ") + 1);
-        sprintf(select, "SELECT %s", selectConditions);
+
+        snprintf(select, strlen(selectConditions) + strlen("SELECT ") + 1,
+                 "SELECT %s", selectConditions);
       }
 
       // FROM
       char *from =
-          mmMalloc(memoryManager, strlen(tableName) + strlen("FROM ") + 2);
-      sprintf(from, " FROM %s", tableName);
+          mmMalloc(memoryManager, strlen(tableName) + strlen(" FROM ") + 2);
+      snprintf(from, strlen(tableName) + strlen(" FROM ") + 2, " FROM %s",
+               tableName);
 
       // JOINS
       char *joins = NULL;
       size_t joinsLen = strlen(query->joinsConditions);
       if (joinsLen > 0) {
         joins = mmMalloc(memoryManager, joinsLen + 2);
-        sprintf(joins, " %s", query->joinsConditions);
+        snprintf(joins, joinsLen + 2, " %s", query->joinsConditions);
       } else {
         joins = "";
       }
@@ -634,12 +687,17 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
         if (where == NULL) {
           where = mmMalloc(memoryManager, strlen(query->whereConditions[i]) +
                                               strlen(" WHERE ") + 2);
-          sprintf(where, " WHERE %s", query->whereConditions[i]);
+          snprintf(where,
+                   strlen(query->whereConditions[i]) + strlen(" WHERE ") + 2,
+                   " WHERE %s", query->whereConditions[i]);
         } else {
           char *tmp = mmMalloc(memoryManager,
                                strlen(where) + strlen(" AND ") +
                                    strlen(query->whereConditions[i]) + 1);
-          sprintf(tmp, "%s AND %s", where, query->whereConditions[i]);
+          snprintf(tmp,
+                   strlen(where) + strlen(" AND ") +
+                       strlen(query->whereConditions[i]) + 1,
+                   "%s AND %s", where, query->whereConditions[i]);
           where = tmp;
         }
       }
@@ -651,7 +709,9 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       if (strlen(query->groupConditions) > 0) {
         group = mmMalloc(memoryManager, strlen(query->groupConditions) +
                                             strlen(" GROUP BY ") + 2);
-        sprintf(group, " GROUP BY %s", query->groupConditions);
+        snprintf(group,
+                 strlen(query->groupConditions) + strlen(" GROUP BY ") + 2,
+                 " GROUP BY %s", query->groupConditions);
       }
       if (group == NULL)
         group = "";
@@ -662,12 +722,17 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
         if (having == NULL) {
           having = mmMalloc(memoryManager, strlen(query->havingConditions[i]) +
                                                strlen(" HAVING ") + 2);
-          sprintf(having, " HAVING %s", query->havingConditions[i]);
+          snprintf(having,
+                   strlen(query->havingConditions[i]) + strlen(" HAVING ") + 2,
+                   " HAVING %s", query->havingConditions[i]);
         } else {
           char *tmp = mmMalloc(memoryManager,
                                strlen(having) + strlen(" AND ") +
                                    strlen(query->havingConditions[i]) + 1);
-          sprintf(tmp, "%s AND %s", having, query->havingConditions[i]);
+          snprintf(tmp,
+                   strlen(having) + strlen(" AND ") +
+                       strlen(query->havingConditions[i]) + 1,
+                   "%s AND %s", having, query->havingConditions[i]);
           having = tmp;
         }
       }
@@ -679,7 +744,8 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       if (strlen(query->limitCondition) > 0) {
         limit = mmMalloc(memoryManager,
                          strlen(query->limitCondition) + strlen(" LIMIT ") + 2);
-        sprintf(limit, " LIMIT %s", query->limitCondition);
+        snprintf(limit, strlen(query->limitCondition) + strlen(" LIMIT ") + 2,
+                 " LIMIT %s", query->limitCondition);
       }
       if (limit == NULL)
         limit = "";
@@ -689,7 +755,9 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
       if (strlen(query->offsetCondition) > 0) {
         offset = mmMalloc(memoryManager, strlen(query->offsetCondition) +
                                              strlen(" OFFSET ") + 2);
-        sprintf(offset, " OFFSET %s", query->offsetCondition);
+        snprintf(offset,
+                 strlen(query->offsetCondition) + strlen(" OFFSET ") + 2,
+                 " OFFSET %s", query->offsetCondition);
       }
       if (offset == NULL)
         offset = "";
@@ -700,12 +768,17 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
         if (order == NULL) {
           order = mmMalloc(memoryManager, strlen(query->orderConditions[i]) +
                                               strlen(" ORDER BY ") + 2);
-          sprintf(order, " ORDER BY %s", query->orderConditions[i]);
+          snprintf(order,
+                   strlen(query->orderConditions[i]) + strlen(" ORDER BY ") + 2,
+                   " ORDER BY %s", query->orderConditions[i]);
         } else {
           char *tmp = mmMalloc(memoryManager,
                                strlen(order) + strlen(", ") +
                                    strlen(query->orderConditions[i]) + 1);
-          sprintf(tmp, "%s, %s", order, query->orderConditions[i]);
+          snprintf(tmp,
+                   strlen(order) + strlen(", ") +
+                       strlen(query->orderConditions[i]) + 1,
+                   "%s, %s", order, query->orderConditions[i]);
           order = tmp;
         }
       }
@@ -717,8 +790,12 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
                    strlen(select) + strlen(from) + strlen(joins) +
                        strlen(where) + strlen(limit) + strlen(offset) +
                        strlen(order) + strlen(group) + strlen(having) + 2);
-      sprintf(sql, "%s%s%s%s%s%s%s%s%s", select, from, joins, where, group,
-              having, limit, offset, order);
+      snprintf(sql,
+               strlen(select) + strlen(from) + strlen(joins) + strlen(where) +
+                   strlen(limit) + strlen(offset) + strlen(order) +
+                   strlen(group) + strlen(having) + 2,
+               "%s%s%s%s%s%s%s%s%s", select, from, joins, where, group, having,
+               limit, offset, order);
 
       mmCleanup(memoryManager, mmBlockCopy(memoryManager, ^{
                   for (int i = 0; i < query->whereConditionsCount; i++) {
@@ -775,28 +852,36 @@ getPostgresQueryBlock getPostgresQuery(memory_manager_t *memoryManager,
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("min(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "min(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("min(") + strlen(attribute) + strlen(")") + 1,
+                 "min(%s)", attribute);
         query->selectConditionsCount = 1;
       }
       if (strcmp(stat, "max") == 0) {
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("max(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "max(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("max(") + strlen(attribute) + strlen(")") + 1,
+                 "max(%s)", attribute);
         query->selectConditionsCount = 1;
       }
       if (strcmp(stat, "average") == 0) {
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("avg(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "avg(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("avg(") + strlen(attribute) + strlen(")") + 1,
+                 "avg(%s)", attribute);
         query->selectConditionsCount = 1;
       }
       if (strcmp(stat, "sum") == 0) {
         query->selectConditions[0] =
             mmMalloc(memoryManager,
                      strlen("sum(") + strlen(attribute) + strlen(")") + 1);
-        sprintf((char *)query->selectConditions[0], "sum(%s)", attribute);
+        snprintf((char *)query->selectConditions[0],
+                 strlen("sum(") + strlen(attribute) + strlen(")") + 1,
+                 "sum(%s)", attribute);
         query->selectConditionsCount = 1;
       }
 
