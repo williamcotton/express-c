@@ -14,7 +14,7 @@ services:
     network_mode: service:db
 
     # Uncomment the next line to use a non-root user for all processes.
-    # user: node
+    user: vscode
 
     # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
     # (Adding the "ports" property to this file will not forward from a Codespace.)
