@@ -54,7 +54,7 @@
 
 #define MAX_REQUEST_SIZE 4096
 #define READ_TIMEOUT_SECS 30
-#define ACCEPT_TIMEOUT_SECS 30
+#define ACCEPT_TIMEOUT_SECS 90
 #define BT_BUF_SIZE 100
 
 /* Helpers */
