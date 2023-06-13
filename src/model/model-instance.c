@@ -69,74 +69,78 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
         modelInstanceGet(instance, attribute);
       });
 
-  instance->r =
-      mmBlockCopy(instance->model->memoryManager, ^(const char *relationName) {
-        model_t *relatedModel = instance->model->lookup(relationName);
-        if (relatedModel == NULL) {
-          log_err("Could not find model '%s'", relationName);
-          return (query_t *)NULL;
-        }
+  instance->r = mmBlockCopy(instance->model->memoryManager, ^(
+                                const char *relationName) {
+    model_t *relatedModel = instance->model->lookup(relationName);
+    if (relatedModel == NULL) {
+      log_err("Could not find model '%s'", relationName);
+      return (query_t *)NULL;
+    }
 
-        char *whereForeignKey = NULL;
+    char *whereForeignKey = NULL;
 
-        char *hasManyForeignKey = NULL;
-        for (int i = 0; i < instance->model->hasManyCount; i++) {
-          if (strcmp(instance->model->hasManyRelationships[i]->tableName,
-                     relatedModel->tableName) == 0) {
-            hasManyForeignKey =
-                instance->model->hasManyRelationships[i]->foreignKey;
-            break;
-          }
-        }
-        if (hasManyForeignKey) {
-          whereForeignKey =
-              mmMalloc(instance->model->memoryManager,
-                       strlen(hasManyForeignKey) + strlen(instance->id) + 5);
-          sprintf(whereForeignKey, "%s = %s", hasManyForeignKey, instance->id);
-          return relatedModel->query()->where(whereForeignKey);
-        }
+    char *hasManyForeignKey = NULL;
+    for (int i = 0; i < instance->model->hasManyCount; i++) {
+      if (strcmp(instance->model->hasManyRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        hasManyForeignKey =
+            instance->model->hasManyRelationships[i]->foreignKey;
+        break;
+      }
+    }
+    if (hasManyForeignKey) {
+      whereForeignKey =
+          mmMalloc(instance->model->memoryManager,
+                   strlen(hasManyForeignKey) + strlen(instance->id) + 5);
 
-        char *hasOneForeignKey = NULL;
-        for (int i = 0; i < instance->model->hasOneCount; i++) {
-          if (strcmp(instance->model->hasOneRelationships[i]->tableName,
-                     relatedModel->tableName) == 0) {
-            hasOneForeignKey =
-                instance->model->hasOneRelationships[i]->foreignKey;
-            break;
-          }
-        }
-        if (hasOneForeignKey) {
-          whereForeignKey =
-              mmMalloc(instance->model->memoryManager,
-                       strlen(hasOneForeignKey) + strlen(instance->id) + 5);
-          sprintf(whereForeignKey, "%s = %s", hasOneForeignKey, instance->id);
-          return relatedModel->query()->where(whereForeignKey)->limit(1);
-        }
+      snprintf(whereForeignKey,
+               strlen(hasManyForeignKey) + strlen(instance->id) + 5, "%s = %s",
+               hasManyForeignKey, instance->id);
+      return relatedModel->query()->where(whereForeignKey);
+    }
 
-        char *belongsToForeignKey = NULL;
-        for (int i = 0; i < instance->model->belongsToCount; i++) {
-          if (strcmp(instance->model->belongsToRelationships[i]->tableName,
-                     relatedModel->tableName) == 0) {
-            belongsToForeignKey =
-                instance->model->belongsToRelationships[i]->foreignKey;
-            break;
-          }
-        }
-        if (belongsToForeignKey) {
-          debug("belongsToForeignKey: %s", belongsToForeignKey);
-          char *foreignKey = instance->get(belongsToForeignKey);
-          debug("foreignKey: %s", foreignKey);
-          whereForeignKey =
-              mmMalloc(instance->model->memoryManager, strlen(foreignKey) + 6);
-          sprintf(whereForeignKey, "id = %s", foreignKey);
-          debug("whereForeignKey: %s", whereForeignKey);
-          return relatedModel->query()->where(whereForeignKey);
-        }
+    char *hasOneForeignKey = NULL;
+    for (int i = 0; i < instance->model->hasOneCount; i++) {
+      if (strcmp(instance->model->hasOneRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        hasOneForeignKey = instance->model->hasOneRelationships[i]->foreignKey;
+        break;
+      }
+    }
+    if (hasOneForeignKey) {
+      whereForeignKey =
+          mmMalloc(instance->model->memoryManager,
+                   strlen(hasOneForeignKey) + strlen(instance->id) + 5);
+      snprintf(whereForeignKey,
+               strlen(hasOneForeignKey) + strlen(instance->id) + 5, "%s = %s",
+               hasOneForeignKey, instance->id);
+      return relatedModel->query()->where(whereForeignKey)->limit(1);
+    }
 
-        log_err("Could not find relation '%s' on '%s'", relationName,
-                instance->model->tableName);
-        return (query_t *)NULL;
-      });
+    char *belongsToForeignKey = NULL;
+    for (int i = 0; i < instance->model->belongsToCount; i++) {
+      if (strcmp(instance->model->belongsToRelationships[i]->tableName,
+                 relatedModel->tableName) == 0) {
+        belongsToForeignKey =
+            instance->model->belongsToRelationships[i]->foreignKey;
+        break;
+      }
+    }
+    if (belongsToForeignKey) {
+      debug("belongsToForeignKey: %s", belongsToForeignKey);
+      char *foreignKey = instance->get(belongsToForeignKey);
+      debug("foreignKey: %s", foreignKey);
+      whereForeignKey =
+          mmMalloc(instance->model->memoryManager, strlen(foreignKey) + 6);
+      snprintf(whereForeignKey, strlen(foreignKey) + 6, "id = %s", foreignKey);
+      debug("whereForeignKey: %s", whereForeignKey);
+      return relatedModel->query()->where(whereForeignKey);
+    }
+
+    log_err("Could not find relation '%s' on '%s'", relationName,
+            instance->model->tableName);
+    return (query_t *)NULL;
+  });
 
   instance->validate = mmBlockCopy(instance->model->memoryManager, ^() {
     instance->errors->count = 0;
@@ -155,7 +159,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
   });
 
   instance->save = mmBlockCopy(instance->model->memoryManager, ^() {
-    int didSave = 0;
+    int didSave = true;
 
     for (int i = 0; i < instance->model->beforeSaveCallbacksCount; i++) {
       int res = instance->model->beforeSaveCallbacks[i](instance);
@@ -192,13 +196,17 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
       char *attributeValue = dirtyAttributes[i]->value;
       dirtyAttributeValues[i] = attributeValue;
       if (i == 0) {
-        sprintf(dirtyAttributePlaceholdersString, "$%d", i + 1);
-        sprintf(dirtyAttributeNamesString, "%s", attributeName);
+        snprintf(dirtyAttributePlaceholdersString,
+                 strlen(dirtyAttributePlaceholdersString) + 2, "$%d", i + 1);
+        snprintf(dirtyAttributeNamesString,
+                 strlen(dirtyAttributeNamesString) + strlen(attributeName) + 1,
+                 "%s", attributeName);
       } else {
-        sprintf(dirtyAttributePlaceholdersString, "%s, $%d",
-                dirtyAttributePlaceholdersString, i + 1);
-        sprintf(dirtyAttributeNamesString, "%s, %s", dirtyAttributeNamesString,
-                attributeName);
+        snprintf(dirtyAttributePlaceholdersString,
+                 strlen(dirtyAttributePlaceholdersString) + 4, ", $%d", i + 1);
+        snprintf(dirtyAttributeNamesString,
+                 strlen(dirtyAttributeNamesString) + strlen(attributeName) + 3,
+                 "%s, %s", dirtyAttributeNamesString, attributeName);
       }
     }
 
@@ -217,9 +225,14 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
                                strlen(instance->id) +
                                strlen(dirtyAttributeNamesString) +
                                strlen(dirtyAttributePlaceholdersString) + 1);
-      sprintf(saveQuery, "UPDATE %s SET (%s) = (%s) WHERE id = %s",
-              instance->model->tableName, dirtyAttributeNamesString,
-              dirtyAttributePlaceholdersString, instance->id);
+      snprintf(saveQuery,
+               strlen("UPDATE  SET () = () WHERE id = ") +
+                   strlen(instance->model->tableName) + strlen(instance->id) +
+                   strlen(dirtyAttributeNamesString) +
+                   strlen(dirtyAttributePlaceholdersString) + 1,
+               "UPDATE %s SET (%s) = (%s) WHERE id = %s",
+               instance->model->tableName, dirtyAttributeNamesString,
+               dirtyAttributePlaceholdersString, instance->id);
 
     } else {
       // INSERT
@@ -235,9 +248,14 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
                                strlen(instance->model->tableName) +
                                strlen(dirtyAttributeNamesString) +
                                strlen(dirtyAttributePlaceholdersString) + 1);
-      sprintf(saveQuery, "INSERT INTO %s (%s) VALUES (%s) RETURNING id;",
-              instance->model->tableName, dirtyAttributeNamesString,
-              dirtyAttributePlaceholdersString);
+      snprintf(saveQuery,
+               strlen("INSERT INTO  () VALUES () RETURNING id;") +
+                   strlen(instance->model->tableName) +
+                   strlen(dirtyAttributeNamesString) +
+                   strlen(dirtyAttributePlaceholdersString) + 1,
+               "INSERT INTO %s (%s) VALUES (%s) RETURNING id;",
+               instance->model->tableName, dirtyAttributeNamesString,
+               dirtyAttributePlaceholdersString);
     }
 
     PGresult *pgres = instance->model->db->execParams(
@@ -248,7 +266,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
       size_t idLen = strlen(PQgetvalue(pgres, 0, 0));
       if (idLen > 0) {
         instance->id = mmMalloc(instance->model->memoryManager, idLen + 1);
-        sprintf(instance->id, "%s", PQgetvalue(pgres, 0, 0));
+        snprintf(instance->id, idLen + 1, "%s", PQgetvalue(pgres, 0, 0));
 
         for (int i = 0; i < instance->model->afterCreateCallbacksCount; i++) {
           instance->model->afterCreateCallbacks[i](instance);
@@ -281,7 +299,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
   });
 
   instance->destroy = mmBlockCopy(instance->model->memoryManager, ^() {
-    int didDestroy = 0;
+    int didDestroy = false;
 
     for (int i = 0; i < instance->model->beforeDestroyCallbacksCount; i++) {
       int res = instance->model->beforeDestroyCallbacks[i](instance);
@@ -295,8 +313,12 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
                                     strlen("DELETE FROM  WHERE id = ") +
                                         strlen(instance->model->tableName) +
                                         strlen(instance->id) + 1);
-      sprintf(destroyQuery, "DELETE FROM %s WHERE id = %s",
-              instance->model->tableName, instance->id);
+      snprintf(destroyQuery,
+               strlen("DELETE FROM  WHERE id = ") +
+                   strlen(instance->model->tableName) + strlen(instance->id) +
+                   1,
+               "DELETE FROM %s WHERE id = %s", instance->model->tableName,
+               instance->id);
       PGresult *pgres = instance->model->db->exec(destroyQuery);
       if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
         log_err("%s", PQresultErrorMessage(pgres));
