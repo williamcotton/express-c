@@ -22,42 +22,40 @@
    fun:_dispatch_root_queue_poke_slow
 }
 {
-   epoll server
-   Memcheck:Leak
-   match-leak-kinds: possible
-   fun:calloc
-   fun:calloc
-   fun:allocate_dtv
-   fun:_dl_allocate_tls
-   fun:allocate_stack
-   fun:pthread_create*
-   fun:initClientAcceptEventHandler
+   dispatch queue
+   Memcheck:Addr2
+   fun:_dispatch_event_merge_fd
+   fun:_dispatch_event_loop_drain
+   fun:_dispatch_mgr_invoke
+   fun:_dispatch_mgr_thread
+   fun:_dispatch_root_queue_drain
+   fun:_dispatch_worker_thread
+   fun:start_thread
+   fun:clone
 }
 {
-   epoll server
-   Memcheck:Leak
-   match-leak-kinds: possible
-   fun:calloc
-   fun:allocate_dtv
-   fun:_dl_allocate_tls
-   fun:allocate_stack
-   fun:pthread_create*
-   fun:initClientAcceptEventHandler
+   dispatch queue
+   Memcheck:Addr4
+   fun:_dispatch_event_merge_fd
+   fun:_dispatch_event_loop_drain
+   fun:_dispatch_mgr_invoke
+   fun:_dispatch_mgr_thread
+   fun:_dispatch_root_queue_drain
+   fun:_dispatch_worker_thread
+   fun:start_thread
+   fun:clone
 }
 {
-
-   epoll server
-   Memcheck:Leak
-   match-leak-kinds: possible
-   fun:malloc
-   fun:clientAcceptEventHandler
-}
-{
-   epoll server
-   Memcheck:Param
-   epoll_ctl(event)
-   fun:epoll_ctl
-   fun:initClientAcceptEventHandler
+   dispatch queue
+   Memcheck:Addr8
+   fun:_dispatch_event_merge_fd
+   fun:_dispatch_event_loop_drain
+   fun:_dispatch_mgr_invoke
+   fun:_dispatch_mgr_thread
+   fun:_dispatch_root_queue_drain
+   fun:_dispatch_worker_thread
+   fun:start_thread
+   fun:clone
 }
 {
    TODO: fix flaky test-leaks on linux
