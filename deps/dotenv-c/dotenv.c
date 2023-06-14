@@ -36,7 +36,7 @@ static bool is_nested(char *value) {
  */
 static char *prepare_value(char *value) {
   char *new = malloc(strlen(value) + 2);
-  snprintf(new, strlen(value) + 2, "%s", value);
+  snprintf(new, strlen(value) + 2, " %s", value);
 
   return new;
 }
@@ -108,6 +108,7 @@ static void parse(FILE *file, bool overwrite) {
 int env_load(const char *base_path, bool overwrite) {
   char *path = malloc(strlen(base_path) + strlen("/.env") + 1);
   snprintf(path, strlen(base_path) + strlen("/.env") + 1, "%s/.env", base_path);
+  // sprintf(path, "%s/.env", base_path);
   FILE *file = fopen(path, "rb");
 
   if (!file) {
