@@ -1,9 +1,8 @@
 #include "jwt-middleware.h"
 #include <jwt.h>
 
-middlewareHandler jwtMiddleware(const unsigned char *privateKey,
-                                UNUSED const unsigned char *publicKey,
-                                char *algorithm) {
+middlewareHandler jwtMiddleware(const char *privateKey,
+                                UNUSED const char *publicKey, char *algorithm) {
 
   jwt_alg_t jwtAlgorithm = jwt_str_alg(algorithm);
 

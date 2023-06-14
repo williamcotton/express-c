@@ -32,8 +32,7 @@ typedef struct jwt_middleware_t {
   char * (^verify)(char *token);
 } jwt_middleware_t;
 
-middlewareHandler jwtMiddleware(const unsigned char *privateKey,
-                                const unsigned char *publicKey,
+middlewareHandler jwtMiddleware(const char *privateKey, const char *publicKey,
                                 char *algorithm);
 
 #endif // JWT_MIDDLEWARE_H
