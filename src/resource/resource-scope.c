@@ -233,10 +233,12 @@ query_t *applyStatsToScope(UNUSED json_t *stats, UNUSED query_t *scope,
       statValue->attribute = attribute;
       statValue->stat = stat;
       query_stat_result_t *result = scope->stat(attribute, stat);
-      statValue->value =
-          mmMalloc(resource->model->memoryManager, strlen(result->value) + 1);
-      sprintf(statValue->value, "%s", result->value);
-      free(result->value);
+      if (result->value) {
+        statValue->value =
+            mmMalloc(resource->model->memoryManager, strlen(result->value) + 1);
+        sprintf(statValue->value, "%s", result->value);
+        free(result->value);
+      }
     }
   }
 
