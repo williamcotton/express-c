@@ -48,7 +48,7 @@ int main() {
   });
 
   /* Controllers */
-  app->useRouter("/", todosController(embeddedFiles));
+  // app->useRouter("/", todosController(embeddedFiles));
   app->useRouter("/api/v1", resourceRouter(databaseUrl, databasePoolSize));
 
   /* Clean up */
@@ -57,7 +57,6 @@ int main() {
   });
 
   app->listen(port, ^{
-    printf("TodoMVC app listening at http://localhost:%d\n", port);
     writePid("server.pid");
   });
 }
