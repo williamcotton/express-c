@@ -863,7 +863,7 @@ pg_t *initPg(const char *pgUri) {
     Block_release(pg->exec);
     Block_release(pg->execParams);
     Block_release(pg->close);
-    dispatch_async(dispatch_get_main_queue(), ^() {
+    dispatch_sync(dispatch_get_main_queue(), ^() {
       Block_release(pg->free);
       free(pg);
     });
@@ -898,7 +898,7 @@ postgres_connection_t *initPostgressConnection(const char *pgUri,
     free(postgres->pool);
     dispatch_release(postgres->semaphore);
     dispatch_release(postgres->queue);
-    dispatch_async(dispatch_get_main_queue(), ^() {
+    dispatch_sync(dispatch_get_main_queue(), ^() {
       Block_release(postgres->free);
       free(postgres);
     });

@@ -8,7 +8,7 @@ router_t *cJSONMustacheRouter();
 router_t *janssonMustacheRouter();
 router_t *janssonJsonapiRouter();
 router_t *cookieSessionRouter();
-router_t *jwtRouter();
+router_t *jwtRouter(char *);
 router_t *resourceRouter(char *, int);
 
 app_t *testApp() {
@@ -17,6 +17,9 @@ app_t *testApp() {
 
   /* Environment variables */
   char *TEST_DATABASE_URL = getenv("TEST_DATABASE_URL");
+
+  char *key256 = malloc(32);
+  strlcpy(key256, "012345678901234567890123456789XY", 32);
 
   __block app_t *app = express();
 
@@ -45,7 +48,7 @@ app_t *testApp() {
   app->useRouter("/jansson-mustache", janssonMustacheRouter());
   app->useRouter("/jansson-jsonapi", janssonJsonapiRouter());
   app->useRouter("/cookie-session", cookieSessionRouter());
-  app->useRouter("/jwt", jwtRouter());
+  app->useRouter("/jwt", jwtRouter(key256));
   app->useRouter("/api/v1", resourceRouter(TEST_DATABASE_URL, poolSize));
 
   typedef struct super_t {
@@ -427,6 +430,7 @@ app_t *testApp() {
     }
     free(memSession->stores);
     free(memSession);
+    free(key256);
   }));
 
   return app;

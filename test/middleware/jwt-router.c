@@ -4,11 +4,8 @@
 #include <middleware/jwt-middleware.h>
 #include <stdlib.h>
 
-router_t *jwtRouter() {
+router_t *jwtRouter(char *key256) {
   router_t *router = expressRouter();
-
-  char *key256 = malloc(32);
-  strlcpy(key256, "012345678901234567890123456789XY", 32);
 
   router->use(jwtMiddleware(key256, key256, "HS256"));
 
