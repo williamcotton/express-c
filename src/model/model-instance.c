@@ -155,12 +155,12 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
   });
 
   instance->save = mmBlockCopy(instance->model->memoryManager, ^() {
-    int didSave = false;
+    int didSave = 0;
 
     for (int i = 0; i < instance->model->beforeSaveCallbacksCount; i++) {
       int res = instance->model->beforeSaveCallbacks[i](instance);
       if (res == 0) {
-        return false;
+        return 0;
       }
     }
 
@@ -207,7 +207,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
       for (int i = 0; i < instance->model->beforeUpdateCallbacksCount; i++) {
         int res = instance->model->beforeUpdateCallbacks[i](instance);
         if (res == 0) {
-          return false;
+          return 0;
         }
       }
 
@@ -226,7 +226,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
       for (int i = 0; i < instance->model->beforeCreateCallbacksCount; i++) {
         int res = instance->model->beforeCreateCallbacks[i](instance);
         if (res == 0) {
-          return false;
+          return 0;
         }
       }
 
@@ -254,7 +254,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
           instance->model->afterCreateCallbacks[i](instance);
         }
 
-        didSave = true;
+        didSave = 1;
       }
     } else if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
       log_err("%s", PQresultErrorMessage(pgres));
@@ -264,7 +264,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
         instance->model->afterUpdateCallbacks[i](instance);
       }
 
-      didSave = true;
+      didSave = 1;
     }
 
     PQclear(pgres);
@@ -286,7 +286,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
     for (int i = 0; i < instance->model->beforeDestroyCallbacksCount; i++) {
       int res = instance->model->beforeDestroyCallbacks[i](instance);
       if (res == 0) {
-        return false;
+        return 0;
       }
     }
 
