@@ -23,7 +23,7 @@ int main() {
   char *PORT = getenv("PORT");
   char *DATABASE_URL = getenv("DATABASE_URL");
   char *DATABASE_POOL_SIZE = getenv("DATABASE_POOL_SIZE");
-  int port = PORT ? atoi(PORT) : 3000;
+  int port = PORT ? atoi(PORT) : 3495;
   int databasePoolSize = DATABASE_POOL_SIZE ? atoi(DATABASE_POOL_SIZE) : 5;
   const char *databaseUrl =
       DATABASE_URL ? DATABASE_URL : "postgresql://localhost/express-demo";
