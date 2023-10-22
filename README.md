@@ -84,7 +84,7 @@ Take a look at the [Todo store](https://github.com/williamcotton/express-c/tree/
 ### OS X
 
 ```
-$ brew install llvm clib fswatch dbmate jansson
+$ brew install llvm clib fswatch dbmate jansson libjwt
 ```
 
 ### Linux
