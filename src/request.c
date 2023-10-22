@@ -249,27 +249,30 @@ void initReqCookie(request_t *req) {
   req->cookiesKeyValueCount = 0;
   req->cookiesString = expressReqGet(req, "Cookie");
   memset(req->cookies, 0, sizeof(req->cookies));
-  char *cookies = (char *)req->cookiesString;
   if (req->cookiesString != NULL) {
+    char *cookies = (char *)req->cookiesString;
     char *tknPtr;
     char *cookie = strtok_r(cookies, ";", &tknPtr);
     int i = 0;
-    while (cookie != NULL) {
+    while (cookie != NULL && i < 4096) {
       req->cookies[i] = cookie;
       cookie = strtok_r(NULL, ";", &tknPtr);
       req->cookiesKeyValueCount = ++i;
     }
-    for (i = 0; i < 4096; i++) {
+    for (i = 0; i < req->cookiesKeyValueCount; i++) {
       if (req->cookies[i] == NULL)
         break;
       char *key = strtok_r((char *)req->cookies[i], "=", &tknPtr);
       char *value = strtok_r(NULL, "=", &tknPtr);
-      if (key[0] == ' ')
+      if (key != NULL && value != NULL && key[0] == ' ') {
         key++;
-      req->cookiesKeyValues[i].key = key;
-      req->cookiesKeyValues[i].keyLen = strlen(key);
-      req->cookiesKeyValues[i].value = value;
-      req->cookiesKeyValues[i].valueLen = strlen(value);
+      }
+      if (key != NULL && value != NULL) {
+        req->cookiesKeyValues[i].key = key;
+        req->cookiesKeyValues[i].keyLen = strlen(key);
+        req->cookiesKeyValues[i].value = value;
+        req->cookiesKeyValues[i].valueLen = strlen(value);
+      }
     }
   }
 }
