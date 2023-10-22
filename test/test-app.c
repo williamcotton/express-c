@@ -9,7 +9,7 @@ router_t *janssonMustacheRouter();
 router_t *janssonJsonapiRouter();
 router_t *cookieSessionRouter();
 router_t *jwtRouter();
-router_t *resourceRouter();
+router_t *resourceRouter(char *, int);
 
 app_t *testApp() {
 
