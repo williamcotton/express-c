@@ -155,7 +155,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
   });
 
   instance->save = mmBlockCopy(instance->model->memoryManager, ^() {
-    int didSave = false;
+    bool didSave = false;
 
     for (int i = 0; i < instance->model->beforeSaveCallbacksCount; i++) {
       int res = instance->model->beforeSaveCallbacks[i](instance);
@@ -281,7 +281,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
   });
 
   instance->destroy = mmBlockCopy(instance->model->memoryManager, ^() {
-    int didDestroy = 0;
+    bool didDestroy = 0;
 
     for (int i = 0; i < instance->model->beforeDestroyCallbacksCount; i++) {
       int res = instance->model->beforeDestroyCallbacks[i](instance);
