@@ -87,14 +87,14 @@ typedef struct model_instance_t {
   instance_attribute_t *attributes[100];
   int attributesCount;
   model_instance_collection_t *includedModelInstanceCollections[100];
-  bool (^isValid)();
+  int (^isValid)();
   void (^addError)(char *attribute, char *message);
   char * (^get)(char *attribute);
   void (^set)(char *attribute, char *value);
   query_t * (^r)(const char *relationName);
-  bool (^save)();
-  bool (^validate)();
-  bool (^destroy)();
+  int (^save)();
+  int (^validate)();
+  int (^destroy)();
 } model_instance_t;
 
 void modelInstanceInitAttr(model_instance_t *instance, char *attribute,
