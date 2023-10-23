@@ -281,7 +281,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
   });
 
   instance->destroy = mmBlockCopy(instance->model->memoryManager, ^() {
-    bool didDestroy = 0;
+    bool didDestroy = false;
 
     for (int i = 0; i < instance->model->beforeDestroyCallbacksCount; i++) {
       int res = instance->model->beforeDestroyCallbacks[i](instance);
@@ -301,7 +301,7 @@ model_instance_t *modelInstanceHelpers(model_instance_t *instance) {
       if (PQresultStatus(pgres) != PGRES_COMMAND_OK) {
         log_err("%s", PQresultErrorMessage(pgres));
       } else {
-        didDestroy = 1;
+        didDestroy = true;
       }
       PQclear(pgres);
     }
