@@ -1,6 +1,11 @@
 -std=gnu2x
 -Ideps
 -Isrc
+-I/usr/local/include
+-I/opt/homebrew/include/postgresql@14
+-I/opt/homebrew/Cellar/libjwt/1.17.0/include
+-I/opt/homebrew/Cellar/jansson/2.14/include
+-L/opt/homebrew/Cellar/libjwt/1.17.0/lib
 -fno-common
 -fblocks
 -Wall
