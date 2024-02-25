@@ -259,7 +259,7 @@ void initReqCookie(request_t *req) {
       cookie = strtok_r(NULL, ";", &tknPtr);
       req->cookiesKeyValueCount = ++i;
     }
-    for (i = 0; i < req->cookiesKeyValueCount; i++) {
+    for (i = 0; i < (int)req->cookiesKeyValueCount; i++) {
       if (req->cookies[i] == NULL)
         break;
       char *key = strtok_r((char *)req->cookies[i], "=", &tknPtr);
