@@ -1,6 +1,6 @@
 {
   "name": "express-c",
-  "version": "1.3.2",
+  "version": "1.5.0",
   "repo": "williamcotton/express-c",
   "description": "Fast, unopinionated, minimalist web framework for C",
   "author": "William Cotton",
