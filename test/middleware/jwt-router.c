@@ -7,7 +7,8 @@
 router_t *jwtRouter() {
   router_t *router = expressRouter();
 
-  unsigned char key256[32] = "012345678901234567890123456789XY";
+  static const unsigned char *key256 =
+      (const unsigned char *)"012345678901234567890123456789XY";
 
   router->use(jwtMiddleware(key256, key256, "HS256"));
 

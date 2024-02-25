@@ -76,7 +76,7 @@ test-coverage:
 
 lint:
 ifeq ($(PLATFORM),LINUX)
-	$(TIDY) --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -warnings-as-errors=* src/express.c
+	$(TIDY) --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,-clang-diagnostic-unused-command-line-argument -warnings-as-errors=* src/express.c
 else ifeq ($(PLATFORM),DARWIN)
 	$(TIDY) -warnings-as-errors=* src/express.c
 endif
