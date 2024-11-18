@@ -34,6 +34,10 @@ else ifeq ($(PLATFORM),DARWIN)
 	PROD_CFLAGS = -Ofast
 endif
 
+.PHONY: start
+start:
+	DYLD_LIBRARY_PATH=/usr/local/lib ./build/TodoMVC
+
 TodoMVC:
 	mkdir -p $(BUILD_DIR)
 	$(CC) -o $(BUILD_DIR)/$@ $@.c $(SRC) $(CFLAGS) $(DEV_CFLAGS) -DERR_STACKTRACE
